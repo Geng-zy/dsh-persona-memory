@@ -8,6 +8,9 @@
 // 消息存档（收到、发出、没唤醒的群消息）；设置页接口要登录、改文件要 JSON 请求。
 // 阶段 2：召回的记忆放进这一轮的消息；群聊附上她没看到的消息；每个会话都有回忆/记住/遗忘工具；
 // 手动整理和压缩前整理（假模型回 JSON）；向量索引（假向量接口）；接口里遗忘一条记忆。
+// 阶段 3：写日记；群消息图片收到时下载、群聊上下文用下载好的图；模拟过了 6 天：群会话换新、旧会话归档后
+// 真的删掉文件夹（dsh 还能正常用）、新会话开头带上个会话的内容；模拟过了 400 天：主人会话换新、旧的只归档不删、
+// 新会话开头先读日记。
 //
 // 需要：DSH_BIN 指向 dsh；先在两个仓库都 pnpm run build。不联网、不需要真实 API Key。
 import { spawn } from 'node:child_process'
@@ -39,6 +42,7 @@ if (!existsSync(join(BRIDGE, 'lib', 'index.js'))) { console.error('[e2e] 找不�
 // ---- 假 DeepSeek（Anthropic Messages 流式）
 const requests = []
 const extractions = []
+const diaryPrompts = []
 let overflowOnce = true
 const textOf = content => (typeof content === 'string' ? content : (content ?? []).filter(b => b.type === 'text').map(b => b.text).join('\n'))
 const firstText = content => (typeof content === 'string' ? content : (content ?? []).find(b => b.type === 'text')?.text ?? '')
@@ -68,7 +72,8 @@ const llm = createServer((req, res) => {
     const toolResult = Array.isArray(lastUser?.content) && lastUser.content.some(b => b.type === 'tool_result')
     const lastAll = textOf(lastUser?.content)
     const extracting = lastAll.includes('请从中挑出值得你长期记住的事')
-    const entry = { system, last, lastAll, all, raw: JSON.stringify(json.messages ?? []), tools: (json.tools ?? []).map(t => t.name), toolResult, extracting }
+    const images = Array.isArray(lastUser?.content) ? lastUser.content.filter(b => b.type === 'image').length : 0
+    const entry = { images, system, last, lastAll, all, raw: JSON.stringify(json.messages ?? []), tools: (json.tools ?? []).map(t => t.name), toolResult, extracting }
     if (extracting) extractions.push(lastAll)
     else requests.push(entry)
     const ev = (type, data) => res.write('event: ' + type + '\ndata: ' + JSON.stringify({ type, ...data }) + '\n\n')
@@ -86,6 +91,7 @@ const llm = createServer((req, res) => {
       res.end()
     }
     if (lastAll.includes('现在暂停聊天')) return text('回忆：我们聊过苹果和香蕉。')
+    if (lastAll.includes('给自己写一篇')) { diaryPrompts.push(lastAll); return text('# 今天的日记 DIARY-1\n今天主人和我聊了很多，我很开心。') }
     if (extracting) {
       const tag = lastAll.includes('QQ 群') ? 'ORG-GROUP' : lastAll.includes('和主人的私聊') ? 'ORG-MASTER' : 'ORG-OTHER'
       return text('```json\n[{"content":"整理出来的记忆 ' + tag + '","kind":"fact","importance":0.6}]\n```')
@@ -112,6 +118,11 @@ const llm = createServer((req, res) => {
 })
 await new Promise(r => llm.listen(0, '127.0.0.1', r))
 const llmUrl = 'http://127.0.0.1:' + llm.address().port + '/anthropic'
+// 图片服务器：给假 NapCat 的图片地址用（1x1 PNG）
+const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')
+const imgServer = createServer((_req, res) => res.writeHead(200, { 'content-type': 'image/png' }).end(PNG))
+await new Promise(r => imgServer.listen(0, '127.0.0.1', r))
+const imgUrl = 'http://127.0.0.1:' + imgServer.address().port + '/a.png'
 
 // ---- 独立的 DSH_HOME，两个插件都作为 profile bundle
 const home = mkdtempSync(join(tmpdir(), 'dsh-companion-e2e-'))
@@ -156,7 +167,7 @@ writeFileSync(join(data, 'core', 'master.md'), '- CORE-MASTER：主人爱吃红�
 writeFileSync(join(data, 'core', 'public.md'), '- CORE-PUBLIC：我是一条鱼')
 
 const dsh = spawn(process.env.DSH_BIN ?? 'dsh', ['web', '--host', '127.0.0.1', '--port', process.env.E2E_WEB_PORT ?? '0', '--no-open'], {
-  env: { ...process.env, DSH_HOME: home, DEEPSEEK_API_KEY: 'sk-e2e-fake', DEEPSEEK_BASE_URL: llmUrl, DSH_TELEMETRY_DISABLED: '1' },
+  env: { ...process.env, COMPANION_TEST_CLOCK: '1', DSH_HOME: home, DEEPSEEK_API_KEY: 'sk-e2e-fake', DEEPSEEK_BASE_URL: llmUrl, DSH_TELEMETRY_DISABLED: '1' },
   stdio: ['ignore', 'pipe', 'pipe'],
 })
 let dshLog = ''
@@ -172,6 +183,7 @@ async function cleanup() {
     if (dsh.exitCode === null && dsh.signalCode === null) try { dsh.kill('SIGKILL') } catch {}
   }
   llm.close()
+  imgServer.close()
   if (!process.env.E2E_KEEP) rmSync(home, { recursive: true, force: true })
 }
 
@@ -385,6 +397,91 @@ if (form.status !== 415) await fail('非 JSON 请求也能改人格：' + form.s
 const ok = await fetch(webBase + 'api/companion/doc/persona', { method: 'POST', headers: { cookie, 'content-type': 'application/json' }, body: JSON.stringify({ text: '你是 PERSONA-V3。' }) })
 if (!ok.ok || !readFileSync(personaFile, 'utf-8').includes('PERSONA-V3')) await fail('设置页改人格失败：' + ok.status)
 log('设置页接口 OK（需登录、改文件要 JSON）')
+
+// ===== 阶段 3 =====
+// 10. 写日记（只写主人的）
+const ran = await api('POST', 'maintenance', { what: 'diary' })
+if (ran.status !== 200 || ran.json?.report?.diary?.written !== true) await fail('写日记失败：' + JSON.stringify(ran.json?.report ?? ran))
+const diaryList = (await api('GET', 'diary')).json
+if (diaryList?.days?.length !== 1) await fail('日记列表不对：' + JSON.stringify(diaryList))
+const today = (await api('GET', 'diary/' + diaryList.days[0].date)).json
+if (!today?.text?.includes('DIARY-1')) await fail('日记内容不对：' + JSON.stringify(today))
+if (diaryPrompts[0].includes('g1b') || diaryPrompts[0].includes('ctx-a')) await fail('日记里混进了群里的事')
+const imported = await api('POST', 'diary/import', { conflict: 'skip', files: [{ name: '2026-10-19.md', text: '# 10月19日\n旧日记 OLD-DIARY' }, { name: 'x.md', text: '没有日期' }, { name: diaryList.days[0].date + '.md', text: '同一天' }] })
+const results = imported.json?.results?.map(r => r.result)
+if (JSON.stringify(results) !== JSON.stringify(['added', 'no-date', 'skipped'])) await fail('导入日记结果不对：' + JSON.stringify(imported.json))
+log('写日记、导入旧日记 OK（' + diaryList.days[0].date + '）')
+
+// 11. 群消息图片收到时下载；群聊上下文用下载好的图
+groupMsg([text('看图'), { type: 'image', data: { file: 'a.png', url: imgUrl, summary: '[图片]' } }])
+const mediaDir = join(data, 'media')
+await waitFor(() => existsSync(mediaDir) && readdirSync(mediaDir).length > 0, '群消息图片下载好')
+await say(() => groupMsg([at(BOT), text(' 图里是什么 g9')]), '带图片的群聊上下文')
+r = reqWith('g9')
+if (!r.lastAll.includes('看图') || r.images < 1) await fail('群聊上下文没带上下载好的图片：images=' + r.images + ' ' + r.lastAll.slice(0, 300))
+log('群消息图片下载、群聊上下文带图 OK')
+
+// 12. 模拟过了 6 天：群会话换新，旧会话归档后真的删掉文件夹，dsh 照常能用
+const sessionDirs = id => readdirSync(join(home, 'sessions')).filter(p => existsSync(join(home, 'sessions', p, id)))
+const oldGroup = 'napcat-napcat-GroupMessage-' + GROUP
+if (sessionDirs(oldGroup).length !== 1) await fail('找不到群会话的文件夹：' + JSON.stringify(readdirSync(join(home, 'sessions'))))
+const sixDays = await api('POST', 'maintenance', { what: 'expire', now: Date.now() + 6 * 86_400_000 })
+const rep6 = sixDays.json?.report
+if (!rep6?.expired?.some(e => e.umo === 'napcat:GroupMessage:' + GROUP && e.rotated)) await fail('群会话没有换新：' + JSON.stringify(rep6))
+if (!rep6.deletedSessions.includes(oldGroup)) await fail('旧群会话没有删掉：' + JSON.stringify(rep6))
+if (sessionDirs(oldGroup).length !== 0) await fail('旧群会话的文件夹还在')
+if (rep6.failedSessions.length > 0) await fail('删会话有失败：' + JSON.stringify(rep6.failedSessions))
+await say(() => groupMsg([at(BOT), text(' 新会话里的第一句 g10')]), '换会话后群里的回复')
+r = reqWith('g10')
+if (!r.lastAll.includes('<previous_session>')) await fail('新会话开头没带上个会话的内容：' + r.lastAll.slice(0, 400))
+if (/ERR|Error|unhandled/i.test(dshLog.split('删掉了已归档的旧会话')[1] ?? '')) await fail('删会话以后 dsh 报错：' + dshLog.slice(-2000))
+log('过了 6 天：群会话换新、旧会话删掉、dsh 照常 OK')
+
+// 13. 模拟过了 400 天：主人会话换新，旧的只归档不删；新会话开头先读日记
+const oldMaster = 'napcat-napcat-FriendMessage-' + MASTER
+const years = await api('POST', 'maintenance', { what: 'expire', now: Date.now() + 400 * 86_400_000 })
+const repY = years.json?.report
+if (!repY?.expired?.some(e => e.umo === 'napcat:FriendMessage:' + MASTER && e.rotated)) await fail('主人会话没有换新：' + JSON.stringify(repY))
+if (repY.deletedSessions.includes(oldMaster) || sessionDirs(oldMaster).length !== 1) await fail('主人的旧会话被删了')
+const retiredMaster = years.json.state.retired.find(x => x.sessionId === oldMaster)
+if (retiredMaster?.state !== 'archived') await fail('主人的旧会话不是归档状态：' + JSON.stringify(retiredMaster))
+await say(() => privateMsg([text('新的一年 m99')]), '主人新会话的回复')
+r = reqWith('m99')
+if (!r.lastAll.includes('<diary>') || !r.lastAll.includes('DIARY-1')) await fail('主人新会话开头没先读日记：' + r.lastAll.slice(0, 500))
+log('过了 400 天：主人会话换新、旧的只归档、新会话先读日记 OK')
+
+// 14. 删过会话以后重启 dsh：能正常起来、不报错、设置页接口照常
+if (!process.env.E2E_HOLD) {
+  finished = true
+  const exited = new Promise(resolve => dsh.once('exit', resolve))
+  dsh.kill('SIGTERM')
+  await Promise.race([exited, new Promise(resolve => setTimeout(resolve, 15_000))])
+  ws.close()
+  let log2 = ''
+  const dsh2 = spawn(process.env.DSH_BIN ?? 'dsh', ['web', '--host', '127.0.0.1', '--port', '0', '--no-open'], {
+    env: { ...process.env, DSH_HOME: home, DEEPSEEK_API_KEY: 'sk-e2e-fake', DEEPSEEK_BASE_URL: llmUrl, DSH_TELEMETRY_DISABLED: '1' },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  })
+  for (const st of [dsh2.stdout, dsh2.stderr]) st.on('data', d => { log2 += d })
+  const end = Date.now() + 90_000
+  while (!/dsh web: http/.test(log2) && Date.now() < end && dsh2.exitCode === null) await new Promise(r => setTimeout(r, 300))
+  const url2 = (log2.match(/http:\/\/127\.0\.0\.1:\d+\/\?token=[A-Za-z0-9_-]+/) ?? [])[0]
+  let ok2 = false
+  if (url2) {
+    const base2 = url2.slice(0, url2.indexOf('?'))
+    const login2 = await fetch(url2, { redirect: 'manual' })
+    const cookie2 = (login2.headers.getSetCookie?.() ?? []).map(c => c.split(';')[0]).join('; ')
+    const st2 = await fetch(base2 + 'api/companion/state', { headers: { cookie: cookie2 } })
+    ok2 = st2.ok && (await st2.json()).retired?.some(x => x.sessionId === oldGroup && x.state === 'deleted')
+  }
+  dsh2.kill('SIGTERM')
+  await new Promise(r => setTimeout(r, 1500))
+  if (!url2 || !ok2 || /Error|unhandled|ENOENT/.test(log2)) {
+    console.error(log2.slice(-3000))
+    await fail('删过会话以后重启 dsh 不正常')
+  }
+  log('删过会话以后重启 dsh 正常 OK')
+}
 
 log('全部通过')
 if (process.env.E2E_HOLD) {

@@ -1,7 +1,8 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { Category, Scope } from './rules.js';
 import { type KeywordIndex } from './text.js';
-export type MemoryKind = 'fact' | 'preference' | 'event' | 'promise' | 'other';
+/** diary：日记和月度总览（她自己写的，只有整理任务会写这一类） */
+export type MemoryKind = 'fact' | 'preference' | 'event' | 'promise' | 'other' | 'diary';
 export declare const KINDS: readonly MemoryKind[];
 export interface Memory {
     id: number;
@@ -86,6 +87,8 @@ export declare class MemoryStore {
     keywordIndex(): KeywordIndex;
     /** 写一条：空的不写、彻底遗忘过的不写回来、几乎一样的合并。 */
     add(m: NewMemory): AddResult;
+    /** 某个归属在一段时间里新写的记忆（写日记用）。 */
+    createdBetween(scope: string, from: number, to: number): Memory[];
     /** 改内容（设置页）。 */
     edit(id: number, content: string): boolean;
     /** 普通遗忘：不再被想起，原文保留，可以恢复。 */

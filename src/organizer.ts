@@ -1,7 +1,7 @@
 // 记忆生成（"整理"）：把一段还没整理过的聊天交给模型，挑出值得记的写进记忆库。
 // 什么时候整理：每 N 轮一次、截断/压缩之前（先抢救）、设置页「立即整理」。以后还有写日记时、存档到期前。
 // QQ 会话从消息存档里取（含没唤醒她的群消息），每个会话记一个「已整理到哪条」，同一段只整理一次；
-// dsh 里直接开的会话没有存档，从会话事件里攒在内存里（dsh 重启后之前没整理的那部分只能靠压缩前的抢救）。
+// dsh 里直接开的会话没有消息存档，从会话事件里记进「聊天流水」表（journal，只给整理和写日记用），同样记着整理到哪条。
 // 所有整理排队一个一个来，不会同时打很多模型请求。
 
 import type { Archive, ArchivedMessage } from './archive.js'
@@ -38,17 +38,9 @@ export function transcriptOf(rows: readonly ArchivedMessage[]): string[] {
   })
 }
 
-interface Buffer {
-  scope: Scope
-  lines: string[]
-  rounds: number
-  from: number
-}
-
 export class Organizer {
   private queue: Promise<unknown> = Promise.resolve()
   private readonly replies = new Map<string, number>()
-  private readonly buffers = new Map<string, Buffer>()
 
   constructor(private readonly deps: OrganizerDeps) {}
 
@@ -140,27 +132,28 @@ export class Organizer {
     }
   }
 
-  /** dsh 会话：记下一句话；人说的话算一轮，到了 N 轮就整理。 */
-  onDshLine(sessionId: string, scope: Scope, line: string, human: boolean, everyRounds: number): void {
-    let b = this.buffers.get(sessionId)
-    if (b === undefined) {
-      b = { scope, lines: [], rounds: 0, from: Date.now() }
-      this.buffers.set(sessionId, b)
+  /** dsh 会话：记下一句话（进聊天流水）；人说的话算一轮，到了 N 轮就整理。 */
+  onDshLine(sessionId: string, text: string, human: boolean, everyRounds: number): void {
+    this.deps.archive.addJournal(sessionId, human ? 'master' : 'self', text)
+    if (!human || everyRounds <= 0) return
+    const rows = this.deps.archive.journalSince(sessionId, this.deps.archive.cursor('orgdsh:' + sessionId), 10_000)
+    if (rows.filter(r => r.role === 'master').length >= everyRounds) {
+      void this.flushDsh(sessionId, '每 ' + everyRounds + ' 轮').catch(e => this.deps.log('warn', '整理失败：' + (e instanceof Error ? e.message : String(e))))
     }
-    b.lines.push('[' + timeText(Date.now()) + '] ' + line)
-    if (b.lines.length > CHUNK * 2) b.lines.splice(0, b.lines.length - CHUNK * 2)
-    if (!human) return
-    b.rounds += 1
-    if (everyRounds > 0 && b.rounds >= everyRounds) void this.flushDsh(sessionId, '每 ' + everyRounds + ' 轮').catch(e => this.deps.log('warn', '整理失败：' + (e instanceof Error ? e.message : String(e))))
   }
 
-  /** 把 dsh 会话攒着的部分整理掉；没攒到时用 fallback（压缩前给的那几轮）。 */
+  /** 整理 dsh 会话流水里还没整理的部分；一条都没有时用 fallback（压缩前给的那几轮）。 */
   flushDsh(sessionId: string, reason: string, fallback: readonly string[] = []): Promise<number> {
-    const b = this.buffers.get(sessionId)
-    const lines = b !== undefined && b.lines.length > 0 ? b.lines.splice(0) : [...fallback]
-    if (b !== undefined) b.rounds = 0
-    const scope = b?.scope ?? { category: 'master' as const, qq: false }
-    return this.organizeLines(scope, sessionId, lines, reason)
+    return this.enqueue(async () => {
+      const key = 'orgdsh:' + sessionId
+      const rows = this.deps.archive.journalSince(sessionId, this.deps.archive.cursor(key), CHUNK * MAX_CHUNKS)
+      const lines = rows.length > 0 ? rows.map(r => '[' + timeText(r.time) + '] ' + (r.role === 'master' ? '主人' : '我') + '：' + r.text) : [...fallback]
+      if (lines.length === 0) return 0
+      const n = await this.write({ category: 'master', qq: false }, lines, { session: sessionId, ...(rows.length > 0 ? { from: rows[0].time, to: rows[rows.length - 1].time } : {}) })
+      if (rows.length > 0) this.deps.archive.setCursor(key, rows[rows.length - 1].id)
+      this.deps.log('info', '整理了会话 ' + sessionId + '（' + reason + '），新记了 ' + n + ' 条')
+      return n
+    })
   }
 
   /** 设置页「立即整理」：所有有新内容的 QQ 会话 + 所有攒着的 dsh 会话。 */
@@ -172,10 +165,10 @@ export class Organizer {
       sessions += 1
       added += await this.organizeUmo(umo, '手动整理')
     }
-    for (const [id, b] of this.buffers) {
-      if (b.lines.length === 0) continue
+    for (const { sessionId, maxId } of this.deps.archive.journalSessions()) {
+      if (maxId <= this.deps.archive.cursor('orgdsh:' + sessionId)) continue
       sessions += 1
-      added += await this.flushDsh(id, '手动整理')
+      added += await this.flushDsh(sessionId, '手动整理')
     }
     return { sessions, added }
   }
@@ -192,7 +185,7 @@ export class Organizer {
       }
     }
     let dshSessions = 0
-    for (const b of this.buffers.values()) if (b.lines.length > 0) dshSessions += 1
+    for (const { sessionId, maxId } of this.deps.archive.journalSessions()) if (maxId > this.deps.archive.cursor('orgdsh:' + sessionId)) dshSessions += 1
     return { qqSessions, qqMessages, dshSessions }
   }
 

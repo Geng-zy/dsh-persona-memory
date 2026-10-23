@@ -6,7 +6,8 @@ import type { DatabaseSync } from 'node:sqlite'
 import type { Category, Scope } from './rules.js'
 import { buildIndex, fingerprint, overlap, toBlob, type KeywordIndex } from './text.js'
 
-export type MemoryKind = 'fact' | 'preference' | 'event' | 'promise' | 'other'
+/** diary：日记和月度总览（她自己写的，只有整理任务会写这一类） */
+export type MemoryKind = 'fact' | 'preference' | 'event' | 'promise' | 'other' | 'diary'
 export const KINDS: readonly MemoryKind[] = ['fact', 'preference', 'event', 'promise', 'other']
 
 export interface Memory {
@@ -61,7 +62,7 @@ export type AddResult =
 const MERGE_OVERLAP = 0.85
 /** 「取代」要找的旧记忆至少相似到这个程度。 */
 const REPLACE_OVERLAP = 0.4
-const MAX_CONTENT = 2000
+const MAX_CONTENT = 8000
 
 /** 一个会话自己的记忆归属。 */
 export function ownScope(scope: Scope): string {
@@ -159,7 +160,7 @@ export class MemoryStore {
     }
     const r = this.db.prepare(`INSERT INTO memories (scope, kind, content, importance, trust, writer, source_umo, source_session, source_from, source_to, created_at, tz, hash)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
-      m.scope, m.kind && (KINDS as readonly string[]).includes(m.kind) ? m.kind : 'other', content, importance, clamp(m.trust ?? 0.5), m.writer,
+      m.scope, m.kind && ((KINDS as readonly string[]).includes(m.kind) || m.kind === 'diary') ? m.kind : 'other', content, importance, clamp(m.trust ?? 0.5), m.writer,
       m.sourceUmo ?? null, m.sourceSession ?? null, m.sourceFrom ?? null, m.sourceTo ?? null, Date.now(), this.tz(), hash,
     )
     const id = Number(r.lastInsertRowid)
@@ -178,6 +179,11 @@ export class MemoryStore {
     }
     this.changed()
     return { action: 'added', id, ...(superseded !== undefined ? { superseded } : {}) }
+  }
+
+  /** 某个归属在一段时间里新写的记忆（写日记用）。 */
+  createdBetween(scope: string, from: number, to: number): Memory[] {
+    return (this.db.prepare('SELECT ' + COLS + " FROM memories WHERE scope = ? AND created_at > ? AND created_at <= ? AND kind != 'diary' AND status = 'active' ORDER BY created_at").all(scope, from, to) as Array<Record<string, any>>).map(fromRow)
   }
 
   /** 改内容（设置页）。 */

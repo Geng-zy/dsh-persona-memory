@@ -57,6 +57,19 @@ export interface Config {
     embedBatch: number;
     groupContextCount: number;
     groupContextImages: number;
+    diaryEnabled: boolean;
+    diaryTime: string;
+    dayBoundaryHour: number;
+    timezone: string;
+    monthlyEnabled: boolean;
+    diaryOnNewSession: boolean;
+    diaryDays: number;
+    overviewMonths: number;
+    diaryBudgetPercent: number;
+    rotateSessions: boolean;
+    deleteOldSessions: boolean;
+    carryMessages: number;
+    archiveImages: boolean;
     logLevel: 'debug' | 'info' | 'warn' | 'error';
 }
 export type LiveConfig = {

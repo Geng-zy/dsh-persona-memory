@@ -1,6 +1,6 @@
 import { DatabaseSync } from 'node:sqlite';
 /** 数据结构版本；以后改表结构时加升级步骤，不丢旧数据。 */
-export declare const SCHEMA_VERSION = 2;
+export declare const SCHEMA_VERSION = 3;
 export interface ArchivedMessage {
     /** unified_msg_origin */
     umo: string;
@@ -55,6 +55,58 @@ export declare class Archive {
      * 不含 excludeMessageId（正在处理的这条），最多 limit 条，按时间顺序。
      */
     unseen(umo: string, limit: number, excludeMessageId?: string): ArchivedMessage[];
+    /** 某个会话最早一条的时间。 */
+    oldest(umo: string): number | undefined;
+    /** 删掉某个会话 cutoff 之前的存档，返回删了几条。 */
+    deleteBefore(umo: string, cutoff: number): number;
+    /** 这个 QQ 会话现在对应的 dsh 会话（存档里最近一条带会话 id 的），以及这个 dsh 会话最早一条消息的时间。 */
+    currentSession(umo: string): {
+        sessionId: string;
+        firstTime: number;
+        lastTime: number;
+    } | undefined;
+    /** 一段时间里几个会话的消息（写日记用），按时间顺序。 */
+    between(umos: readonly string[], from: number, to: number): ArchivedMessage[];
+    /** 补上收到消息后才下载好的图片等（改那条的消息段）。 */
+    updateSegments(umo: string, messageId: string, segments: string): void;
+    /** 存档里还引用着的本地图片文件名。 */
+    mediaRefs(): Set<string>;
+    retire(r: {
+        sessionId: string;
+        umo: string;
+        category: string;
+        lastTime: number;
+        state: string;
+        note?: string;
+    }): void;
+    isRetired(sessionId: string): boolean;
+    retiredList(): Array<{
+        sessionId: string;
+        umo: string;
+        category: string;
+        retiredAt: number;
+        lastTime: number;
+        state: string;
+        note?: string;
+    }>;
+    addJournal(sessionId: string, role: 'master' | 'self', text: string, time?: number): number;
+    journalSince(sessionId: string, afterId: number, limit?: number): Array<{
+        id: number;
+        time: number;
+        role: string;
+        text: string;
+    }>;
+    journalBetween(from: number, to: number): Array<{
+        sessionId: string;
+        time: number;
+        role: string;
+        text: string;
+    }>;
+    journalSessions(): Array<{
+        sessionId: string;
+        maxId: number;
+    }>;
+    deleteJournalBefore(cutoff: number): number;
     /** 「已整理到哪条」之类的小计数。 */
     cursor(key: string): number;
     setCursor(key: string, value: number): void;

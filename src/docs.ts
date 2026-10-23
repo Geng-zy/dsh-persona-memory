@@ -12,7 +12,7 @@ export function defaultDataDir(): string {
 }
 
 /** 先写临时文件再改名，写到一半断电也不会把原文件弄坏。 */
-export function writeAtomic(path: string, content: string): void {
+export function writeAtomic(path: string, content: string | Uint8Array): void {
   const tmp = path + '.tmp-' + process.pid
   writeFileSync(tmp, content)
   renameSync(tmp, path)

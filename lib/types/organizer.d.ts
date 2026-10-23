@@ -16,7 +16,6 @@ export declare class Organizer {
     private readonly deps;
     private queue;
     private readonly replies;
-    private readonly buffers;
     constructor(deps: OrganizerDeps);
     /** 排队执行。 */
     private enqueue;
@@ -30,9 +29,9 @@ export declare class Organizer {
     organizeLines(scope: Scope, sessionId: string, lines: readonly string[], reason: string): Promise<number>;
     /** QQ：她回复了一次。到了 N 轮就整理（0 = 不按轮数整理）。 */
     onReply(umo: string, everyRounds: number): void;
-    /** dsh 会话：记下一句话；人说的话算一轮，到了 N 轮就整理。 */
-    onDshLine(sessionId: string, scope: Scope, line: string, human: boolean, everyRounds: number): void;
-    /** 把 dsh 会话攒着的部分整理掉；没攒到时用 fallback（压缩前给的那几轮）。 */
+    /** dsh 会话：记下一句话（进聊天流水）；人说的话算一轮，到了 N 轮就整理。 */
+    onDshLine(sessionId: string, text: string, human: boolean, everyRounds: number): void;
+    /** 整理 dsh 会话流水里还没整理的部分；一条都没有时用 fallback（压缩前给的那几轮）。 */
     flushDsh(sessionId: string, reason: string, fallback?: readonly string[]): Promise<number>;
     /** 设置页「立即整理」：所有有新内容的 QQ 会话 + 所有攒着的 dsh 会话。 */
     organizeAll(): Promise<{

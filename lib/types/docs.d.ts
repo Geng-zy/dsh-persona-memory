@@ -1,7 +1,7 @@
 /** 插件数据目录：<DSH_HOME>/companion */
 export declare function defaultDataDir(): string;
 /** 先写临时文件再改名，写到一半断电也不会把原文件弄坏。 */
-export declare function writeAtomic(path: string, content: string): void;
+export declare function writeAtomic(path: string, content: string | Uint8Array): void;
 export interface DocVersion {
     /** 版本 id（时间 + 随机数），也是文件名 */
     id: string;

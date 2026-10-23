@@ -7,7 +7,7 @@ import { dirname } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 
 /** 数据结构版本；以后改表结构时加升级步骤，不丢旧数据。 */
-export const SCHEMA_VERSION = 2
+export const SCHEMA_VERSION = 3
 
 export interface ArchivedMessage {
   /** unified_msg_origin */
@@ -114,6 +114,29 @@ export class Archive {
         CREATE TABLE IF NOT EXISTS cursors (key TEXT PRIMARY KEY, value INTEGER NOT NULL);
       `)
     }
+    if (current < 3) {
+      // 版本 3：dsh 里直接开的会话的聊天流水（只给整理和写日记用，不算消息存档），换掉的旧会话
+      this.db.exec(`
+        CREATE TABLE IF NOT EXISTS journal (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          session_id TEXT NOT NULL,
+          time INTEGER NOT NULL,
+          role TEXT NOT NULL,
+          text TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS journal_session ON journal (session_id, id);
+        CREATE INDEX IF NOT EXISTS journal_time ON journal (time);
+        CREATE TABLE IF NOT EXISTS retired (
+          session_id TEXT PRIMARY KEY,
+          umo TEXT NOT NULL,
+          category TEXT NOT NULL,
+          retired_at INTEGER NOT NULL,
+          last_time INTEGER NOT NULL,
+          state TEXT NOT NULL,
+          note TEXT
+        );
+      `)
+    }
     this.db.prepare("INSERT INTO meta (key, value) VALUES ('schema', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(String(SCHEMA_VERSION))
   }
 
@@ -161,6 +184,89 @@ export class Archive {
       .all(umo, last.i ?? 0, excludeMessageId ?? '', limit) as Array<Record<string, any>>
     return rows.reverse().map(fromRow)
   }
+
+  //#region 到期、换会话
+  /** 某个会话最早一条的时间。 */
+  oldest(umo: string): number | undefined {
+    const r = this.db.prepare('SELECT MIN(time) AS t FROM messages WHERE umo = ?').get(umo) as { t: number | null }
+    return r.t === null ? undefined : Number(r.t)
+  }
+
+  /** 删掉某个会话 cutoff 之前的存档，返回删了几条。 */
+  deleteBefore(umo: string, cutoff: number): number {
+    return Number(this.db.prepare('DELETE FROM messages WHERE umo = ? AND time < ?').run(umo, cutoff).changes)
+  }
+
+  /** 这个 QQ 会话现在对应的 dsh 会话（存档里最近一条带会话 id 的），以及这个 dsh 会话最早一条消息的时间。 */
+  currentSession(umo: string): { sessionId: string; firstTime: number; lastTime: number } | undefined {
+    const r = this.db.prepare('SELECT session_id FROM messages WHERE umo = ? AND session_id IS NOT NULL ORDER BY id DESC LIMIT 1').get(umo) as { session_id: string } | undefined
+    if (r === undefined) return undefined
+    const t = this.db.prepare('SELECT MIN(time) AS a, MAX(time) AS b FROM messages WHERE session_id = ?').get(r.session_id) as { a: number; b: number }
+    return { sessionId: r.session_id, firstTime: Number(t.a), lastTime: Number(t.b) }
+  }
+
+  /** 一段时间里几个会话的消息（写日记用），按时间顺序。 */
+  between(umos: readonly string[], from: number, to: number): ArchivedMessage[] {
+    if (umos.length === 0) return []
+    const rows = this.db.prepare('SELECT * FROM messages WHERE umo IN (' + umos.map(() => '?').join(', ') + ") AND time > ? AND time <= ? AND type = 'message' ORDER BY time, id")
+      .all(...umos, from, to) as Array<Record<string, any>>
+    return rows.map(fromRow)
+  }
+
+  /** 补上收到消息后才下载好的图片等（改那条的消息段）。 */
+  updateSegments(umo: string, messageId: string, segments: string): void {
+    this.db.prepare("UPDATE messages SET segments = ? WHERE umo = ? AND message_id = ? AND direction = 'in'").run(segments, umo, messageId)
+  }
+
+  /** 存档里还引用着的本地图片文件名。 */
+  mediaRefs(): Set<string> {
+    const out = new Set<string>()
+    for (const r of this.db.prepare("SELECT segments FROM messages WHERE segments LIKE '%\"_local\"%'").all() as Array<{ segments: string }>) {
+      for (const m of r.segments.matchAll(/"_local":"([0-9a-f]{64}\.[a-z0-9]+)"/g)) out.add(m[1])
+    }
+    return out
+  }
+
+  retire(r: { sessionId: string; umo: string; category: string; lastTime: number; state: string; note?: string }): void {
+    this.db.prepare(`INSERT INTO retired (session_id, umo, category, retired_at, last_time, state, note) VALUES (?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(session_id) DO UPDATE SET state = excluded.state, note = excluded.note, last_time = MAX(last_time, excluded.last_time)`)
+      .run(r.sessionId, r.umo, r.category, Date.now(), r.lastTime, r.state, r.note ?? null)
+  }
+
+  isRetired(sessionId: string): boolean {
+    return this.db.prepare('SELECT 1 FROM retired WHERE session_id = ?').get(sessionId) !== undefined
+  }
+
+  retiredList(): Array<{ sessionId: string; umo: string; category: string; retiredAt: number; lastTime: number; state: string; note?: string }> {
+    return (this.db.prepare('SELECT * FROM retired ORDER BY retired_at DESC LIMIT 200').all() as Array<Record<string, any>>).map(r => ({
+      sessionId: r.session_id, umo: r.umo, category: r.category, retiredAt: Number(r.retired_at), lastTime: Number(r.last_time), state: r.state, ...(r.note ? { note: r.note } : {}),
+    }))
+  }
+  //#endregion
+
+  //#region dsh 里直接开的会话的聊天流水
+  addJournal(sessionId: string, role: 'master' | 'self', text: string, time = Date.now()): number {
+    return Number(this.db.prepare('INSERT INTO journal (session_id, time, role, text) VALUES (?, ?, ?, ?)').run(sessionId, time, role, text).lastInsertRowid)
+  }
+
+  journalSince(sessionId: string, afterId: number, limit = 500): Array<{ id: number; time: number; role: string; text: string }> {
+    return (this.db.prepare('SELECT id, time, role, text FROM journal WHERE session_id = ? AND id > ? ORDER BY id LIMIT ?').all(sessionId, afterId, limit) as Array<Record<string, any>>)
+      .map(r => ({ id: Number(r.id), time: Number(r.time), role: r.role, text: r.text }))
+  }
+
+  journalBetween(from: number, to: number): Array<{ sessionId: string; time: number; role: string; text: string }> {
+    return (this.db.prepare('SELECT session_id, time, role, text FROM journal WHERE time > ? AND time <= ? ORDER BY time, id').all(from, to) as Array<Record<string, any>>)
+      .map(r => ({ sessionId: r.session_id, time: Number(r.time), role: r.role, text: r.text }))
+  }
+
+  journalSessions(): Array<{ sessionId: string; maxId: number }> {
+    return (this.db.prepare('SELECT session_id, MAX(id) AS m FROM journal GROUP BY session_id').all() as Array<{ session_id: string; m: number }>).map(r => ({ sessionId: r.session_id, maxId: Number(r.m) }))
+  }
+
+  deleteJournalBefore(cutoff: number): number {
+    return Number(this.db.prepare('DELETE FROM journal WHERE time < ?').run(cutoff).changes)
+  }
+  //#endregion
 
   /** 「已整理到哪条」之类的小计数。 */
   cursor(key: string): number {

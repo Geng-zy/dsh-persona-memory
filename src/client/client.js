@@ -233,6 +233,7 @@ window.__ModuleLoader__.load({
 			kindEvent: "事件",
 			kindPromise: "约定",
 			kindOther: "其他",
+			kindDiary: "日记",
 			groupCtx: "群聊上下文",
 			groupCtxHint: "她参与群话题时（被 @），把她上次发言之后、没看到的群消息一起给她看；图片原图、语音转文字、视频截图用插件一的设置。",
 			groupContextCount: "附上之前几条",
@@ -240,7 +241,60 @@ window.__ModuleLoader__.load({
 			groupContextImages: "其中最多几张图片",
 			groupCtxOff: "「保存没唤醒她的群消息」关着，这一项不起作用。",
 			forgetMode: "遗忘方式",
-			memStats: "记忆：正常 {active} 条，普通遗忘 {forgotten} 条，被取代 {superseded} 条，指纹 {tomb} 个"
+			memStats: "记忆：正常 {active} 条，普通遗忘 {forgotten} 条，被取代 {superseded} 条，指纹 {tomb} 个",
+			diarySec: "日记",
+			diarySecHint: "她每天用第一人称写一篇（只写和主人的事，不写群里的），一天一个文件，永久保留，也写进记忆库；每月写一篇月度总览。主人的会话开新会话时，自动先给她看最近的日记和总览（全自动，不用你做什么）。",
+			diaryEnabled: "每天写日记",
+			diaryTime: "每天几点",
+			diaryTimeHint: "HH:MM。到这个时间写日记，并处理存档到期。默认 01:30。",
+			dayBoundaryHour: "一天按凌晨几点分界",
+			dayBoundaryHourHint: "默认 4：凌晨 4 点前的聊天算前一天。",
+			timezone: "时区",
+			monthlyEnabled: "每月写月度总览",
+			diaryOnNewSession: "主人开新会话时先给她看日记",
+			diaryDays: "最近几天的日记",
+			overviewMonths: "最近几个月的总览",
+			diaryBudgetPercent: "最多占模型上限的百分之多少",
+			diaryBudgetPercentHint: "超了就把最早几天的日记缩短，还不够就去掉最早的。",
+			diaryCount: "已有日记 {days} 篇、月度总览 {months} 篇。最近一篇：{latest}",
+			writeDiaryNow: "现在就写一篇",
+			diaryWritten: "写好了 {date} 的日记。",
+			diaryNothing: "这段时间没有和主人的聊天，没写。",
+			diaryPage: "日记本",
+			diaryPageHint: "按日期列出她的日记和月度总览，可以看、改、删；也可以上传以前的日记（Markdown 或文本文件，按文件名或正文里的日期归位）。",
+			diaryEmpty: "还没有日记。",
+			monthlyLabel: "月度总览",
+			del: "删除",
+			delConfirm: "删掉这篇日记？（记忆库里的那份不受影响）",
+			upload: "上传日记文件",
+			uploadHint: "可以一次选多个。",
+			conflict: "同一天已经有日记时",
+			conflictSkip: "跳过",
+			conflictMerge: "合并（接在后面）",
+			conflictOverwrite: "覆盖",
+			importPreview: "选了 {n} 个文件：",
+			importNoDate: "认不出日期",
+			importExists: "这天已有日记",
+			importNew: "新的一天",
+			importNow: "导入",
+			importDone: "导入了 {n} 篇，跳过 {skip} 篇，认不出日期 {bad} 个。",
+			expirySec: "存档到期",
+			expirySecHint: "每天写完日记后处理：先整理还没整理的 → 删掉到期的存档 → 会话用满保留期就换新会话（开头带上最近几条）→ 旧会话归档；其他人的旧会话等它最后一条消息也过期后删掉（主人的永不删）。删旧会话是插件自己的做法（dsh 没有删除接口），已经在测试里验证过删完以后 dsh 能正常用、重启也正常。",
+			rotateSessions: "会话用满保留期就换新会话",
+			deleteOldSessions: "其他人的旧会话过期后删除",
+			deleteOldSessionsHint: "关掉就只归档不删。主人的旧会话无论如何都不删。",
+			carryMessages: "换会话时带过去最近几条消息",
+			archiveImages: "收到的图片下载存起来",
+			archiveImagesHint: "QQ 的图片链接过一阵会失效。按内容命名存在数据目录的 media/ 里，跟着存档一起到期删除。",
+			runExpiry: "现在处理到期",
+			expiryDone: "处理完了：删了 {deleted} 条存档，换了 {rotated} 个会话，删了 {sessions} 个旧会话，清掉 {media} 张图片。",
+			lastRun: "上次运行：{time}",
+			retired: "换下来的旧会话",
+			retiredEmpty: "还没有换下来的会话。",
+			retiredState: "{umo} · {cat} · 最后一条 {last} · {state}",
+			stArchived: "已归档",
+			stDeleted: "已删除",
+			stFailed: "删除失败：{note}"
 		};
 		var en = {
 			summary: "A live persona and core memory for every session, round-based truncation or first-person summaries, and a message archive.",
@@ -457,6 +511,7 @@ window.__ModuleLoader__.load({
 			kindEvent: "event",
 			kindPromise: "promise",
 			kindOther: "other",
+			kindDiary: "diary",
 			groupCtx: "Group context",
 			groupCtxHint: "When she joins a group topic, the group messages she has not seen since her last reply are included.",
 			groupContextCount: "Messages to include",
@@ -464,7 +519,60 @@ window.__ModuleLoader__.load({
 			groupContextImages: "Max images among them",
 			groupCtxOff: "\"Archive group messages that did not wake her\" is off, so this has no effect.",
 			forgetMode: "Forgetting",
-			memStats: "Memories: {active} active, {forgotten} forgotten, {superseded} superseded, {tomb} fingerprints"
+			memStats: "Memories: {active} active, {forgotten} forgotten, {superseded} superseded, {tomb} fingerprints",
+			diarySec: "Diary",
+			diarySecHint: "She writes a first-person entry each day (only about the master), kept forever and added to memory, plus a monthly overview. New master sessions automatically start with recent entries.",
+			diaryEnabled: "Write a daily diary",
+			diaryTime: "At",
+			diaryTimeHint: "HH:MM; also when archive expiry runs. Default 01:30.",
+			dayBoundaryHour: "Day starts at (hour)",
+			dayBoundaryHourHint: "Default 4: chats before 4 a.m. count as the previous day.",
+			timezone: "Time zone",
+			monthlyEnabled: "Monthly overview",
+			diaryOnNewSession: "Read the diary when a master session starts",
+			diaryDays: "Days of entries",
+			overviewMonths: "Months of overviews",
+			diaryBudgetPercent: "Max % of the context window",
+			diaryBudgetPercentHint: "Older entries are shortened, then dropped, to fit.",
+			diaryCount: "{days} entries, {months} overviews. Latest: {latest}",
+			writeDiaryNow: "Write one now",
+			diaryWritten: "Wrote the entry for {date}.",
+			diaryNothing: "No chat with the master in that period; nothing written.",
+			diaryPage: "Diary book",
+			diaryPageHint: "Read, edit or delete entries; upload old ones (Markdown or text, dated by file name or content).",
+			diaryEmpty: "No entries yet.",
+			monthlyLabel: "Monthly overview",
+			del: "Delete",
+			delConfirm: "Delete this entry? (The copy in memory is kept.)",
+			upload: "Upload diary files",
+			uploadHint: "Several at once is fine.",
+			conflict: "When the day already has an entry",
+			conflictSkip: "Skip",
+			conflictMerge: "Merge (append)",
+			conflictOverwrite: "Overwrite",
+			importPreview: "{n} files selected:",
+			importNoDate: "no date found",
+			importExists: "day already has an entry",
+			importNew: "new day",
+			importNow: "Import",
+			importDone: "Imported {n}, skipped {skip}, {bad} without a date.",
+			expirySec: "Archive expiry",
+			expirySecHint: "After the diary each day: organize what is left, delete expired archive, start a new session when one has used up the retention period (carrying the last few messages), archive the old one; others' old sessions are deleted once their last message expires (the master's never).",
+			rotateSessions: "Start a new session when the retention period is used up",
+			deleteOldSessions: "Delete others' old sessions after expiry",
+			deleteOldSessionsHint: "Off keeps them archived. The master's are never deleted.",
+			carryMessages: "Messages carried into the new session",
+			archiveImages: "Save received images",
+			archiveImagesHint: "QQ image links expire. Saved by content hash under media/, deleted with the archive.",
+			runExpiry: "Run expiry now",
+			expiryDone: "Done: {deleted} messages deleted, {rotated} sessions renewed, {sessions} old sessions deleted, {media} images removed.",
+			lastRun: "Last run: {time}",
+			retired: "Retired sessions",
+			retiredEmpty: "None yet.",
+			retiredState: "{umo} · {cat} · last message {last} · {state}",
+			stArchived: "archived",
+			stDeleted: "deleted",
+			stFailed: "delete failed: {note}"
 		};
 
 		var CSS = [
@@ -583,8 +691,9 @@ window.__ModuleLoader__.load({
 		}
 		var MODES = ["truncate", "llm"];
 		var LOG_LEVELS = ["debug", "info", "warn", "error"];
-		var BOOLS = ["personaOnly", "selfEdit", "archiveEnabled", "archiveUnwoken", "recallEnabled", "activeMemory", "organizeBeforeCompact", "cleanupEnabled", "cleanupAutoPurge"];
-		var TEXTS = ["summaryModel", "memoryModel", "embedApiUrl", "embedModel"];
+		var BOOLS = ["personaOnly", "selfEdit", "archiveEnabled", "archiveUnwoken", "recallEnabled", "activeMemory", "organizeBeforeCompact", "cleanupEnabled", "cleanupAutoPurge",
+			"diaryEnabled", "monthlyEnabled", "diaryOnNewSession", "rotateSessions", "deleteOldSessions", "archiveImages"];
+		var TEXTS = ["summaryModel", "memoryModel", "embedApiUrl", "embedModel", "diaryTime", "timezone"];
 		var SECRETS = ["embedApiKey"];
 		var FLOATS = ["keywordThreshold", "vectorThreshold", "keywordWeight", "importanceWeight", "recencyWeight", "groupDiscount"];
 		var FORGET = ["normal", "purge"];
@@ -593,7 +702,8 @@ window.__ModuleLoader__.load({
 			["historyKeep", 0], ["coreMaxKB", 1], ["thresholdPercent", 10, 95],
 			["masterMaxRounds", 0], ["masterDropRounds", 1], ["privateMaxRounds", 0], ["privateDropRounds", 1],
 			["groupMaxRounds", 0], ["groupDropRounds", 1], ["archiveDaysMaster", 1], ["archiveDaysOthers", 1],
-			["recallTopK", 0], ["halfLifeDays", 1], ["organizeEveryRounds", 0], ["embedBatch", 1, 64], ["groupContextCount", 0], ["groupContextImages", 0]
+			["recallTopK", 0], ["halfLifeDays", 1], ["organizeEveryRounds", 0], ["embedBatch", 1, 64], ["groupContextCount", 0], ["groupContextImages", 0],
+			["dayBoundaryHour", 0, 12], ["diaryDays", 0], ["overviewMonths", 0], ["diaryBudgetPercent", 1, 60], ["carryMessages", 0]
 		];
 		var ENUMS = [["masterMode", MODES], ["privateMode", MODES], ["groupMode", MODES], ["logLevel", LOG_LEVELS], ["masterForget", FORGET], ["privateForget", FORGET], ["groupForget", FORGET]];
 		function floatField(field) {
@@ -938,7 +1048,7 @@ window.__ModuleLoader__.load({
 				h(Status, { msg: act.msg }));
 		}
 
-		var KIND_KEYS = { fact: "kindFact", preference: "kindPreference", event: "kindEvent", promise: "kindPromise", other: "kindOther" };
+		var KIND_KEYS = { fact: "kindFact", preference: "kindPreference", event: "kindEvent", promise: "kindPromise", other: "kindOther", diary: "kindDiary" };
 		function scopeLabel(t, sc) {
 			if (sc === "master") return t("scopeMaster");
 			if (sc === "public") return t("scopePublic");
@@ -956,7 +1066,7 @@ window.__ModuleLoader__.load({
 			var inactive = m.status === "forgotten" || m.supersededBy !== void 0;
 			return h("div", { className: "compc-mem" },
 				draft === null ? h("p", { className: "compc-memText" }, m.content)
-					: h("textarea", { className: "compc-textarea compc-small", value: draft, "aria-label": t("edit"), onChange: function (e) { setDraft(e.target.value); } }),
+					: h("textarea", { className: "compc-textarea compc-small", value: draft, autoFocus: true, "aria-label": t("edit"), onChange: function (e) { setDraft(e.target.value); } }),
 				h("p", { className: "compc-hint" }, t("memMeta", { id: m.id, scope: scopeLabel(t, m.scope), kind: t(KIND_KEYS[m.kind] || "kindOther"), imp: m.importance.toFixed(2), count: m.recallCount, time: fmtTime(m.createdAt) })
 					+ (m.status === "forgotten" ? " · " + t("statusForgotten") : "") + (m.supersededBy !== void 0 ? " · " + t("statusSuperseded") + " #" + m.supersededBy : "")),
 				h("div", { className: "compc-row" },
@@ -1028,6 +1138,152 @@ window.__ModuleLoader__.load({
 							h("textarea", { className: "compc-textarea compc-small", value: nm.content, onChange: function (e) { setNm(Object.assign({}, nm, { content: e.target.value })); } })),
 						h("div", { className: "compc-row" }, h(P.Button, { size: "sm", disabled: add.busy || nm.content.trim() === "", onClick: addMemory }, t("add"))),
 						h(Status, { msg: add.msg }))));
+		}
+		//#endregion
+
+		//#region 日记、存档到期
+		function DiaryPanel(props) {
+			var t = props.t, data = props.data;
+			var act = useAction();
+			if (!data || !data.diary) return null;
+			var d = data.diary;
+			return h("div", { className: "compc-field" },
+				h("p", { className: "compc-hint" }, t("diaryCount", { days: d.days, months: d.months, latest: d.latest || "—" })),
+				h("div", { className: "compc-row" },
+					h(P.Button, { size: "sm", disabled: act.busy, onClick: function () {
+						act.run(function () {
+							return api("POST", "maintenance", { what: "diary" }).then(function (r) {
+								props.onState(r.state);
+								var dr = r.report && r.report.diary;
+								if (dr && dr.error) throw new Error(dr.error);
+								act.setMsg({ tone: dr && dr.written ? "ok" : "warn", text: dr && dr.written ? t("diaryWritten", { date: dr.date }) : t("diaryNothing") });
+							});
+						});
+					} }, act.busy ? t("running") : t("writeDiaryNow"))),
+				h(Status, { msg: act.msg }));
+		}
+
+		function DiaryEntryItem(props) {
+			var t = props.t, e = props.entry;
+			var openHook = React.useState(false), open = openHook[0], setOpen = openHook[1];
+			var textHook = React.useState(null), text = textHook[0], setText = textHook[1];
+			var draftHook = React.useState(null), draft = draftHook[0], setDraft = draftHook[1];
+			var askHook = React.useState(false), asking = askHook[0], setAsking = askHook[1];
+			var act = useAction();
+			function load() { return api("GET", "diary/" + e.date).then(function (r) { setText(r.text); }); }
+			return h("div", { className: "compc-mem" },
+				h("div", { className: "compc-row" },
+					h("span", { className: "compc-label" }, e.date + (props.monthly ? " · " + t("monthlyLabel") : "")),
+					h("span", { className: "compc-hint" }, t("chars", { n: e.length }))),
+				open && draft === null ? h("pre", { className: "compc-pre" }, text === null ? t("loading") : text) : null,
+				draft !== null ? h("textarea", { className: "compc-textarea", value: draft, autoFocus: true, "aria-label": e.date, onChange: function (ev) { setDraft(ev.target.value); } }) : null,
+				h("div", { className: "compc-row" },
+					draft === null ? h(P.Button, { size: "sm", onClick: function () { if (!open && text === null) load(); setOpen(!open); } }, open ? t("hide") : t("view")) : null,
+					draft === null ? h(P.Button, { size: "sm", disabled: act.busy, onClick: function () { (text === null ? load() : Promise.resolve()).then(function () { setOpen(true); }); setDraft(text === null ? "" : text); if (text === null) api("GET", "diary/" + e.date).then(function (r) { setText(r.text); setDraft(r.text); }); } }, t("edit")) : null,
+					draft !== null ? h(P.Button, { size: "sm", disabled: act.busy || draft.trim() === "", onClick: function () { act.run(function () { return api("POST", "diary/" + e.date, { text: draft }).then(function () { setText(draft); setDraft(null); props.onChanged(); }); }, t("saved")); } }, t("saveEdit")) : null,
+					draft !== null ? h(P.Button, { size: "sm", onClick: function () { setDraft(null); } }, t("cancel")) : null,
+					asking || draft !== null ? null : h(P.Button, { size: "sm", disabled: act.busy, onClick: function () { setAsking(true); } }, t("del"))),
+				asking ? h("div", { className: "compc-card", role: "group" },
+					h("p", { className: "compc-hint" }, t("delConfirm")),
+					h("div", { className: "compc-row" },
+						h(P.Button, { size: "sm", onClick: function () { setAsking(false); act.run(function () { return api("POST", "diary/" + e.date + "/delete", {}).then(props.onChanged); }); } }, t("confirm")),
+						h(P.Button, { size: "sm", onClick: function () { setAsking(false); } }, t("cancel")))) : null,
+				h(Status, { msg: act.msg }));
+		}
+
+		/** 和服务端一样的认日期规则（上传前预览用）。 */
+		function guessDate(name, text) {
+			function one(s) {
+				var m = /(20\d{2})[-_.年/]?(\d{1,2})[-_.月/]?(\d{1,2})日?/.exec(s);
+				if (!m) return null;
+				var mo = Number(m[2]), d = Number(m[3]);
+				if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+				return m[1] + "-" + String(mo).padStart(2, "0") + "-" + String(d).padStart(2, "0");
+			}
+			return one(name) || one(String(text).slice(0, 200));
+		}
+
+		function DiaryBook(props) {
+			var t = props.t;
+			var listHook = React.useState(null), list = listHook[0], setList = listHook[1];
+			var filesHook = React.useState([]), files = filesHook[0], setFiles = filesHook[1];
+			var modeHook = React.useState("skip"), mode = modeHook[0], setMode = modeHook[1];
+			var act = useAction();
+			var inputRef = React.useRef(null);
+			function load() { return api("GET", "diary").then(setList, function (e) { act.setMsg({ tone: "error", text: e.message }); }); }
+			React.useEffect(function () { load(); }, [props.version]);
+			function pick(ev) {
+				var chosen = Array.prototype.slice.call(ev.target.files || []);
+				Promise.all(chosen.map(function (f) { return f.text().then(function (text) { return { name: f.name, text: text }; }); })).then(setFiles);
+			}
+			var known = list ? list.days.map(function (x) { return x.date; }) : [];
+			function doImport() {
+				act.run(function () {
+					return api("POST", "diary/import", { files: files, conflict: mode }).then(function (r) {
+						var res = r.results || [];
+						var skip = res.filter(function (x) { return x.result === "skipped"; }).length;
+						var bad = res.filter(function (x) { return x.result === "no-date"; }).length;
+						act.setMsg({ tone: "ok", text: t("importDone", { n: res.length - skip - bad, skip: skip, bad: bad }) });
+						setFiles([]);
+						if (inputRef.current) inputRef.current.value = "";
+						load(); props.onChanged();
+					});
+				});
+			}
+			return h("div", { className: "compc-field" },
+				h("details", { className: "compc-details" },
+					h("summary", { className: "compc-summary" }, h("span", { className: "compc-chevron", "aria-hidden": true }, "›"), t("upload")),
+					h("div", { className: "compc-detailsBody" },
+						h("p", { className: "compc-hint" }, t("uploadHint")),
+						h("input", { ref: inputRef, type: "file", multiple: true, accept: ".md,.markdown,.txt,text/markdown,text/plain", onChange: pick, "aria-label": t("upload") }),
+						h("label", { className: "compc-field" },
+							h("span", { className: "compc-hint" }, t("conflict")),
+							h("select", { className: "compc-select", value: mode, onChange: function (e) { setMode(e.target.value); } },
+								h("option", { value: "skip" }, t("conflictSkip")), h("option", { value: "merge" }, t("conflictMerge")), h("option", { value: "overwrite" }, t("conflictOverwrite")))),
+						files.length > 0 ? h("div", { className: "compc-field" },
+							h("p", { className: "compc-hint" }, t("importPreview", { n: files.length })),
+							files.map(function (f, i) {
+								var date = guessDate(f.name, f.text);
+								var note = !date ? t("importNoDate") : known.indexOf(date) >= 0 ? t("importExists") : t("importNew");
+								return h("p", { key: i, className: !date ? "compc-result compc-warn" : "compc-hint" }, f.name + " → " + (date || "?") + "（" + note + "）");
+							}),
+							h("div", { className: "compc-row" }, h(P.Button, { size: "sm", disabled: act.busy, onClick: doImport }, t("importNow")))) : null)),
+				h(Status, { msg: act.msg }),
+				!list ? h("p", { className: "compc-hint" }, t("loading")) : list.days.length === 0 && list.months.length === 0 ? h("p", { className: "compc-hint" }, t("diaryEmpty")) : null,
+				list ? list.months.map(function (e) { return h(DiaryEntryItem, { key: "m" + e.date + e.length, t: t, entry: e, monthly: true, onChanged: function () { load(); props.onChanged(); } }); }) : null,
+				list ? list.days.map(function (e) { return h(DiaryEntryItem, { key: e.date + e.length, t: t, entry: e, onChanged: function () { load(); props.onChanged(); } }); }) : null);
+		}
+
+		function ExpiryPanel(props) {
+			var t = props.t, data = props.data;
+			var act = useAction();
+			if (!data) return null;
+			var last = data.maintenance;
+			var names = { archived: "stArchived", deleted: "stDeleted", failed: "stFailed" };
+			return h("div", { className: "compc-field" },
+				last ? h("p", { className: "compc-hint" }, t("lastRun", { time: fmtTime(last.at) })) : null,
+				h("div", { className: "compc-row" },
+					h(P.Button, { size: "sm", disabled: act.busy, onClick: function () {
+						act.run(function () {
+							return api("POST", "maintenance", { what: "expire" }).then(function (r) {
+								props.onState(r.state);
+								var rep = r.report;
+								var deleted = rep.expired.reduce(function (n, e) { return n + (e.deleted || 0); }, 0);
+								var rotated = rep.expired.filter(function (e) { return e.rotated; }).length;
+								act.setMsg({ tone: "ok", text: t("expiryDone", { deleted: deleted, rotated: rotated, sessions: rep.deletedSessions.length, media: rep.mediaRemoved }) });
+							});
+						});
+					} }, act.busy ? t("running") : t("runExpiry"))),
+				h(Status, { msg: act.msg }),
+				h("details", { className: "compc-details" },
+					h("summary", { className: "compc-summary" }, h("span", { className: "compc-chevron", "aria-hidden": true }, "›"), t("retired") + "（" + (data.retired || []).length + "）"),
+					h("div", { className: "compc-detailsBody" },
+						(data.retired || []).length === 0 ? h("p", { className: "compc-hint" }, t("retiredEmpty")) :
+							data.retired.map(function (r) {
+								var cat = r.category === "master" ? t("scopeMaster") : r.category === "group" ? t("kindGroup") : t("kindUser");
+								return h("p", { key: r.sessionId, className: r.state === "failed" ? "compc-result compc-warn" : "compc-hint" },
+									t("retiredState", { umo: r.umo, cat: cat, last: fmtTime(r.lastTime), state: t(names[r.state] || "stArchived", { note: r.note || "" }) }));
+							}))));
 		}
 		//#endregion
 
@@ -1137,6 +1393,27 @@ window.__ModuleLoader__.load({
 						h(Value, Object.assign({ field: "embedModel", label: t("embedModel") }, common)),
 						h(Value, Object.assign({ field: "embedBatch", label: t("embedBatch"), numeric: true, invalidLabel: t("invalidPositive") }, common))),
 					h(IndexPanel, { t: t, initial: data ? data.index : null })),
+				h(Section, { title: t("diarySec"), hint: t("diarySecHint") },
+					h(Toggle, Object.assign({ field: "diaryEnabled", label: t("diaryEnabled") }, common)),
+					h(Toggle, Object.assign({ field: "monthlyEnabled", label: t("monthlyEnabled") }, common)),
+					h("div", { className: "compc-grid" },
+						h(Value, Object.assign({ field: "diaryTime", label: t("diaryTime"), hint: t("diaryTimeHint") }, common)),
+						h(Value, Object.assign({ field: "dayBoundaryHour", label: t("dayBoundaryHour"), hint: t("dayBoundaryHourHint"), numeric: true, invalidLabel: t("invalid") }, common)),
+						h(Value, Object.assign({ field: "timezone", label: t("timezone") }, common))),
+					h(Toggle, Object.assign({ field: "diaryOnNewSession", label: t("diaryOnNewSession") }, common)),
+					h("div", { className: "compc-grid" },
+						h(Value, Object.assign({ field: "diaryDays", label: t("diaryDays"), numeric: true, invalidLabel: t("invalidCount") }, common)),
+						h(Value, Object.assign({ field: "overviewMonths", label: t("overviewMonths"), numeric: true, invalidLabel: t("invalidCount") }, common)),
+						h(Value, Object.assign({ field: "diaryBudgetPercent", label: t("diaryBudgetPercent"), hint: t("diaryBudgetPercentHint"), numeric: true, invalidLabel: t("invalid") }, common))),
+					h(DiaryPanel, { t: t, data: data, onState: setData })),
+				h(Section, { title: t("diaryPage"), hint: t("diaryPageHint") },
+					h(DiaryBook, { t: t, version: memVersion, onChanged: function () { api("GET", "state").then(setData, function () {}); } })),
+				h(Section, { title: t("expirySec"), hint: t("expirySecHint") },
+					h(Toggle, Object.assign({ field: "rotateSessions", label: t("rotateSessions") }, common)),
+					h(Toggle, Object.assign({ field: "deleteOldSessions", label: t("deleteOldSessions"), hint: t("deleteOldSessionsHint") }, common)),
+					h(Toggle, Object.assign({ field: "archiveImages", label: t("archiveImages"), hint: t("archiveImagesHint") }, common)),
+					h(Value, Object.assign({ field: "carryMessages", label: t("carryMessages"), numeric: true, invalidLabel: t("invalidCount") }, common)),
+					h(ExpiryPanel, { t: t, data: data, onState: setData })),
 				h(Section, { title: t("memList"), hint: t("memListHint") },
 					h(MemoryList, { t: t, version: memVersion, onChanged: function () { api("GET", "state").then(setData, function () {}); } })),
 				h(Section, { title: t("log") },

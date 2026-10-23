@@ -2,7 +2,7 @@
 
 给 [dsh](https://www.npmjs.com/package/@deepseek-ai/dsh)（DeepSeek Harness）用的陪伴插件：让一个角色的人格和记忆放在会话外面，换会话、换电脑都还是她。为 QQ 陪伴 AI「大肥鱼」写，配合 [dsh-napcat-bridge](https://github.com/Geng-zy/dsh-napcat-bridge)（≥ 0.6.0）使用；不装它也能用，只是没有 QQ 会话的分类和消息存档。
 
-当前是 **0.2.x（阶段 2）**：人格、核心记忆、上下文管理、消息存档、长期记忆（整理、召回、主动记忆工具、两级遗忘、向量检索）、群聊上下文。日记、备份迁移、自动清理和整合在后面的版本加。
+当前是 **0.3.x（阶段 3）**：人格、核心记忆、上下文管理、消息存档、长期记忆（整理、召回、主动记忆工具、两级遗忘、向量检索）、群聊上下文、日记和月度总览、存档到期和会话轮换。备份迁移、自动清理和整合在后面的版本加。
 
 ## 它做什么
 
@@ -23,7 +23,9 @@
    - **主动记忆**：`memory_search`（回忆）、`memory_save`（记住）、`memory_forget`（遗忘），每个会话只碰得到自己能看到的那部分。
    - **遗忘**：普通遗忘可恢复；彻底遗忘删原文、只留指纹，同样的内容不会再被写回来。主人记忆可以让模型挑出可删的，你勾选确认。
    - **向量检索**：OpenAI 兼容的 `/embeddings`（默认硅基流动 `BAAI/bge-m3`），没填 Key 不启用；换模型自动重建，可以暂停、继续、取消、手动重建。
-8. **群聊上下文**：她在群里被 @ 时，把她上次发言之后没看到的群消息一起给她（图片、语音、视频用 dsh-napcat-bridge 的媒体服务转换）。
+8. **群聊上下文**：她在群里被 @ 时，把她上次发言之后没看到的群消息一起给她（收到时下载好的图片优先，其他用 dsh-napcat-bridge 的媒体服务转换）。
+9. **日记**：每天定时（默认 01:30，按凌晨 4 点分界）用第一人称写一篇只关于主人的日记，每月写月度总览，永久保留并写进记忆库。主人开新会话时第一轮自动先读最近 30 篇日记和 12 个月总览（不超过模型上限的 20%）。
+10. **存档到期**：每天写完日记后，按保留天数先整理再删到期存档；会话用满保留期就换新会话（新会话开头带上个会话最后几条），旧会话归档；其他人的旧会话最后一条也过期后删除（主人的永不删）。
 
 ## 会话怎么分
 
@@ -38,7 +40,7 @@
 ## 安装
 
 ```bash
-dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.2.0
+dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.3.0
 ```
 
 装好后：
@@ -76,6 +78,9 @@ dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.2.0
 | 记忆生成 | 主动记忆、每多少轮整理、压缩前整理、整理用的模型、还没整理的数量、「立即整理」 |
 | 遗忘 | 主人 / 别人私聊 / 群聊各自的遗忘方式、模型清理（运行、勾选确认） |
 | 向量检索 | 接口地址、Key、模型、批量；索引状态、进度、手动重建、暂停、继续、取消 |
+| 日记 | 开关、时间、分界、时区、月度总览、开新会话时读几篇和几个月、预算、「现在就写一篇」 |
+| 日记本 | 看、改、删日记和总览；上传以前的日记（同一天已有时跳过/合并/覆盖） |
+| 存档到期 | 换会话、删别人的旧会话、下载图片、换会话带几条；「现在处理到期」；换下来的旧会话列表 |
 | 记忆列表 | 按归属、状态筛选，搜索，改、普通遗忘、彻底遗忘（页面内确认）、恢复、手动加一条 |
 | 日志 | 日志级别、最近的日志 |
 
@@ -105,6 +110,9 @@ dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.2.0
 | `cleanupEnabled` / `cleanupAutoPurge` | `false` / `false` | 主人记忆的模型清理 |
 | `embedApiUrl` / `embedApiKey` / `embedModel` / `embedBatch` | 硅基流动 / 不设 / `BAAI/bge-m3` / `16` | 向量检索 |
 | `groupContextCount` / `groupContextImages` | `10` / `4` | 群聊上下文 |
+| `diaryEnabled` / `diaryTime` / `dayBoundaryHour` / `timezone` / `monthlyEnabled` | `true` / `01:30` / `4` / `Asia/Shanghai` / `true` | 日记 |
+| `diaryOnNewSession` / `diaryDays` / `overviewMonths` / `diaryBudgetPercent` | `true` / `30` / `12` / `20` | 开新会话先读日记 |
+| `rotateSessions` / `deleteOldSessions` / `carryMessages` / `archiveImages` | `true` / `true` / `10` / `true` | 存档到期 |
 | `logLevel` | `info` | 日志级别 |
 
 ## 数据目录
@@ -113,7 +121,9 @@ dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.2.0
 <DSH_HOME>/companion/
 ├── persona/persona.md, persona/history/
 ├── core/master.md, core/public.md, core/history-master/, core/history-public/
-└── companion.db          消息存档、长期记忆（含向量）、彻底遗忘的指纹、整理进度（SQLite，数据结构版本 2）
+├── diary/2026-10-24.md, diary/monthly/2026-10.md
+├── media/<sha256>.png   收到时下载的图片
+└── companion.db          消息存档、dsh 会话的聊天流水、长期记忆（含向量）、彻底遗忘的指纹、整理进度、换下来的旧会话（SQLite，数据结构版本 3）
 ```
 
 所有路径都相对这个目录，整个目录拷走就是备份。
