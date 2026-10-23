@@ -70,6 +70,32 @@ export interface Config {
     deleteOldSessions: boolean;
     carryMessages: number;
     archiveImages: boolean;
+    proactiveEnabled: boolean;
+    proactiveMinMinutes: number;
+    proactiveMaxMinutes: number;
+    proactiveOthersFactor: number;
+    proactivePrivate: boolean;
+    proactiveGroup: boolean;
+    quietStart: string;
+    quietEnd: string;
+    proactiveRecentMinutes: number;
+    proactiveGroupContext: number;
+    proactiveGroupImages: number;
+    proactiveActiveDays: number;
+    silenceToken: string;
+    autoCleanup: boolean;
+    autoCleanupDays: number;
+    autoCleanupImportance: number;
+    purgeForgotten: boolean;
+    purgeForgottenDays: number;
+    consolidateEnabled: boolean;
+    consolidateOverlap: number;
+    consolidateGroups: number;
+    careIntervalDays: number;
+    backupEnabled: boolean;
+    backupTime: string;
+    backupKeep: number;
+    selfCheckQueries: string[];
     logLevel: 'debug' | 'info' | 'warn' | 'error';
 }
 export type LiveConfig = {

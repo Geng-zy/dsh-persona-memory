@@ -1,6 +1,6 @@
 import { DatabaseSync } from 'node:sqlite';
 /** 数据结构版本；以后改表结构时加升级步骤，不丢旧数据。 */
-export declare const SCHEMA_VERSION = 3;
+export declare const SCHEMA_VERSION = 4;
 export interface ArchivedMessage {
     /** unified_msg_origin */
     umo: string;
@@ -55,6 +55,8 @@ export declare class Archive {
      * 不含 excludeMessageId（正在处理的这条），最多 limit 条，按时间顺序。
      */
     unseen(umo: string, limit: number, excludeMessageId?: string): ArchivedMessage[];
+    /** 某个会话最后一条（收到或发出）的时间。 */
+    lastTime(umo: string): number | undefined;
     /** 某个会话最早一条的时间。 */
     oldest(umo: string): number | undefined;
     /** 删掉某个会话 cutoff 之前的存档，返回删了几条。 */

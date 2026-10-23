@@ -64,7 +64,7 @@ window.__ModuleLoader__.load({
 			confirm: "确认",
 			cancel: "取消",
 			context: "上下文",
-			contextHint: "每个会话超过「最多保留轮数」，或者上下文到了模型上限的百分比，就处理最早的几轮（哪个先到算哪个）。处理前先通知记忆（阶段 2 起会先把要紧内容写进记忆）。模型报「超出上限」时不管设的什么，都立刻按轮数截断再重试。一轮 = 一条人说的话加她的回复。",
+			contextHint: "每个会话超过「最多保留轮数」，或者上下文到了模型上限的百分比，就处理最早的几轮（哪个先到算哪个）。处理前先把要紧内容写进记忆。模型报「超出上限」时不管设的什么，都立刻按轮数截断再重试。一轮 = 一条人说的话加她的回复。",
 			thresholdPercent: "到上限的百分之多少就处理",
 			thresholdPercentHint: "默认 70。10–95。",
 			masterRow: "主人",
@@ -94,7 +94,7 @@ window.__ModuleLoader__.load({
 			unwokenOff: "不存",
 			note: "备注",
 			archive: "消息存档",
-			archiveHint: "QQ 上收到和发出的每条消息按原样存进数据库（和 dsh 的会话日志不是一回事）。保留天数到期后先整理再删除的功能在阶段 3 加上，现在先只存。",
+			archiveHint: "QQ 上收到和发出的每条消息按原样存进数据库（和 dsh 的会话日志不是一回事）。保留天数到期后，先把还没整理的部分整理进记忆，再删除。",
 			archiveEnabled: "消息存档",
 			archiveUnwokenAll: "保存没唤醒她的群消息",
 			archiveUnwokenAllHint: "关掉后只存她参与过的群消息；以后「参与群话题时附上之前几条」也会跟着关。",
@@ -241,6 +241,9 @@ window.__ModuleLoader__.load({
 			groupContextImages: "其中最多几张图片",
 			groupCtxOff: "「保存没唤醒她的群消息」关着，这一项不起作用。",
 			forgetMode: "遗忘方式",
+			proactive: "主动聊天",
+			proRuleOn: "主动找",
+			proRuleOff: "不主动找",
 			memStats: "记忆：正常 {active} 条，普通遗忘 {forgotten} 条，被取代 {superseded} 条，指纹 {tomb} 个",
 			diarySec: "日记",
 			diarySecHint: "她每天用第一人称写一篇（只写和主人的事，不写群里的），一天一个文件，永久保留，也写进记忆库；每月写一篇月度总览。主人的会话开新会话时，自动先给她看最近的日记和总览（全自动，不用你做什么）。",
@@ -294,7 +297,86 @@ window.__ModuleLoader__.load({
 			retiredState: "{umo} · {cat} · 最后一条 {last} · {state}",
 			stArchived: "已归档",
 			stDeleted: "已删除",
-			stFailed: "删除失败：{note}"
+			stFailed: "删除失败：{note}",
+			proSec: "主动聊天",
+			proSecHint: "每个 QQ 会话按随机间隔唤醒她一次，让她自己决定要不要说话（不想说就回「不发」暗号，插件一不会发出去）。主人私聊在最短到最长间隔里随机；别人的私聊和群聊间隔乘下面的倍数，而且只找最近几天里聊过的。刚聊过、免打扰时间里都不触发，自动顺延。群里主动说话时带上最近几条群消息。需要 dsh-napcat-bridge 0.7.0 以上。",
+			proactiveEnabled: "主动聊天",
+			proactiveMinMinutes: "主人私聊：最短间隔（分钟）",
+			proactiveMaxMinutes: "主人私聊：最长间隔（分钟）",
+			proactiveOthersFactor: "别人和群的间隔倍数",
+			proactiveOthersFactorHint: "默认 2：主人 2～6 小时，别人和群 4～12 小时。",
+			proactivePrivate: "也主动找别人私聊",
+			proactiveGroup: "也在群里主动说话",
+			quietStart: "免打扰开始",
+			quietEnd: "免打扰结束",
+			quietHint: "HH:MM，可以跨午夜。默认 01:00–09:00。",
+			proactiveRecentMinutes: "刚聊过几分钟内不触发",
+			proactiveGroupContext: "群里带几条上下文",
+			proactiveGroupImages: "其中最多几张图",
+			proactiveActiveDays: "别人和群：最近几天聊过才找",
+			proSilence: "「不发」暗号",
+			proSilenceHint: "和 dsh-napcat-bridge 设置里的保持一致。",
+			proNoWake: "没检测到 dsh-napcat-bridge 0.7.0 以上的唤醒接口，主动聊天不会生效。",
+			proListEmpty: "还没有可以主动找的会话（要先在 QQ 上聊过）。",
+			proItem: "{umo} · {cat} · 下次 {next} · 上次 {last}",
+			proTry: "现在试一次",
+			proTried: "唤醒了，看她发不发。",
+			never: "还没有",
+			careSec: "记忆保养",
+			careSecHint: "每隔几天（跟着每天的任务一起）做一次：自动清理久没想起又不重要的记忆（按每个会话的遗忘方式）；把相近的零散记忆合并成更精炼的一两条（原来的标成被取代，最近一次可以撤销）。日记永远不清理、不合并。",
+			autoCleanup: "自动清理",
+			autoCleanupDays: "超过几天没被想起",
+			autoCleanupImportance: "重要程度低于",
+			purgeForgotten: "普通遗忘很久的自动彻底遗忘",
+			purgeForgottenDays: "普通遗忘超过几天",
+			consolidateEnabled: "定期整合",
+			consolidateOverlap: "相近程度门槛",
+			consolidateOverlapHint: "0.2–0.95，越大越严（只合并很像的）。",
+			consolidateGroups: "一次最多整合几组",
+			careIntervalDays: "每几天做一次",
+			careLast: "上次清理：{cleanup}；上次整合：{consolidate}",
+			careRun: "现在做一次",
+			careDone: "做完了：普通遗忘 {f} 条，彻底遗忘 {p} 条；整合 {g} 组（{m} 条合成 {c} 条）。",
+			careLastRun: "最近一次整合（{time}）：",
+			careGroup: "{old} → {created}",
+			careUndo: "撤销最近一次整合",
+			careUndoConfirm: "撤销后合成的新记忆删掉，原来的几条恢复。确认？",
+			careUndone: "撤销了。",
+			backupSec: "备份与迁移",
+			backupSecHint: "备份包里有人格、核心记忆、日记、记忆库、主人私聊的存档和图片、插件二的设置（不含任何 Key）；别人的私聊、群聊存档和 dsh 的会话日志不进备份。换电脑时在新机器上导入这个包就行，向量模型不一样会自动重建索引。",
+			backupEnabled: "每天自动备份",
+			backupTime: "自动备份时间",
+			backupKeep: "每一类最多留几份",
+			backupKeepHint: "自动、手动、导入前的备份各自最多留这么多。建议偶尔把备份拷到别的机器上一份。",
+			exportNow: "现在备份并下载",
+			exported: "备份好了：{name}",
+			download: "下载",
+			importFile: "导入备份包",
+			chooseFile: "选择备份包…",
+			importFileHint: "选一个 companion-….tar.gz。会先核对，给你看包里有什么，确认后才覆盖。",
+			previewTitle: "包里有：",
+			previewLine: "插件 {plugin} · {time} 做的 · 记忆 {mem} 条 · 日记 {days} 篇 · 月度总览 {months} 篇 · 主人存档 {msgs} 条 · 图片 {media} 张 · 向量模型 {model}",
+			previewSettings: "包里的设置不会自动套用（看一眼，需要的话自己改）：",
+			confirmImport: "确认导入（先自动备份当前数据）",
+			cancelImport: "不导入",
+			importing: "正在导入，插件会自动重新加载…",
+			imported: "导入完成（{time}）。",
+			importFailed: "导入失败，原来的数据没动：{error}",
+			backupList: "备份列表",
+			backupEmpty: "还没有备份。",
+			backupItem: "{name} · {size} · {reason}",
+			reasonAuto: "自动",
+			reasonManual: "手动",
+			reasonBefore: "导入前",
+			restoreThis: "从它还原",
+			deleteBackup: "删除",
+			deleteBackupConfirm: "删除这个备份文件？",
+			selfCheck: "迁移后自检",
+			selfCheckHint: "用几个固定问题在主人的记忆里搜，看她能不能想起来。导入完成后会自动跑一次。问题用空格或逗号分开。",
+			selfCheckQueries: "自检问题",
+			runSelfCheck: "现在自检",
+			selfCheckResult: "「{q}」→ {a}",
+			selfCheckNone: "（没想起来）"
 		};
 		var en = {
 			summary: "A live persona and core memory for every session, round-based truncation or first-person summaries, and a message archive.",
@@ -372,7 +454,7 @@ window.__ModuleLoader__.load({
 			unwokenOff: "No",
 			note: "Note",
 			archive: "Message archive",
-			archiveHint: "Every QQ message received or sent, stored as is. Expiry cleanup arrives in phase 3.",
+			archiveHint: "Every QQ message received or sent, stored as is. On expiry, unorganized messages are turned into memories first, then deleted.",
 			archiveEnabled: "Archive messages",
 			archiveUnwokenAll: "Archive group messages that did not wake her",
 			archiveUnwokenAllHint: "When off, only group messages she took part in are kept.",
@@ -519,6 +601,9 @@ window.__ModuleLoader__.load({
 			groupContextImages: "Max images among them",
 			groupCtxOff: "\"Archive group messages that did not wake her\" is off, so this has no effect.",
 			forgetMode: "Forgetting",
+			proactive: "Proactive",
+			proRuleOn: "On",
+			proRuleOff: "Off",
 			memStats: "Memories: {active} active, {forgotten} forgotten, {superseded} superseded, {tomb} fingerprints",
 			diarySec: "Diary",
 			diarySecHint: "She writes a first-person entry each day (only about the master), kept forever and added to memory, plus a monthly overview. New master sessions automatically start with recent entries.",
@@ -572,7 +657,86 @@ window.__ModuleLoader__.load({
 			retiredState: "{umo} · {cat} · last message {last} · {state}",
 			stArchived: "archived",
 			stDeleted: "deleted",
-			stFailed: "delete failed: {note}"
+			stFailed: "delete failed: {note}",
+			proSec: "Proactive chat",
+			proSecHint: "Each QQ chat wakes her at random intervals so she can decide whether to say something (or answer the silence token). Others' chats and groups use a multiple of the master's interval and only recent ones. Recent activity and quiet hours postpone it. Needs dsh-napcat-bridge 0.7.0+.",
+			proactiveEnabled: "Proactive chat",
+			proactiveMinMinutes: "Master: min interval (min)",
+			proactiveMaxMinutes: "Master: max interval (min)",
+			proactiveOthersFactor: "Others/groups interval factor",
+			proactiveOthersFactorHint: "Default 2.",
+			proactivePrivate: "Also others' private chats",
+			proactiveGroup: "Also groups",
+			quietStart: "Quiet from",
+			quietEnd: "Quiet until",
+			quietHint: "HH:MM; may wrap past midnight. Default 01:00–09:00.",
+			proactiveRecentMinutes: "Skip if chatted within (min)",
+			proactiveGroupContext: "Group context messages",
+			proactiveGroupImages: "Max images among them",
+			proactiveActiveDays: "Others/groups: active within (days)",
+			proSilence: "Silence token",
+			proSilenceHint: "Keep it the same as in dsh-napcat-bridge.",
+			proNoWake: "dsh-napcat-bridge 0.7.0+ wake API not found; proactive chat is inactive.",
+			proListEmpty: "No chats to reach yet.",
+			proItem: "{umo} · {cat} · next {next} · last {last}",
+			proTry: "Try now",
+			proTried: "Woken; she decides whether to speak.",
+			never: "never",
+			careSec: "Memory care",
+			careSecHint: "Every few days: forget idle, unimportant memories; merge similar scattered ones (undo the latest run). Diaries are never touched.",
+			autoCleanup: "Automatic cleanup",
+			autoCleanupDays: "Not recalled for (days)",
+			autoCleanupImportance: "Importance below",
+			purgeForgotten: "Purge long-forgotten memories",
+			purgeForgottenDays: "Forgotten for (days)",
+			consolidateEnabled: "Periodic consolidation",
+			consolidateOverlap: "Similarity threshold",
+			consolidateOverlapHint: "0.2–0.95; higher is stricter.",
+			consolidateGroups: "Max groups per run",
+			careIntervalDays: "Every (days)",
+			careLast: "Last cleanup: {cleanup}; last consolidation: {consolidate}",
+			careRun: "Run now",
+			careDone: "Done: {f} forgotten, {p} purged; {g} groups ({m} merged into {c}).",
+			careLastRun: "Latest consolidation ({time}):",
+			careGroup: "{old} → {created}",
+			careUndo: "Undo the latest consolidation",
+			careUndoConfirm: "The merged memories are removed and the originals restored. Confirm?",
+			careUndone: "Undone.",
+			backupSec: "Backup & migration",
+			backupSecHint: "A backup holds persona, core memory, diaries, the memory database, the master's archive and images, and settings (no keys). Others' archives and dsh session logs are excluded. Import it on a new machine; a different embedding model rebuilds automatically.",
+			backupEnabled: "Daily automatic backup",
+			backupTime: "Backup time",
+			backupKeep: "Keep per kind",
+			backupKeepHint: "Automatic, manual and pre-import backups each keep this many.",
+			exportNow: "Back up and download now",
+			exported: "Backed up: {name}",
+			download: "Download",
+			importFile: "Import a backup",
+			chooseFile: "Choose a package…",
+			importFileHint: "Choose a companion-….tar.gz. It is verified and previewed before anything is replaced.",
+			previewTitle: "The package contains:",
+			previewLine: "plugin {plugin} · made {time} · {mem} memories · {days} entries · {months} overviews · {msgs} archived messages · {media} images · embedding {model}",
+			previewSettings: "Settings in the package are not applied automatically:",
+			confirmImport: "Import (current data is backed up first)",
+			cancelImport: "Don't import",
+			importing: "Importing; the plugin reloads itself…",
+			imported: "Imported ({time}).",
+			importFailed: "Import failed; existing data untouched: {error}",
+			backupList: "Backups",
+			backupEmpty: "No backups yet.",
+			backupItem: "{name} · {size} · {reason}",
+			reasonAuto: "auto",
+			reasonManual: "manual",
+			reasonBefore: "pre-import",
+			restoreThis: "Restore",
+			deleteBackup: "Delete",
+			deleteBackupConfirm: "Delete this backup file?",
+			selfCheck: "Post-migration self-check",
+			selfCheckHint: "Searches the master's memories with fixed questions. Runs automatically after an import.",
+			selfCheckQueries: "Questions",
+			runSelfCheck: "Run self-check",
+			selfCheckResult: "\"{q}\" → {a}",
+			selfCheckNone: "(nothing recalled)"
 		};
 
 		var CSS = [
@@ -686,26 +850,44 @@ window.__ModuleLoader__.load({
 			out.mode = r.mode === "truncate" || r.mode === "llm" ? r.mode : "";
 			out.archiveUnwoken = r.archiveUnwoken === "on" || r.archiveUnwoken === "off" ? r.archiveUnwoken : "";
 			out.forgetMode = r.forgetMode === "normal" || r.forgetMode === "purge" ? r.forgetMode : "";
+			out.proactive = r.proactive === "on" || r.proactive === "off" ? r.proactive : "";
 			if (r.note) out.note = String(r.note);
 			return out;
 		}
 		var MODES = ["truncate", "llm"];
 		var LOG_LEVELS = ["debug", "info", "warn", "error"];
 		var BOOLS = ["personaOnly", "selfEdit", "archiveEnabled", "archiveUnwoken", "recallEnabled", "activeMemory", "organizeBeforeCompact", "cleanupEnabled", "cleanupAutoPurge",
-			"diaryEnabled", "monthlyEnabled", "diaryOnNewSession", "rotateSessions", "deleteOldSessions", "archiveImages"];
-		var TEXTS = ["summaryModel", "memoryModel", "embedApiUrl", "embedModel", "diaryTime", "timezone"];
+			"diaryEnabled", "monthlyEnabled", "diaryOnNewSession", "rotateSessions", "deleteOldSessions", "archiveImages",
+			"proactiveEnabled", "proactivePrivate", "proactiveGroup", "autoCleanup", "purgeForgotten", "consolidateEnabled", "backupEnabled"];
+		var TEXTS = ["summaryModel", "memoryModel", "embedApiUrl", "embedModel", "diaryTime", "timezone", "quietStart", "quietEnd", "silenceToken", "backupTime"];
 		var SECRETS = ["embedApiKey"];
-		var FLOATS = ["keywordThreshold", "vectorThreshold", "keywordWeight", "importanceWeight", "recencyWeight", "groupDiscount"];
+		var FLOATS = ["keywordThreshold", "vectorThreshold", "keywordWeight", "importanceWeight", "recencyWeight", "groupDiscount", "autoCleanupImportance", "consolidateOverlap"];
+		/** 大于 1 也行的小数（倍数） */
+		var FACTORS = ["proactiveOthersFactor"];
 		var FORGET = ["normal", "purge"];
-		var LISTS = ["excludedPresets"];
+		var LISTS = ["excludedPresets", "selfCheckQueries"];
 		var INTS = [
 			["historyKeep", 0], ["coreMaxKB", 1], ["thresholdPercent", 10, 95],
 			["masterMaxRounds", 0], ["masterDropRounds", 1], ["privateMaxRounds", 0], ["privateDropRounds", 1],
 			["groupMaxRounds", 0], ["groupDropRounds", 1], ["archiveDaysMaster", 1], ["archiveDaysOthers", 1],
 			["recallTopK", 0], ["halfLifeDays", 1], ["organizeEveryRounds", 0], ["embedBatch", 1, 64], ["groupContextCount", 0], ["groupContextImages", 0],
-			["dayBoundaryHour", 0, 12], ["diaryDays", 0], ["overviewMonths", 0], ["diaryBudgetPercent", 1, 60], ["carryMessages", 0]
+			["dayBoundaryHour", 0, 12], ["diaryDays", 0], ["overviewMonths", 0], ["diaryBudgetPercent", 1, 60], ["carryMessages", 0],
+			["proactiveMinMinutes", 10], ["proactiveMaxMinutes", 10], ["proactiveRecentMinutes", 0], ["proactiveGroupContext", 0], ["proactiveGroupImages", 0], ["proactiveActiveDays", 1],
+			["autoCleanupDays", 1], ["purgeForgottenDays", 1], ["consolidateGroups", 1], ["careIntervalDays", 1], ["backupKeep", 1]
 		];
 		var ENUMS = [["masterMode", MODES], ["privateMode", MODES], ["groupMode", MODES], ["logLevel", LOG_LEVELS], ["masterForget", FORGET], ["privateForget", FORGET], ["groupForget", FORGET]];
+		function factorField(field) {
+			return {
+				field: field,
+				format: function (v) { return typeof v === "number" ? String(v) : ""; },
+				parse: function (text) {
+					var t = text.trim();
+					if (t === "") return { kind: "clear" };
+					var n = Number(t);
+					return Number.isFinite(n) && n >= 1 && n <= 20 ? { kind: "set", value: n } : void 0;
+				}
+			};
+		}
 		function floatField(field) {
 			return {
 				field: field,
@@ -724,12 +906,12 @@ window.__ModuleLoader__.load({
 		function createForm(scope) {
 			var specs = INTS.map(function (x) { return intField(x[0], x[1], x[2] === void 0 ? Number.MAX_SAFE_INTEGER : x[2]); })
 				.concat(ENUMS.map(function (x) { return enumField(x[0], x[1]); }), LISTS.map(listField), BOOLS.map(boolField),
-					TEXTS.map(function (f) { return P.settingsTextField(f); }), FLOATS.map(floatField), [rulesField("rules")]);
+					TEXTS.map(function (f) { return P.settingsTextField(f); }), FLOATS.map(floatField), FACTORS.map(factorField), [rulesField("rules")]);
 			var secrets = SECRETS.map(function (field) {
 				return { field: field, write: function (text) { return scope.mutate([{ op: "set", path: [field], value: text }]); } };
 			});
 			var form = new P.SettingsFormModel(scope, specs, secrets);
-			var all = INTS.map(function (x) { return x[0]; }).concat(ENUMS.map(function (x) { return x[0]; }), LISTS, BOOLS, TEXTS, FLOATS, SECRETS, ["rules"]);
+			var all = INTS.map(function (x) { return x[0]; }).concat(ENUMS.map(function (x) { return x[0]; }), LISTS, BOOLS, TEXTS, FLOATS, FACTORS, SECRETS, ["rules"]);
 			// 设置服务不把密钥发给浏览器，只告诉它有没有设置
 			var secretSet = {};
 			function compute() {
@@ -928,6 +1110,7 @@ window.__ModuleLoader__.load({
 							num(i, "archiveDays"),
 							r.kind === "group" ? sel(i, "archiveUnwoken", [["", t("modeDefault")], ["on", t("unwokenOn")], ["off", t("unwokenOff")]]) : null,
 							sel(i, "forgetMode", [["", t("modeDefault")], ["normal", t("forgetNormal")], ["purge", t("forgetPurge")]]),
+							sel(i, "proactive", [["", t("modeDefault")], ["on", t("proRuleOn")], ["off", t("proRuleOff")]]),
 							h("label", { className: "compc-field" },
 								h("span", { className: "compc-hint" }, t("note")),
 								h("input", { className: "compc-input", value: r.note || "", disabled: props.disabled, onChange: function (e) { set(i, "note", e.target.value); } }))),
@@ -1287,6 +1470,159 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 
+		//#region 主动聊天、记忆保养、备份与迁移
+		function ProactivePanel(props) {
+			var t = props.t, data = props.data;
+			var act = useAction();
+			if (!data || !data.proactive) return null;
+			var pr = data.proactive;
+			var catName = function (c) { return c === "master" ? t("scopeMaster") : c === "group" ? t("kindGroup") : t("kindUser"); };
+			return h("div", { className: "compc-field" },
+				pr.wakeAvailable ? null : h("p", { className: "compc-result compc-warn" }, t("proNoWake")),
+				pr.list.length === 0 ? h("p", { className: "compc-hint" }, t("proListEmpty")) : pr.list.map(function (e) {
+					return h("div", { key: e.umo, className: "compc-row" },
+						h("span", { className: "compc-hint" }, t("proItem", { umo: e.umo, cat: catName(e.category), next: e.next ? fmtTime(e.next) : "—", last: e.last ? fmtTime(e.last) : t("never") })),
+						h(P.Button, { size: "sm", disabled: act.busy || !pr.wakeAvailable, onClick: function () { act.run(function () { return api("POST", "proactive/try", { umo: e.umo }).then(props.onState); }, t("proTried")); } }, t("proTry")));
+				}),
+				h(Status, { msg: act.msg }));
+		}
+
+		function CarePanel(props) {
+			var t = props.t, data = props.data;
+			var act = useAction();
+			var askHook = React.useState(false), asking = askHook[0], setAsking = askHook[1];
+			if (!data || !data.care) return null;
+			var c = data.care;
+			var lr = c.lastRun;
+			return h("div", { className: "compc-field" },
+				h("p", { className: "compc-hint" }, t("careLast", { cleanup: c.lastCleanup ? fmtTime(c.lastCleanup) : t("never"), consolidate: c.lastConsolidate ? fmtTime(c.lastConsolidate) : t("never") })),
+				h("div", { className: "compc-row" },
+					h(P.Button, { size: "sm", disabled: act.busy, onClick: function () {
+						act.run(function () {
+							return api("POST", "care/run", {}).then(function (r) {
+								props.onState(r.state);
+								var cl = r.report.cleanup || { forgotten: 0, purged: 0 }, co = r.report.consolidate || { groups: 0, merged: 0, created: 0 };
+								if (r.report.consolidateError) throw new Error(r.report.consolidateError);
+								act.setMsg({ tone: "ok", text: t("careDone", { f: cl.forgotten, p: cl.purged, g: co.groups, m: co.merged, c: co.created }) });
+							});
+						});
+					} }, act.busy ? t("running") : t("careRun"))),
+				h(Status, { msg: act.msg }),
+				lr && lr.groups.length > 0 ? h("div", { className: "compc-card" },
+					h("p", { className: "compc-hint" }, t("careLastRun", { time: fmtTime(lr.at) })),
+					lr.groups.map(function (g, i) {
+						return h("p", { key: i, className: "compc-memText" }, t("careGroup", { old: g.old.map(function (m) { return m.content; }).join(" / "), created: g.created.map(function (m) { return m.content; }).join(" / ") }));
+					}),
+					asking ? h("div", { className: "compc-card", role: "group" },
+						h("p", { className: "compc-hint" }, t("careUndoConfirm")),
+						h("div", { className: "compc-row" },
+							h(P.Button, { size: "sm", onClick: function () { setAsking(false); act.run(function () { return api("POST", "care/undo", {}).then(function (r) { props.onState(r.state); }); }, t("careUndone")); } }, t("confirm")),
+							h(P.Button, { size: "sm", onClick: function () { setAsking(false); } }, t("cancel"))))
+						: h("div", { className: "compc-row" }, h(P.Button, { size: "sm", disabled: act.busy, onClick: function () { setAsking(true); } }, t("careUndo")))) : null);
+		}
+
+		function firstLine(text) {
+			var line = text.split("\n").map(function (x) { return x.replace(/^#+\s*/, "").trim(); }).filter(Boolean)[0] || "";
+			return line.length > 80 ? line.slice(0, 80) + "…" : line;
+		}
+		function sizeText(n) { return n > 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1024)) + " KB"; }
+
+		function BackupPanel(props) {
+			var t = props.t, data = props.data;
+			var act = useAction();
+			var askHook = React.useState(null), asking = askHook[0], setAsking = askHook[1];
+			var waitHook = React.useState(false), waiting = waitHook[0], setWaiting = waitHook[1];
+			var inputRef = React.useRef(null);
+			if (!data) return null;
+			var fileUrl = function (name) { return apiUrl("backup/file/" + encodeURIComponent(name)); };
+			var reasonName = function (r) { return r === "auto" ? t("reasonAuto") : r === "before-import" ? t("reasonBefore") : t("reasonManual"); };
+			function upload(ev) {
+				var f = ev.target.files && ev.target.files[0];
+				if (!f) return;
+				act.run(function () {
+					return fetch(apiUrl("backup/upload"), { method: "POST", credentials: "same-origin", headers: { "content-type": "application/octet-stream", "x-companion-upload": "1" }, body: f })
+						.then(function (res) { return res.json().then(function (j) { if (!res.ok) throw new Error(j.error || "HTTP " + res.status); return j; }); })
+						.then(props.onState);
+				}).finally(function () { if (inputRef.current) inputRef.current.value = ""; });
+			}
+			function confirmImport(id) {
+				var before = data.lastImport ? data.lastImport.at : 0;
+				act.run(function () {
+					return api("POST", "backup/confirm", { id: id }).then(function () {
+						setWaiting(true);
+						var tries = 0;
+						var timer = setInterval(function () {
+							tries += 1;
+							api("GET", "state").then(function (st) {
+								if (st.lastImport && st.lastImport.at !== before) { clearInterval(timer); setWaiting(false); props.onState(st); }
+							}, function () {});
+							if (tries > 60) { clearInterval(timer); setWaiting(false); }
+						}, 1000);
+					});
+				});
+			}
+			var pend = data.importing;
+			var m = pend && pend.manifest;
+			return h("div", { className: "compc-field" },
+				h("div", { className: "compc-row" },
+					h(P.Button, { size: "sm", disabled: act.busy, onClick: function () {
+						act.run(function () {
+							return api("POST", "backup/create", {}).then(function (r) {
+								props.onState(r.state);
+								act.setMsg({ tone: "ok", text: t("exported", { name: r.name }) });
+								var a = document.createElement("a"); a.href = fileUrl(r.name); a.download = r.name; document.body.appendChild(a); a.click(); a.remove();
+							});
+						});
+					} }, act.busy ? t("running") : t("exportNow"))),
+				h("div", { className: "compc-field" },
+					h("span", { className: "compc-label" }, h(Label, { text: t("importFile"), hint: t("importFileHint") })),
+					h("input", { ref: inputRef, type: "file", accept: ".gz,.tgz,application/gzip", hidden: true, onChange: upload }),
+					h("div", { className: "compc-row" }, h(P.Button, { size: "sm", disabled: act.busy || waiting, onClick: function () { if (inputRef.current) inputRef.current.click(); } }, t("chooseFile")))),
+				waiting ? h("p", { className: "compc-result compc-warn", role: "status" }, t("importing")) : null,
+				h(Status, { msg: act.msg }),
+				data.lastImport ? h("p", { className: "compc-result " + (data.lastImport.error ? "compc-error" : "compc-ok") }, data.lastImport.error ? t("importFailed", { error: data.lastImport.error }) : t("imported", { time: fmtTime(data.lastImport.at) })) : null,
+				m ? h("div", { className: "compc-card", role: "group" },
+					h("p", { className: "compc-label" }, t("previewTitle")),
+					h("p", { className: "compc-hint" }, t("previewLine", { plugin: m.plugin, time: fmtTime(m.createdAt), mem: m.counts.memories, days: m.counts.diaryDays, months: m.counts.months, msgs: m.counts.archiveMessages, media: m.counts.media, model: (m.embed && m.embed.model) || "—" })),
+					h("details", { className: "compc-details" },
+						h("summary", { className: "compc-summary" }, h("span", { className: "compc-chevron", "aria-hidden": true }, "›"), t("previewSettings")),
+						h("div", { className: "compc-detailsBody" }, h("pre", { className: "compc-pre" }, JSON.stringify(m.settings, null, 2)))),
+					h("div", { className: "compc-row" },
+						h(P.Button, { size: "sm", disabled: act.busy, onClick: function () { confirmImport(pend.id); } }, t("confirmImport")),
+						h(P.Button, { size: "sm", disabled: act.busy, onClick: function () { act.run(function () { return api("POST", "backup/cancel", {}).then(props.onState); }); } }, t("cancelImport")))) : null,
+				h("h4", { className: "compc-subtitle" }, t("backupList")),
+				(data.backups || []).length === 0 ? h("p", { className: "compc-hint" }, t("backupEmpty")) : data.backups.map(function (b) {
+					return h("div", { key: b.name, className: "compc-mem" },
+						h("p", { className: "compc-hint" }, t("backupItem", { name: b.name, size: sizeText(b.size), reason: reasonName(b.reason) })),
+						h("div", { className: "compc-row" },
+							h("a", { href: fileUrl(b.name), download: b.name, className: "compc-hint" }, t("download")),
+							h(P.Button, { size: "sm", disabled: act.busy || waiting, onClick: function () { act.run(function () { return api("POST", "backup/restore", { name: b.name }).then(props.onState); }); } }, t("restoreThis")),
+							asking === b.name ? null : h(P.Button, { size: "sm", disabled: act.busy, onClick: function () { setAsking(b.name); } }, t("deleteBackup"))),
+						asking === b.name ? h("div", { className: "compc-card", role: "group" },
+							h("p", { className: "compc-hint" }, t("deleteBackupConfirm")),
+							h("div", { className: "compc-row" },
+								h(P.Button, { size: "sm", onClick: function () { setAsking(null); act.run(function () { return api("POST", "backup/delete", { name: b.name }).then(props.onState); }); } }, t("confirm")),
+								h(P.Button, { size: "sm", onClick: function () { setAsking(null); } }, t("cancel")))) : null);
+				}));
+		}
+
+		function SelfCheckPanel(props) {
+			var t = props.t, data = props.data;
+			var act = useAction();
+			if (!data) return null;
+			var sc = data.selfCheck;
+			return h("div", { className: "compc-field" },
+				h("div", { className: "compc-row" },
+					h(P.Button, { size: "sm", disabled: act.busy, onClick: function () { act.run(function () { return api("POST", "selfcheck", {}).then(function () { return api("GET", "state").then(props.onState); }); }); } }, act.busy ? t("running") : t("runSelfCheck"))),
+				h(Status, { msg: act.msg }),
+				sc ? h("div", { className: "compc-card" },
+					h("p", { className: "compc-hint" }, fmtTime(sc.at)),
+					sc.results.map(function (r, i) {
+						return h("p", { key: i, className: r.found.length > 0 ? "compc-memText" : "compc-result compc-warn" }, t("selfCheckResult", { q: r.query, a: r.found.length > 0 ? firstLine(r.found[0].content) : t("selfCheckNone") }));
+					})) : null);
+		}
+		//#endregion
+
 		//#region 页面
 		function ContextRow(props) {
 			var t = props.t, c = props.common, p = props.prefix;
@@ -1414,6 +1750,45 @@ window.__ModuleLoader__.load({
 					h(Toggle, Object.assign({ field: "archiveImages", label: t("archiveImages"), hint: t("archiveImagesHint") }, common)),
 					h(Value, Object.assign({ field: "carryMessages", label: t("carryMessages"), numeric: true, invalidLabel: t("invalidCount") }, common)),
 					h(ExpiryPanel, { t: t, data: data, onState: setData })),
+				h(Section, { title: t("proSec"), hint: t("proSecHint") },
+					h(Toggle, Object.assign({ field: "proactiveEnabled", label: t("proactiveEnabled") }, common)),
+					h("div", { className: "compc-grid" },
+						h(Value, Object.assign({ field: "proactiveMinMinutes", label: t("proactiveMinMinutes"), numeric: true, invalidLabel: t("invalid") }, common)),
+						h(Value, Object.assign({ field: "proactiveMaxMinutes", label: t("proactiveMaxMinutes"), numeric: true, invalidLabel: t("invalid") }, common)),
+						h(Value, Object.assign({ field: "proactiveOthersFactor", label: t("proactiveOthersFactor"), hint: t("proactiveOthersFactorHint"), invalidLabel: t("invalid") }, common))),
+					h(Toggle, Object.assign({ field: "proactivePrivate", label: t("proactivePrivate") }, common)),
+					h(Toggle, Object.assign({ field: "proactiveGroup", label: t("proactiveGroup") }, common)),
+					h("div", { className: "compc-grid" },
+						h(Value, Object.assign({ field: "quietStart", label: t("quietStart"), hint: t("quietHint") }, common)),
+						h(Value, Object.assign({ field: "quietEnd", label: t("quietEnd"), hint: t("quietHint") }, common)),
+						h(Value, Object.assign({ field: "proactiveRecentMinutes", label: t("proactiveRecentMinutes"), numeric: true, invalidLabel: t("invalidCount") }, common)),
+						h(Value, Object.assign({ field: "proactiveGroupContext", label: t("proactiveGroupContext"), numeric: true, invalidLabel: t("invalidCount") }, common)),
+						h(Value, Object.assign({ field: "proactiveGroupImages", label: t("proactiveGroupImages"), numeric: true, invalidLabel: t("invalidCount") }, common)),
+						h(Value, Object.assign({ field: "proactiveActiveDays", label: t("proactiveActiveDays"), numeric: true, invalidLabel: t("invalidPositive") }, common)),
+						h(Value, Object.assign({ field: "silenceToken", label: t("proSilence"), hint: t("proSilenceHint") }, common))),
+					h(ProactivePanel, { t: t, data: data, onState: setData })),
+				h(Section, { title: t("careSec"), hint: t("careSecHint") },
+					h(Toggle, Object.assign({ field: "autoCleanup", label: t("autoCleanup") }, common)),
+					h("div", { className: "compc-grid" },
+						h(Value, Object.assign({ field: "autoCleanupDays", label: t("autoCleanupDays"), numeric: true, invalidLabel: t("invalidPositive") }, common)),
+						h(Value, Object.assign({ field: "autoCleanupImportance", label: t("autoCleanupImportance"), invalidLabel: t("invalidRatio") }, common)),
+						h(Value, Object.assign({ field: "careIntervalDays", label: t("careIntervalDays"), numeric: true, invalidLabel: t("invalidPositive") }, common))),
+					h(Toggle, Object.assign({ field: "purgeForgotten", label: t("purgeForgotten") }, common)),
+					state.purgeForgotten.text === "true" ? h(Value, Object.assign({ field: "purgeForgottenDays", label: t("purgeForgottenDays"), numeric: true, invalidLabel: t("invalidPositive") }, common)) : null,
+					h(Toggle, Object.assign({ field: "consolidateEnabled", label: t("consolidateEnabled") }, common)),
+					h("div", { className: "compc-grid" },
+						h(Value, Object.assign({ field: "consolidateOverlap", label: t("consolidateOverlap"), hint: t("consolidateOverlapHint"), invalidLabel: t("invalidRatio") }, common)),
+						h(Value, Object.assign({ field: "consolidateGroups", label: t("consolidateGroups"), numeric: true, invalidLabel: t("invalidPositive") }, common))),
+					h(CarePanel, { t: t, data: data, onState: setData })),
+				h(Section, { title: t("backupSec"), hint: t("backupSecHint") },
+					h(Toggle, Object.assign({ field: "backupEnabled", label: t("backupEnabled") }, common)),
+					h("div", { className: "compc-grid" },
+						h(Value, Object.assign({ field: "backupTime", label: t("backupTime"), hint: t("diaryTimeHint") }, common)),
+						h(Value, Object.assign({ field: "backupKeep", label: t("backupKeep"), hint: t("backupKeepHint"), numeric: true, invalidLabel: t("invalidPositive") }, common))),
+					h(BackupPanel, { t: t, data: data, onState: setData }),
+					h("h4", { className: "compc-subtitle" }, h(Label, { text: t("selfCheck"), hint: t("selfCheckHint") })),
+					h(Value, Object.assign({ field: "selfCheckQueries", label: t("selfCheckQueries") }, common)),
+					h(SelfCheckPanel, { t: t, data: data, onState: setData })),
 				h(Section, { title: t("memList"), hint: t("memListHint") },
 					h(MemoryList, { t: t, version: memVersion, onChanged: function () { api("GET", "state").then(setData, function () {}); } })),
 				h(Section, { title: t("log") },

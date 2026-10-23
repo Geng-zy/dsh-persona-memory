@@ -55,6 +55,8 @@ export interface RuleRow {
     archiveUnwoken?: 'on' | 'off' | '';
     /** 遗忘方式：normal 普通遗忘（可恢复）、purge 直接彻底遗忘 */
     forgetMode?: 'normal' | 'purge' | '';
+    /** 主动聊天：on 开、off 关、空用默认 */
+    proactive?: 'on' | 'off' | '';
     note?: string;
 }
 export type ForgetMode = 'normal' | 'purge';

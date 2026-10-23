@@ -11,6 +11,8 @@
 // 阶段 3：写日记；群消息图片收到时下载、群聊上下文用下载好的图；模拟过了 6 天：群会话换新、旧会话归档后
 // 真的删掉文件夹（dsh 还能正常用）、新会话开头带上个会话的内容；模拟过了 400 天：主人会话换新、旧的只归档不删、
 // 新会话开头先读日记。
+// 阶段 4：主动聊天（她说话 / 回「[不发]」就不发 / 群里带上下文）；清理和整合、撤销；手动备份、下载、
+// 从备份还原（插件自动重新加载）、还原后自检。
 //
 // 需要：DSH_BIN 指向 dsh；先在两个仓库都 pnpm run build。不联网、不需要真实 API Key。
 import { spawn } from 'node:child_process'
@@ -43,6 +45,8 @@ if (!existsSync(join(BRIDGE, 'lib', 'index.js'))) { console.error('[e2e] 找不�
 const requests = []
 const extractions = []
 const diaryPrompts = []
+const proactivePrompts = []
+let proactiveSilent = false
 let overflowOnce = true
 const textOf = content => (typeof content === 'string' ? content : (content ?? []).filter(b => b.type === 'text').map(b => b.text).join('\n'))
 const firstText = content => (typeof content === 'string' ? content : (content ?? []).find(b => b.type === 'text')?.text ?? '')
@@ -91,6 +95,8 @@ const llm = createServer((req, res) => {
       res.end()
     }
     if (lastAll.includes('现在暂停聊天')) return text('回忆：我们聊过苹果和香蕉。')
+    if (lastAll.includes('<proactive>')) { proactivePrompts.push(lastAll); return text(proactiveSilent ? '[不发]' : '在忙吗？PRO-1') }
+    if (lastAll.includes('整理成更精炼的一到两条')) return text('[{"content":"主人养了一只叫咪咪的橘猫 CAT","kind":"fact","importance":0.7}]')
     if (lastAll.includes('给自己写一篇')) { diaryPrompts.push(lastAll); return text('# 今天的日记 DIARY-1\n今天主人和我聊了很多，我很开心。') }
     if (extracting) {
       const tag = lastAll.includes('QQ 群') ? 'ORG-GROUP' : lastAll.includes('和主人的私聊') ? 'ORG-MASTER' : 'ORG-OTHER'
@@ -243,6 +249,7 @@ async function waitFor(pred, what, ms = 60_000) {
   await fail('等不到：' + what + '\n模型请求：' + JSON.stringify(requests.map(r => ({ last: r.last.slice(0, 60), tools: r.tools.length }))).slice(-3000) + '\n' + dshLog.slice(-4000))
 }
 const sentCount = () => sent.length
+const sentText = req => (req.params.message ?? []).filter(x => x.type === 'text').map(x => x.data.text).join('')
 /** 发一条，等她回复发出去 */
 async function say(send, what) {
   const before = sentCount()
@@ -449,6 +456,65 @@ await say(() => privateMsg([text('新的一年 m99')]), '主人新会话的回�
 r = reqWith('m99')
 if (!r.lastAll.includes('<diary>') || !r.lastAll.includes('DIARY-1')) await fail('主人新会话开头没先读日记：' + r.lastAll.slice(0, 500))
 log('过了 400 天：主人会话换新、旧的只归档、新会话先读日记 OK')
+
+// ===== 阶段 4 =====
+// 15. 主动聊天：她说话就发；回「[不发]」就不发；群里带上下文
+let before = sentCount()
+const tried = await api('POST', 'proactive/try', { umo: 'napcat:FriendMessage:' + MASTER })
+if (tried.status !== 200) await fail('主动唤醒失败：' + JSON.stringify(tried.json))
+const pro = await waitFor(() => sent.slice(before).find(x => x.action === 'send_private_msg'), '主动发出的私聊')
+if (sentText(pro) !== '在忙吗？PRO-1' || pro.params.user_id !== MASTER) await fail('主动发的不对：' + JSON.stringify(pro.params))
+proactiveSilent = true
+before = sentCount()
+await api('POST', 'proactive/try', { umo: 'napcat:FriendMessage:' + MASTER })
+await waitFor(() => proactivePrompts.length >= 2, '第二次主动唤醒')
+await new Promise(r => setTimeout(r, 2000))
+if (sentCount() !== before) await fail('她回了「[不发]」还是发出去了')
+proactiveSilent = false
+// 上面模拟过了 400 天，群存档已经删光：先有人在群里说一句
+groupMsg([text('群里最近的一句 ctx-p')])
+await new Promise(r => setTimeout(r, 800))
+const gtry = await api('POST', 'proactive/try', { umo: 'napcat:GroupMessage:' + GROUP })
+if (gtry.status !== 200) await fail('群里主动唤醒失败：' + JSON.stringify(gtry.json) + dshLog.slice(-1500))
+await waitFor(() => proactivePrompts.some(p => p.includes('群里最近的消息')), '群里主动带上下文')
+if (!proactivePrompts.find(p => p.includes('群里最近的消息')).includes('ctx-p')) await fail('群里主动没带上下文')
+log('主动聊天：发、不发、群里带上下文 OK')
+
+// 16. 整合相近的记忆、撤销
+await api('POST', 'memory/add', { scope: 'master', content: '主人养了一只猫 CAT' })
+await api('POST', 'memory/add', { scope: 'master', content: '主人养了一只猫叫咪咪 CAT' })
+const careRun = await api('POST', 'care/run', {})
+if (!(careRun.json?.report?.consolidate?.groups >= 1)) await fail('定期整合没合并：' + JSON.stringify(careRun.json?.report))
+const cats = (await api('GET', 'memory?q=CAT')).json
+if (!cats.items.some(m => m.content.includes('咪咪的橘猫'))) await fail('整合后没有新记忆：' + JSON.stringify(cats))
+const undone = await api('POST', 'care/undo', {})
+if (undone.json?.undone < 1 || (await api('GET', 'memory?q=CAT')).json.items.some(m => m.content.includes('橘猫'))) await fail('撤销整合不对')
+log('定期整合、撤销 OK')
+
+// 17. 备份：手动备份、下载；改掉人格后从备份还原（插件自动重新加载），还原后自检
+const made = await api('POST', 'backup/create', {})
+if (!made.json?.name) await fail('手动备份失败：' + JSON.stringify(made.json))
+const dl = await fetch(webBase0 + 'api/companion/backup/file/' + made.json.name, { headers: { cookie: cookie0 } })
+const bytes = Buffer.from(await dl.arrayBuffer())
+if (!dl.ok || bytes[0] !== 0x1f || bytes[1] !== 0x8b) await fail('下载备份不对：' + dl.status)
+writeFileSync(personaFile, '你是 PERSONA-V4（备份之后改的）')
+const preview = await api('POST', 'backup/restore', { name: made.json.name })
+const importing = preview.json?.importing
+if (!importing?.id || !(importing.manifest?.counts?.memories > 0) || JSON.stringify(importing.manifest).includes('e2e-embed-key')) await fail('还原预览不对：' + JSON.stringify(preview.json).slice(0, 500))
+const confirmed = await api('POST', 'backup/confirm', { id: importing.id })
+if (!confirmed.json?.restarting) await fail('确认还原失败：' + JSON.stringify(confirmed.json))
+let after
+for (let i = 0; i < 40; i++) {
+  await new Promise(r => setTimeout(r, 500))
+  after = await api('GET', 'state').catch(() => null)
+  if (after?.json?.lastImport && after.json.selfCheck) break
+}
+if (!after?.json?.lastImport || after.json.lastImport.error) await fail('还原后状态不对：' + JSON.stringify(after?.json?.lastImport))
+if (!readFileSync(personaFile, 'utf-8').includes('PERSONA-V3')) await fail('还原后人格不对：' + readFileSync(personaFile, 'utf-8'))
+if (!after.json.backups.some(b => b.reason === 'before-import')) await fail('还原前没有自动备份当前数据')
+if (!Array.isArray(after.json.selfCheck?.results) || after.json.selfCheck.results.length !== 3) await fail('还原后没自检：' + JSON.stringify(after.json.selfCheck))
+await say(() => privateMsg([text('还原以后还在吗 m200')]), '还原以后的回复')
+log('备份、下载、还原（插件重新加载）、自检 OK')
 
 // 14. 删过会话以后重启 dsh：能正常起来、不报错、设置页接口照常
 if (!process.env.E2E_HOLD) {

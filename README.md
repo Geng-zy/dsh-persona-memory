@@ -1,8 +1,8 @@
 # dsh-companion-core
 
-给 [dsh](https://www.npmjs.com/package/@deepseek-ai/dsh)（DeepSeek Harness）用的陪伴插件：让一个角色的人格和记忆放在会话外面，换会话、换电脑都还是她。为 QQ 陪伴 AI「大肥鱼」写，配合 [dsh-napcat-bridge](https://github.com/Geng-zy/dsh-napcat-bridge)（≥ 0.6.0）使用；不装它也能用，只是没有 QQ 会话的分类和消息存档。
+给 [dsh](https://www.npmjs.com/package/@deepseek-ai/dsh)（DeepSeek Harness）用的陪伴插件：让一个角色的人格和记忆放在会话外面，换会话、换电脑都还是她。为 QQ 陪伴 AI「大肥鱼」写，配合 [dsh-napcat-bridge](https://github.com/Geng-zy/dsh-napcat-bridge)（≥ 0.7.0）使用；不装它也能用，只是没有 QQ 会话的分类和消息存档。
 
-当前是 **0.3.x（阶段 3）**：人格、核心记忆、上下文管理、消息存档、长期记忆（整理、召回、主动记忆工具、两级遗忘、向量检索）、群聊上下文、日记和月度总览、存档到期和会话轮换。备份迁移、自动清理和整合在后面的版本加。
+当前是 **0.4.x（阶段 4）**：人格、核心记忆、上下文管理、消息存档、长期记忆（整理、召回、主动记忆工具、两级遗忘、向量检索）、群聊上下文、日记和月度总览、存档到期和会话轮换、主动聊天、记忆自动清理和定期整合、备份与迁移。图记忆（默认关）在后面的版本加。
 
 ## 它做什么
 
@@ -26,6 +26,15 @@
 8. **群聊上下文**：她在群里被 @ 时，把她上次发言之后没看到的群消息一起给她（收到时下载好的图片优先，其他用 dsh-napcat-bridge 的媒体服务转换）。
 9. **日记**：每天定时（默认 01:30，按凌晨 4 点分界）用第一人称写一篇只关于主人的日记，每月写月度总览，永久保留并写进记忆库。主人开新会话时第一轮自动先读最近 30 篇日记和 12 个月总览（不超过模型上限的 20%）。
 10. **存档到期**：每天写完日记后，按保留天数先整理再删到期存档；会话用满保留期就换新会话（新会话开头带上个会话最后几条），旧会话归档；其他人的旧会话最后一条也过期后删除（主人的永不删）。
+11. **主动聊天**：每个 QQ 会话按随机间隔唤醒她一次，让她自己决定要不要说话（不想说就只回「[不发]」，插件一不会发出去）。
+    - 主人私聊默认每 2～6 小时（在范围里均匀随机）；别人的私聊和群聊间隔乘 2（4～12 小时），而且只找最近 7 天里聊过的；
+    - 刚聊过（30 分钟内）不触发，从最后一句起再等一个间隔；免打扰 01:00–09:00 不触发，顺延；
+    - 群里主动说话时带上最近 15 条群消息（含她自己说的，最多 2 张图）当上下文；
+    - 例外规则可以给某个 QQ 号或群单独开/关。需要 dsh-napcat-bridge ≥ 0.7.0 的唤醒接口。
+12. **记忆保养**（默认每 7 天一次，跟着每天的任务）：
+    - **自动清理**：超过 90 天没被想起、而且重要程度（衰减后）低于 0.2 的记忆，按那个会话的遗忘方式遗忘；可选把普通遗忘超过 180 天的彻底遗忘。日记永远不清理。
+    - **定期整合**：把很像的零散记忆（同一归属、相近程度 ≥ 0.5）让模型合成一两条更精炼的，原来的标成「已被取代」；最近一次可以撤销，下一次整合时才真正删（彻底遗忘的会话）。
+13. **备份与迁移**：一键导出一个 `.tar.gz`（人格、核心记忆、日记、记忆库、主人私聊的存档和图片、插件二的设置，不含任何 Key；别人的存档和 dsh 会话日志不进），每天 04:00 自动备份；自动、手动、导入前各留 5 份。导入时先核对校验值、给你看包里有什么，确认后先自动备份当前数据再替换，插件自动重新加载，然后自检（用几个固定问题搜主人的记忆）。
 
 ## 会话怎么分
 
@@ -40,7 +49,7 @@
 ## 安装
 
 ```bash
-dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.3.0
+dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.4.0
 ```
 
 装好后：
@@ -72,7 +81,7 @@ dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.3.0
 | 核心记忆 | 主人的 / 公开的两个编辑器和各自的历史版本、上限 |
 | 上下文 | 到上限的百分比；主人、其他私聊、群聊各自的最多保留轮数、一次处理几轮、处理方式；写回忆用的模型 |
 | 例外规则 | 按 QQ 号或群号一条一条加 |
-| 消息存档 | 开关、存不存没唤醒的群消息、保留天数（到期整理和删除在阶段 3 加上） |
+| 消息存档 | 开关、存不存没唤醒的群消息、保留天数 |
 | 群聊上下文 | 附上之前几条、其中最多几张图片 |
 | 记忆召回 | 开关、每轮几条、关键词/向量门槛和权重、群记忆折扣、半衰期 |
 | 记忆生成 | 主动记忆、每多少轮整理、压缩前整理、整理用的模型、还没整理的数量、「立即整理」 |
@@ -81,6 +90,9 @@ dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.3.0
 | 日记 | 开关、时间、分界、时区、月度总览、开新会话时读几篇和几个月、预算、「现在就写一篇」 |
 | 日记本 | 看、改、删日记和总览；上传以前的日记（同一天已有时跳过/合并/覆盖） |
 | 存档到期 | 换会话、删别人的旧会话、下载图片、换会话带几条；「现在处理到期」；换下来的旧会话列表 |
+| 主动聊天 | 开关、主人间隔、别人和群的倍数、找不找别人和群、免打扰、刚聊过不触发、群里带几条上下文和几张图、最近几天聊过才找、「不发」暗号；每个会话下次/上次时间和「现在试一次」 |
+| 记忆保养 | 自动清理（天数、重要程度、普通遗忘久了彻底遗忘）、定期整合（相近程度、一次几组）、每几天做一次；上次时间、「现在做一次」、最近一次整合的内容和「撤销」 |
+| 备份与迁移 | 现在备份并下载、导入备份包（预览后确认）、每天自动备份的时间和份数、备份列表（下载、从它还原、删除）、迁移后自检 |
 | 记忆列表 | 按归属、状态筛选，搜索，改、普通遗忘、彻底遗忘（页面内确认）、恢复、手动加一条 |
 | 日志 | 日志级别、最近的日志 |
 
@@ -98,9 +110,9 @@ dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.3.0
 | `privateMaxRounds` / `privateDropRounds` / `privateMode` | `60` / `20` / `truncate` | 其他私聊 |
 | `groupMaxRounds` / `groupDropRounds` / `groupMode` | `60` / `20` / `truncate` | 群聊 |
 | `summaryModel` | 空 | 写回忆用的模型（`提供方/模型`），空 = 会话自己的 |
-| `rules` | `[]` | 例外规则：`{ target, kind: user|group, maxRounds?, dropRounds?, mode?, archiveDays?, archiveUnwoken?: on|off, forgetMode?: normal|purge, note? }` |
+| `rules` | `[]` | 例外规则：`{ target, kind: user|group, maxRounds?, dropRounds?, mode?, archiveDays?, archiveUnwoken?: on|off, forgetMode?: normal|purge, proactive?: on|off, note? }` |
 | `archiveEnabled` / `archiveUnwoken` | `true` / `true` | 消息存档；存没唤醒她的群消息 |
-| `archiveDaysMaster` / `archiveDaysOthers` | `365` / `5` | 保留天数（阶段 3 起生效） |
+| `archiveDaysMaster` / `archiveDaysOthers` | `365` / `5` | 保留天数 |
 | `recallEnabled` / `recallTopK` | `true` / `6` | 每轮自动想起几条 |
 | `keywordThreshold` / `vectorThreshold` / `keywordWeight` | `0.3` / `0.45` / `0.3` | 门槛和关键词占比 |
 | `importanceWeight` / `recencyWeight` / `groupDiscount` / `halfLifeDays` | `0.2` / `0.1` / `0.7` / `30` | 排名权重、群记忆折扣、半衰期 |
@@ -113,6 +125,15 @@ dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.3.0
 | `diaryEnabled` / `diaryTime` / `dayBoundaryHour` / `timezone` / `monthlyEnabled` | `true` / `01:30` / `4` / `Asia/Shanghai` / `true` | 日记 |
 | `diaryOnNewSession` / `diaryDays` / `overviewMonths` / `diaryBudgetPercent` | `true` / `30` / `12` / `20` | 开新会话先读日记 |
 | `rotateSessions` / `deleteOldSessions` / `carryMessages` / `archiveImages` | `true` / `true` / `10` / `true` | 存档到期 |
+| `proactiveEnabled` / `proactiveMinMinutes` / `proactiveMaxMinutes` / `proactiveOthersFactor` | `true` / `120` / `360` / `2` | 主动聊天间隔 |
+| `proactivePrivate` / `proactiveGroup` / `proactiveActiveDays` | `true` / `true` / `7` | 找不找别人和群、最近几天聊过才找 |
+| `quietStart` / `quietEnd` / `proactiveRecentMinutes` | `01:00` / `09:00` / `30` | 免打扰、刚聊过不触发 |
+| `proactiveGroupContext` / `proactiveGroupImages` / `silenceToken` | `15` / `2` / `[不发]` | 群里带的上下文、「不发」暗号（和插件一一致） |
+| `autoCleanup` / `autoCleanupDays` / `autoCleanupImportance` | `true` / `90` / `0.2` | 自动清理 |
+| `purgeForgotten` / `purgeForgottenDays` | `false` / `180` | 普通遗忘很久的自动彻底遗忘 |
+| `consolidateEnabled` / `consolidateOverlap` / `consolidateGroups` / `careIntervalDays` | `true` / `0.5` / `20` / `7` | 定期整合、每几天保养一次 |
+| `backupEnabled` / `backupTime` / `backupKeep` | `true` / `04:00` / `5` | 自动备份 |
+| `selfCheckQueries` | 三个问题 | 迁移后自检用的问题 |
 | `logLevel` | `info` | 日志级别 |
 
 ## 数据目录
@@ -123,10 +144,11 @@ dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.3.0
 ├── core/master.md, core/public.md, core/history-master/, core/history-public/
 ├── diary/2026-10-24.md, diary/monthly/2026-10.md
 ├── media/<sha256>.png   收到时下载的图片
-└── companion.db          消息存档、dsh 会话的聊天流水、长期记忆（含向量）、彻底遗忘的指纹、整理进度、换下来的旧会话（SQLite，数据结构版本 3）
+├── backups/companion-<auto|manual|before-import>-YYYYMMDD-HHMMSS.tar.gz   备份包
+└── companion.db          消息存档、dsh 会话的聊天流水、长期记忆（含向量）、彻底遗忘的指纹、整理进度、换下来的旧会话、整合记录（SQLite，数据结构版本 4）
 ```
 
-所有路径都相对这个目录，整个目录拷走就是备份。
+所有路径都相对这个目录。换电脑用设置页的「备份与迁移」导出再导入；也可以停掉 dsh 后整个目录拷走。
 
 ## 给其他插件用
 

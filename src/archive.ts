@@ -7,7 +7,7 @@ import { dirname } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 
 /** 数据结构版本；以后改表结构时加升级步骤，不丢旧数据。 */
-export const SCHEMA_VERSION = 3
+export const SCHEMA_VERSION = 4
 
 export interface ArchivedMessage {
   /** unified_msg_origin */
@@ -137,6 +137,19 @@ export class Archive {
         );
       `)
     }
+    if (current < 4) {
+      // 版本 4：定期整合的记录（能撤销最近一次）
+      this.db.exec(`
+        CREATE TABLE IF NOT EXISTS consolidations (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          at INTEGER NOT NULL,
+          scope TEXT NOT NULL,
+          old_ids TEXT NOT NULL,
+          new_ids TEXT NOT NULL,
+          state TEXT NOT NULL DEFAULT 'done'
+        );
+      `)
+    }
     this.db.prepare("INSERT INTO meta (key, value) VALUES ('schema', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(String(SCHEMA_VERSION))
   }
 
@@ -186,6 +199,12 @@ export class Archive {
   }
 
   //#region 到期、换会话
+  /** 某个会话最后一条（收到或发出）的时间。 */
+  lastTime(umo: string): number | undefined {
+    const r = this.db.prepare('SELECT MAX(time) AS t FROM messages WHERE umo = ?').get(umo) as { t: number | null }
+    return r.t === null ? undefined : Number(r.t)
+  }
+
   /** 某个会话最早一条的时间。 */
   oldest(umo: string): number | undefined {
     const r = this.db.prepare('SELECT MIN(time) AS t FROM messages WHERE umo = ?').get(umo) as { t: number | null }
