@@ -3,6 +3,8 @@
 //   - 她自己改人格/核心记忆的工具：只装在主人的会话里；
 //   - 消息存档：从插件一（dsh-napcat-bridge ≥ 0.6.0）的事件收消息；
 //   - 给预设里的「上下文管理」行（./context）提供每个会话的规则；
+//   - 长期记忆：整理（每 N 轮、压缩前、手动）、召回（每轮放进这一轮的消息里）、主动记忆工具、遗忘、向量索引；
+//   - 群聊之前 n 条：通过插件一的 napcat/prompt 把她没看到的群消息一起给她；
 //   - 设置页（client.js）和它用的接口 <dsh>/api/companion/…（要先登录 dsh 网页）。
 
 import z from '@deepseek-ai/schemastery'
@@ -11,9 +13,24 @@ import { join } from 'node:path'
 import { Archive, type ArchivedMessage } from './archive.js'
 import { TextDoc, defaultDataDir } from './docs.js'
 import { applyPrompt, type AssemblyLike } from './prompt.js'
-import { archiveRule, contextRule, scopeOf, type Category, type ContextMode, type NapcatLike, type RuleDefaults, type RuleRow, type Scope } from './rules.js'
+import { archiveRule, contextRule, forgetMode, scopeOf, type Category, type ContextMode, type ForgetMode, type NapcatLike, type RuleDefaults, type RuleRow, type Scope } from './rules.js'
 import type { BeforeCompactPayload, CompanionService, ContextPolicy } from './service.js'
 import { coreTool, personaTool, type ToolDeps } from './tools.js'
+import { createUserMessage } from '@deepseek-ai/dsh-llm'
+import { embed, embedEnabled, Indexer, type EmbedSettings } from './embed.js'
+import { cleanupPrompt, complete, parseCleanup, type LlmLike, type ModelTarget } from './extract.js'
+import { KINDS, MemoryStore, defaultTrust, ownScope, type MemoryKind } from './memory.js'
+import { forgetTool, saveTool, searchTool, type MemoryToolDeps } from './memory-tools.js'
+import { Organizer } from './organizer.js'
+import { formatRecall, recall, type RecallSettings } from './recall.js'
+import { isHumanTurn } from './rounds.js'
+
+declare module '@deepseek-ai/dsh-llm' {
+  interface MessageSourceMap {
+    /** 本插件放进这一轮的召回记忆 */
+    'plugin:companion-memory': { kind: 'plugin:companion-memory' }
+  }
+}
 
 export type { BeforeCompactPayload, CompanionService, ContextPolicy } from './service.js'
 export type { RuleRow, Scope } from './rules.js'
@@ -40,6 +57,30 @@ export interface Config {
   archiveUnwoken: boolean
   archiveDaysMaster: number
   archiveDaysOthers: number
+  recallEnabled: boolean
+  recallTopK: number
+  keywordThreshold: number
+  vectorThreshold: number
+  keywordWeight: number
+  importanceWeight: number
+  recencyWeight: number
+  groupDiscount: number
+  halfLifeDays: number
+  activeMemory: boolean
+  organizeEveryRounds: number
+  organizeBeforeCompact: boolean
+  memoryModel: string
+  masterForget: ForgetMode
+  privateForget: ForgetMode
+  groupForget: ForgetMode
+  cleanupEnabled: boolean
+  cleanupAutoPurge: boolean
+  embedApiUrl: string
+  embedApiKey: string
+  embedModel: string
+  embedBatch: number
+  groupContextCount: number
+  groupContextImages: number
   logLevel: 'debug' | 'info' | 'warn' | 'error'
 }
 
@@ -73,12 +114,42 @@ export const Config: z<LiveConfig> = z.object({
     mode: z.union(['', 'truncate', 'llm']).default(''),
     archiveDays: z.natural(),
     archiveUnwoken: z.union(['', 'on', 'off']).default(''),
+    forgetMode: z.union(['', 'normal', 'purge']).default(''),
     note: z.string(),
   })).default([]).volatile().description('例外规则：按 QQ 号或群号单独设置'),
   archiveEnabled: z.boolean().default(true).volatile().description('消息存档'),
   archiveUnwoken: z.boolean().default(true).volatile().description('保存没唤醒她的群消息'),
   archiveDaysMaster: z.natural().min(1).default(365).volatile().description('主人私聊存档保留天数'),
   archiveDaysOthers: z.natural().min(1).default(5).volatile().description('其他私聊和群聊存档保留天数'),
+  // 记忆召回
+  recallEnabled: z.boolean().default(true).volatile().description('每轮自动想起相关的记忆'),
+  recallTopK: z.natural().default(6).volatile().description('每轮最多想起几条'),
+  keywordThreshold: z.number().min(0).max(1).default(0.3).volatile().description('只用关键词时的相关度门槛'),
+  vectorThreshold: z.number().min(0).max(1).default(0.45).volatile().description('用向量时的相似度门槛'),
+  keywordWeight: z.number().min(0).max(1).default(0.3).volatile().description('用向量时关键词占的比重'),
+  importanceWeight: z.number().min(0).max(1).default(0.2).volatile().description('排名时重要程度的权重'),
+  recencyWeight: z.number().min(0).max(1).default(0.1).volatile().description('排名时新近程度的权重'),
+  groupDiscount: z.number().min(0).max(1).default(0.7).volatile().description('主人会话里群记忆的折扣'),
+  halfLifeDays: z.natural().min(1).default(30).volatile().description('重要程度的半衰期（天）'),
+  // 记忆生成
+  activeMemory: z.boolean().default(true).volatile().description('主动记忆：给她回忆、记住、遗忘三个工具'),
+  organizeEveryRounds: z.natural().default(20).volatile().description('每多少轮整理一次（0 = 不按轮数）'),
+  organizeBeforeCompact: z.boolean().default(true).volatile().description('截断/压缩前先整理'),
+  memoryModel: z.string().default('').volatile().description('整理记忆用的模型（提供方/模型）；空 = dsh 默认模型'),
+  // 遗忘
+  masterForget: z.union(['normal', 'purge']).default('normal').volatile().description('主人的记忆怎么遗忘'),
+  privateForget: z.union(['normal', 'purge']).default('purge').volatile().description('别人私聊的记忆怎么遗忘'),
+  groupForget: z.union(['normal', 'purge']).default('purge').volatile().description('群聊的记忆怎么遗忘'),
+  cleanupEnabled: z.boolean().default(false).volatile().description('主人记忆的模型清理'),
+  cleanupAutoPurge: z.boolean().default(false).volatile().description('模型清理判断完直接彻底删除'),
+  // 向量检索
+  embedApiUrl: z.string().default('https://api.siliconflow.cn/v1').volatile().description('向量接口地址（OpenAI 兼容，到 /v1）'),
+  embedApiKey: z.string().role('secret').volatile().description('向量接口 Key；不填不启用向量检索'),
+  embedModel: z.string().default('BAAI/bge-m3').volatile().description('向量模型'),
+  embedBatch: z.natural().min(1).max(64).default(16).volatile().description('一次算几条'),
+  // 群聊上下文
+  groupContextCount: z.natural().default(10).volatile().description('参与群话题时附上之前几条她没看到的群消息（0 = 不附）'),
+  groupContextImages: z.natural().default(4).volatile().description('附带的群消息里最多给几张图片'),
   logLevel: z.union(['debug', 'info', 'warn', 'error']).default('info').volatile().description('日志级别'),
 }) as never
 
@@ -92,7 +163,8 @@ const MAX_LOGS = 200
 const errText = (e: unknown): string => (e instanceof Error ? e.message : String(e))
 
 export function apply(ctx: Context, live: LiveConfig): void {
-  const get = <K extends keyof Config>(key: K): Config[K] => live[key]?.get() as Config[K]
+  // 密钥字段不设默认值（设置页才能分清"没设置"和"设成空"），读不到时当空字符串
+  const get = <K extends keyof Config>(key: K): Config[K] => (live[key]?.get() ?? (key === 'embedApiKey' ? '' : undefined)) as Config[K]
   const logs: Array<{ time: number; level: string; message: string }> = []
   const log = (level: keyof typeof RANK, message: string): void => {
     logs.push({ time: Date.now(), level, message })
@@ -131,6 +203,7 @@ export function apply(ctx: Context, live: LiveConfig): void {
       private: { days: get('archiveDaysOthers'), unwoken: true },
       group: { days: get('archiveDaysOthers'), unwoken: get('archiveUnwoken') },
     },
+    forget: { master: get('masterForget'), private: get('privateForget'), group: get('groupForget') },
   })
   const rules = (): RuleRow[] => (get('rules') ?? []).filter(r => r && String(r.target ?? '').trim() !== '')
   const coreFor = (category: Category): string => {
@@ -174,25 +247,191 @@ export function apply(ctx: Context, live: LiveConfig): void {
   }) as never)
   //#endregion
 
-  //#region 主人会话里装上改人格/核心记忆的工具
+
+  //#region 长期记忆：存储、向量索引、整理、召回
+  const memories = archive !== undefined ? new MemoryStore(archive.db) : undefined
+  const meta = {
+    get: (key: string): string | undefined => (archive?.db.prepare('SELECT value FROM meta WHERE key = ?').get(key) as { value: string } | undefined)?.value,
+    set: (key: string, value: string): void => { archive?.db.prepare('INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(key, value) },
+  }
+  const embedSettings = (): EmbedSettings => ({ apiUrl: get('embedApiUrl'), apiKey: get('embedApiKey'), model: get('embedModel'), batch: get('embedBatch') })
+  const indexer = memories !== undefined ? new Indexer(memories, embedSettings, meta, log) : undefined
+  const llm = (): LlmLike | undefined => ctx.get('llm' as never) as LlmLike | undefined
+  const parseTarget = (text: string): ModelTarget | undefined => {
+    const t = text.trim()
+    const slash = t.indexOf('/')
+    return slash > 0 && slash < t.length - 1 ? { provider: t.slice(0, slash), model: t.slice(slash + 1) } : undefined
+  }
+  const modelTarget = (): ModelTarget | undefined => {
+    const configured = parseTarget(get('memoryModel'))
+    if (configured !== undefined) return configured
+    const sel = (ctx.get('agentDefaultModel' as never) as { currentSelection?(): { provider: string; model: string } | undefined } | undefined)?.currentSelection?.()
+    return sel ? { provider: sel.provider, model: sel.model } : undefined
+  }
+  const afterWrite = (): void => { indexer?.ensure() }
+  const organizer = archive !== undefined && memories !== undefined
+    ? new Organizer({ archive, store: memories, llm, target: modelTarget, log, afterWrite })
+    : undefined
+  const recallSettings = (): RecallSettings => ({
+    topK: get('recallTopK'), keywordThreshold: get('keywordThreshold'), vectorThreshold: get('vectorThreshold'),
+    keywordWeight: get('keywordWeight'), importanceWeight: get('importanceWeight'), recencyWeight: get('recencyWeight'),
+    groupDiscount: get('groupDiscount'), halfLifeDays: get('halfLifeDays'),
+  })
+  /** 问题的向量（启用了向量检索时）；失败就只用关键词。 */
+  const queryVector = async (query: string): Promise<{ query: Float32Array; model: string } | undefined> => {
+    const es = embedSettings()
+    if (!embedEnabled(es)) return undefined
+    try {
+      const [v] = await embed([query], es)
+      return { query: v, model: es.model.trim() }
+    } catch (e) {
+      log('debug', '召回时算向量失败，只用关键词：' + errText(e))
+      return undefined
+    }
+  }
+  const search = async (s: Scope, query: string, topK: number) => {
+    if (memories === undefined) return []
+    const found = recall(memories, s, query, { ...recallSettings(), topK }, await queryVector(query))
+    memories.markRecalled(found.map(f => f.memory.id))
+    return found
+  }
+  const forgetModeOf = (s: Scope): ForgetMode => forgetMode(s, defaults(), rules())
+  // 设置页改了向量设置（换模型、填 Key）后自动补算；定时看一眼
+  ctx.effect(() => {
+    indexer?.ensure()
+    const timer = setInterval(() => indexer?.ensure(), 15_000)
+    return () => clearInterval(timer)
+  }, 'companion: index')
+
+  /** 去掉插件一附加的提示，只留人说的话（召回用）。 */
+  const queryText = (text: string): string => text.replace(/<system_reminder>[\s\S]*?<\/system_reminder>/g, ' ').replace(/<(Quoted|Forward) Message>[\s\S]*?<\/\1 Message>/g, ' ').trim()
+
+  // 召回：每一轮的第一步，把想起来的记忆作为这一轮的一条消息放进去（不放系统提示词，前面的缓存不受影响）。
+  // QQ 会话和 dsh 里的会话都走这里。
+  ctx.on('agent/pre-step' as never, (async (payload: { agent?: any; messages?: any[] }, next: () => Promise<any>) => {
+    const decision = await next()
+    try {
+      const agent = payload.agent
+      if (!get('recallEnabled') || memories === undefined || agent === undefined || decision?.kind !== 'enter') return decision
+      if (excluded(agent.session?.meta?.agentPreset)) return decision
+      const human = (payload.messages ?? []).filter(m => isHumanTurn({ type: 'user/message', data: m }))
+      if (human.length === 0) return decision
+      const query = queryText(human.map(m => (Array.isArray(m.content) ? m.content : []).filter((b: any) => b?.type === 'text').map((b: any) => String(b.text)).join('\n')).join('\n'))
+      if (query === '') return decision
+      const s = scope(String(agent.session.id))
+      const found = await search(s, query, get('recallTopK'))
+      if (found.length === 0) return decision
+      const text = formatRecall(found)
+      log('debug', '会话 ' + agent.session.id + ' 想起了 ' + found.length + ' 条记忆')
+      return { ...decision, messages: [...decision.messages, createUserMessage({ content: [{ type: 'text', text }] as never, source: { kind: 'plugin:companion-memory' } })] }
+    } catch (e) {
+      log('warn', '召回记忆时出错，这一轮不带记忆：' + errText(e))
+      return decision
+    }
+  }) as never)
+
+  // 整理：截断/压缩之前先把要紧内容写进记忆
+  ctx.on('companion/before-compact' as never, (async (p: BeforeCompactPayload) => {
+    if (organizer === undefined || !get('organizeBeforeCompact')) return
+    try {
+      if (p.scope.qq && p.scope.umo) await organizer.organizeUmo(p.scope.umo, '压缩前')
+      else if (!p.scope.qq) await organizer.flushDsh(p.sessionId, '压缩前', p.transcript)
+    } catch (e) {
+      log('warn', '压缩前整理失败（照常压缩）：' + errText(e))
+    }
+  }) as never)
+
+  // dsh 里直接开的会话：从会话事件里攒聊天内容，到 N 轮就整理
+  ctx.on('session/event' as never, ((session: any, event: any) => {
+    if (organizer === undefined) return
+    const id = String(session?.id ?? '')
+    if (id === '' || id.startsWith('napcat-') || excluded(session?.meta?.agentPreset)) return
+    if (event?.type !== 'user/message' && event?.type !== 'assistant/message') return
+    const msg = event.data
+    const human = event.type === 'user/message' && isHumanTurn(event)
+    if (event.type === 'user/message' && !human) return
+    const text = (Array.isArray(msg?.content) ? msg.content : []).filter((b: any) => b?.type === 'text').map((b: any) => String(b.text)).join('\n').trim()
+    if (text === '') return
+    const s = scope(id)
+    if (s.qq) return
+    organizer.onDshLine(id, s, (human ? '主人：' : '我：') + text, human, get('organizeEveryRounds'))
+  }) as never)
+
+  // 群聊之前 n 条：她参与群话题时，把她没看到的群消息一起给她（图片原图、语音转文字、视频截图都用插件一的媒体服务）
+  ctx.on('napcat/prompt' as never, (async (payload: { info: { type: string; umo: string; groupId?: string; sessionId: string }; message: any; content: any[] }) => {
+    try {
+      const info = payload.info
+      if (archive === undefined || info?.type !== 'group' || get('groupContextCount') <= 0) return
+      const s: Scope = { category: 'group', qq: true, umo: info.umo, ...(info.groupId ? { groupId: info.groupId } : {}) }
+      if (!archiveRule(s, defaults(), rules()).unwoken) return
+      const umo = String(payload.message?.raw_message ? info.umo : info.umo)
+      const rows = archive.unseen(umo, get('groupContextCount'), payload.message?.message_id !== undefined ? String(payload.message.message_id) : undefined)
+      if (rows.length === 0) return
+      const media = (napcat() as any)?.media as { convert?(components: any[], budget?: number): Promise<{ text: string; parts: any[]; used: number }> } | undefined
+      let budget = get('groupContextImages')
+      const lines: string[] = []
+      const images: any[] = []
+      for (const r of rows) {
+        let extra = ''
+        if (media?.convert !== undefined && r.segments) {
+          try {
+            const comps = JSON.parse(r.segments)
+            if (Array.isArray(comps) && comps.some((c: any) => c?.type === 'Image' || c?.type === 'Record' || c?.type === 'Video')) {
+              const got = await media.convert(comps, budget)
+              budget -= got.used
+              const imgCount = got.parts.filter((p: any) => p?.type === 'image').length
+              if (imgCount > 0) extra += ' [图片×' + imgCount + '，见下面]'
+              if (got.text) extra += ' ' + got.text
+              images.push(...got.parts)
+            }
+          } catch (e) {
+            log('debug', '群消息里的图片/语音没转出来：' + errText(e))
+          }
+        }
+        lines.push('[' + (r.senderName || r.senderId) + '(' + r.senderId + ')] ' + (r.text || '').trim() + extra)
+      }
+      const head = { type: 'text', text: '<group_context>\n在这条消息之前，群里还有这些你没看到的消息（按时间顺序）：\n' + lines.join('\n') + '\n</group_context>' }
+      const tail = images.length > 0 ? [{ type: 'text', text: '（下面是上面那些群消息里的图片）' }, ...images] : []
+      payload.content.unshift(head, ...tail)
+    } catch (e) {
+      log('warn', '附带群聊之前的消息时出错：' + errText(e))
+    }
+  }) as never)
+  //#endregion
+
+  //#region 装工具：主人会话里改人格/核心记忆；所有会话（开了主动记忆时）回忆、记住、遗忘
   const toolDeps: ToolDeps = {
     persona, coreMaster, corePublic,
     isMaster: sessionId => get('selfEdit') && scope(sessionId).category === 'master',
     coreMaxBytes: () => get('coreMaxKB') * 1024,
     log,
   }
+  const memoryToolDeps: MemoryToolDeps | undefined = memories === undefined ? undefined : {
+    store: memories,
+    scope,
+    search: async (s, query, limit) => (await search(s, query, limit)).map(f => ({ id: f.memory.id, content: f.memory.content, scope: f.memory.scope, createdAt: f.memory.createdAt })),
+    forgetMode: forgetModeOf,
+    afterWrite,
+    log,
+  }
   const equipped = new WeakMap<object, Array<() => void>>()
   const equip = (agent: any): void => {
     if (agent === undefined || equipped.has(agent)) return
     const sessionId = String(agent.session?.id ?? '')
-    if (excluded(agent.session?.meta?.agentPreset) || scope(sessionId).category !== 'master') return
+    if (excluded(agent.session?.meta?.agentPreset)) return
+    const master = scope(sessionId).category === 'master'
+    const defs = [
+      ...(master ? [personaTool(toolDeps), coreTool(toolDeps)] : []),
+      ...(get('activeMemory') && memoryToolDeps !== undefined ? [searchTool(memoryToolDeps), saveTool(memoryToolDeps), forgetTool(memoryToolDeps)] : []),
+    ]
+    if (defs.length === 0) return
     const tools = agent.ctx?.tools
     if (tools === undefined) {
-      log('warn', '会话 ' + sessionId + ' 没有工具服务，装不了改人格的工具')
+      log('warn', '会话 ' + sessionId + ' 没有工具服务，装不了工具')
       return
     }
     const disposers: Array<() => void> = []
-    for (const def of [personaTool(toolDeps), coreTool(toolDeps)]) {
+    for (const def of defs) {
       try {
         const off = tools.register(def)
         if (typeof off === 'function') disposers.push(off)
@@ -201,7 +440,7 @@ export function apply(ctx: Context, live: LiveConfig): void {
       }
     }
     equipped.set(agent, disposers)
-    log('debug', '会话 ' + sessionId + ' 装上了改人格/核心记忆的工具')
+    log('debug', '会话 ' + sessionId + ' 装上了工具：' + defs.map(d => d.name).join('、'))
   }
   ctx.on('agent/created' as never, ((payload: { agent: any }) => { equip(payload.agent) }) as never)
   // 插件启动（或重新加载）时，给已经在跑的会话补装
@@ -238,6 +477,7 @@ export function apply(ctx: Context, live: LiveConfig): void {
     const s: Scope = isGroup
       ? { category: 'group', qq: true, groupId: String(abm.raw_message?.group_id ?? abm.group?.group_id ?? abm.session_id ?? '') }
       : { category: info?.adminPrivate ? 'master' : 'private', qq: true, userId: String(abm.session_id ?? abm.sender?.user_id ?? '') }
+    if (isGroup || info !== undefined) organizer?.rememberCategory(umo, s.category)
     if (isGroup && !isWake && !archiveRule(s, defaults(), rules()).unwoken) return
     const notice = abm?.raw_message?.post_type !== 'message'
     let segments: string | undefined
@@ -258,7 +498,8 @@ export function apply(ctx: Context, live: LiveConfig): void {
   }) as never)
   ctx.on('napcat/sent' as never, ((p: { umo: string; session: { message_type: string; session_id: string }; text: string; time: number }) => {
     const isGroup = p.session?.message_type === 'GroupMessage'
-    const info = (napcat() as any)?.sessionInfoByUmo?.(p.umo) as { sessionId?: string; selfId?: string } | undefined
+    const info = (napcat() as any)?.sessionInfoByUmo?.(p.umo) as { sessionId?: string; selfId?: string; type?: string; adminPrivate?: boolean } | undefined
+    if (info !== undefined) organizer?.rememberCategory(p.umo, info.type === 'group' ? 'group' : info.adminPrivate ? 'master' : 'private')
     store({
       umo: p.umo, kind: isGroup ? 'group' : 'private',
       ...(isGroup ? { groupId: p.session.session_id } : { userId: p.session.session_id }),
@@ -267,11 +508,30 @@ export function apply(ctx: Context, live: LiveConfig): void {
       woke: true, type: 'message', text: String(p.text ?? ''),
       ...(info?.sessionId ? { sessionId: info.sessionId } : {}),
     })
+    // 每 N 轮整理一次（只算她一轮说完的回复）
+    if ((p as { source?: string }).source !== 'service') organizer?.onReply(p.umo, get('organizeEveryRounds'))
   }) as never)
   //#endregion
 
   //#region 设置页用的接口：<dsh>/api/companion/…（挂在 dsh 的 /api 钩子上，要先登录）
   const DOC_NAMES = Object.keys(docs)
+  /** 最近一次模型清理的建议（等主人勾选确认） */
+  let lastCleanup: { at: number; suggestions: Array<{ id: number; reason: string; content: string }>; purged: number[] } | null = null
+  let organizing: Promise<unknown> | undefined
+  const runCleanup = async (): Promise<NonNullable<typeof lastCleanup>> => {
+    if (memories === undefined) throw new Error('数据库没打开')
+    const l = llm()
+    const target = modelTarget()
+    if (l === undefined || target === undefined) throw new Error('没有可用的模型')
+    const forgotten = memories.list({ scope: 'master', status: 'forgotten', limit: 200 }).items
+    if (forgotten.length === 0) return (lastCleanup = { at: Date.now(), suggestions: [], purged: [] })
+    const picked = parseCleanup(await complete(l, target, cleanupPrompt(forgotten)), new Set(forgotten.map(m => m.id)))
+    const suggestions = picked.map(p => ({ ...p, content: forgotten.find(m => m.id === p.id)?.content ?? '' }))
+    const purged: number[] = []
+    if (get('cleanupAutoPurge')) for (const sug of suggestions) if (memories.purge(sug.id)) purged.push(sug.id)
+    log('info', '模型清理：建议彻底遗忘 ' + suggestions.length + ' 条' + (purged.length > 0 ? '，已直接删除 ' + purged.length + ' 条' : ''))
+    return (lastCleanup = { at: Date.now(), suggestions, purged })
+  }
   const readBody = (req: import('node:http').IncomingMessage): Promise<any> => new Promise((resolve, reject) => {
     let size = 0
     const chunks: Buffer[] = []
@@ -287,6 +547,12 @@ export function apply(ctx: Context, live: LiveConfig): void {
     napcat: napcat() !== undefined,
     docs: Object.fromEntries(DOC_NAMES.map(n => [n, { text: docs[n].read(), history: docs[n].history() }])),
     archive: archive?.stats() ?? null,
+    memory: memories?.stats() ?? null,
+    pending: organizer?.pending() ?? null,
+    index: indexer?.state() ?? null,
+    embedKeySet: get('embedApiKey').trim() !== '',
+    modelTarget: modelTarget() ?? null,
+    cleanup: lastCleanup,
     logs: logs.slice(-100),
   })
   ctx.on('connection/request' as never, (async (req: import('node:http').IncomingMessage, res: import('node:http').ServerResponse, next: () => Promise<void>) => {
@@ -300,6 +566,74 @@ export function apply(ctx: Context, live: LiveConfig): void {
     }
     try {
       if (req.method === 'GET' && parts[0] === 'state') return json(200, state())
+      const url = new URL(req.url ?? '/', 'http://localhost')
+      if (req.method === 'GET' && parts[0] === 'memory' && parts.length === 1) {
+        if (memories === undefined) return json(503, { error: '数据库没打开' })
+        const status = url.searchParams.get('status')
+        return json(200, memories.list({
+          scope: url.searchParams.get('scope') || undefined,
+          status: status === 'forgotten' || status === 'superseded' || status === 'all' ? status : 'active',
+          q: url.searchParams.get('q') || undefined,
+          limit: Number(url.searchParams.get('limit') ?? 50) || 50,
+          offset: Number(url.searchParams.get('offset') ?? 0) || 0,
+        }))
+      }
+      if (req.method === 'GET' && parts[0] === 'index') return json(200, indexer?.state() ?? null)
+      if (['memory', 'index', 'organize', 'cleanup'].includes(parts[0] ?? '')) {
+        if (req.method !== 'POST') return json(405, { error: '只支持 POST' })
+        if (!String(req.headers['content-type'] ?? '').includes('application/json')) return json(415, { error: '需要 application/json' })
+        const body = await readBody(req)
+        if (parts[0] === 'organize') {
+          if (organizer === undefined) return json(503, { error: '数据库没打开' })
+          if (organizing === undefined) organizing = organizer.organizeAll().then(r => { log('info', '手动整理完成：' + r.sessions + ' 个会话，新记了 ' + r.added + ' 条') }, e => { log('warn', '手动整理失败：' + errText(e)) }).finally(() => { organizing = undefined })
+          if (body?.wait === true) await organizing
+          return json(200, state())
+        }
+        if (parts[0] === 'cleanup') {
+          if (!get('cleanupEnabled')) return json(400, { error: '先在设置里打开「模型清理」' })
+          if (parts[1] === 'purge') {
+            const ids: number[] = Array.isArray(body?.ids) ? body.ids.map(Number).filter(Number.isInteger) : []
+            const allowed = new Set((lastCleanup?.suggestions ?? []).map(x => x.id))
+            const done = ids.filter(id => allowed.has(id) && memories?.purge(id))
+            if (lastCleanup) lastCleanup = { ...lastCleanup, purged: [...lastCleanup.purged, ...done] }
+            log('info', '设置页确认彻底遗忘 ' + done.length + ' 条')
+            return json(200, state())
+          }
+          await runCleanup()
+          return json(200, state())
+        }
+        if (parts[0] === 'index') {
+          if (indexer === undefined) return json(503, { error: '数据库没打开' })
+          if (parts[1] === 'rebuild') indexer.start(true)
+          else if (parts[1] === 'resume') indexer.start(false)
+          else if (parts[1] === 'pause') indexer.pause()
+          else if (parts[1] === 'cancel') indexer.cancel()
+          else return json(404, { error: 'not found' })
+          return json(200, indexer.state())
+        }
+        // memory
+        if (memories === undefined) return json(503, { error: '数据库没打开' })
+        if (parts[1] === 'add') {
+          const scopeName = String(body?.scope ?? 'master')
+          if (!/^(master|public|group:\d+|user:\d+)$/.test(scopeName)) return json(400, { error: '归属不对' })
+          const kind = (KINDS as readonly string[]).includes(String(body?.kind)) ? body.kind as MemoryKind : 'other'
+          const r = memories.add({ scope: scopeName, kind, content: String(body?.content ?? ''), importance: Number(body?.importance ?? 0.6), trust: defaultTrust('master', 'settings'), writer: 'settings' })
+          afterWrite()
+          return json(200, r)
+        }
+        const id = Number(parts[1])
+        if (!Number.isInteger(id) || memories.get(id) === undefined) return json(404, { error: '没有这条记忆' })
+        const action = parts[2]
+        const ok = action === 'forget' ? memories.forget(id)
+          : action === 'purge' ? memories.purge(id)
+            : action === 'restore' ? memories.restore(id)
+              : action === 'edit' ? memories.edit(id, String(body?.content ?? ''))
+                : undefined
+        if (ok === undefined) return json(404, { error: 'not found' })
+        if (action === 'edit' || action === 'restore') afterWrite()
+        log('info', '设置页对记忆 #' + id + ' 做了 ' + action)
+        return json(ok ? 200 : 400, { ok })
+      }
       if (parts[0] === 'doc' && DOC_NAMES.includes(parts[1] ?? '')) {
         const doc = docs[parts[1]]
         if (req.method === 'GET' && parts[2] === 'version' && parts[3]) {

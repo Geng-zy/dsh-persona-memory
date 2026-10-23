@@ -7,7 +7,7 @@ import { dirname } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 
 /** 数据结构版本；以后改表结构时加升级步骤，不丢旧数据。 */
-export const SCHEMA_VERSION = 1
+export const SCHEMA_VERSION = 2
 
 export interface ArchivedMessage {
   /** unified_msg_origin */
@@ -43,7 +43,8 @@ export interface ArchiveStats {
 const MAX_SEGMENTS = 32 * 1024
 
 export class Archive {
-  private readonly db: DatabaseSync
+  /** 同一个数据库文件里还有记忆表（memory.ts 共用这个连接） */
+  readonly db: DatabaseSync
 
   constructor(readonly path: string) {
     if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true })
@@ -81,6 +82,38 @@ export class Archive {
         CREATE UNIQUE INDEX IF NOT EXISTS messages_dedupe ON messages (umo, direction, message_id) WHERE message_id IS NOT NULL;
       `)
     }
+    if (current < 2) {
+      // 版本 2：长期记忆、彻底遗忘留下的指纹、每个会话「已整理到哪条」
+      this.db.exec(`
+        CREATE TABLE IF NOT EXISTS memories (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          scope TEXT NOT NULL,
+          kind TEXT NOT NULL,
+          content TEXT NOT NULL,
+          importance REAL NOT NULL,
+          trust REAL NOT NULL,
+          writer TEXT NOT NULL,
+          source_umo TEXT,
+          source_session TEXT,
+          source_from INTEGER,
+          source_to INTEGER,
+          created_at INTEGER NOT NULL,
+          tz TEXT NOT NULL,
+          last_recalled INTEGER,
+          recall_count INTEGER NOT NULL DEFAULT 0,
+          status TEXT NOT NULL DEFAULT 'active',
+          forgotten_at INTEGER,
+          superseded_by INTEGER,
+          hash TEXT NOT NULL,
+          embedding BLOB,
+          embed_model TEXT
+        );
+        CREATE INDEX IF NOT EXISTS memories_scope ON memories (scope, status);
+        CREATE INDEX IF NOT EXISTS memories_hash ON memories (hash);
+        CREATE TABLE IF NOT EXISTS tombstones (hash TEXT NOT NULL, scope TEXT NOT NULL, purged_at INTEGER NOT NULL, PRIMARY KEY (hash, scope));
+        CREATE TABLE IF NOT EXISTS cursors (key TEXT PRIMARY KEY, value INTEGER NOT NULL);
+      `)
+    }
     this.db.prepare("INSERT INTO meta (key, value) VALUES ('schema', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(String(SCHEMA_VERSION))
   }
 
@@ -101,6 +134,42 @@ export class Archive {
     const rows = this.db.prepare(`SELECT * FROM messages WHERE umo = ? AND time < ? ORDER BY time DESC, id DESC LIMIT ?`)
       .all(umo, before ?? Number.MAX_SAFE_INTEGER, limit) as Array<Record<string, any>>
     return rows.reverse().map(fromRow)
+  }
+
+  /** 某个会话 id 大于 afterId 的消息（按时间顺序），用来整理「还没整理过的部分」。返回带存档 id。 */
+  since(umo: string, afterId: number, limit = 500): Array<ArchivedMessage & { id: number }> {
+    const rows = this.db.prepare('SELECT * FROM messages WHERE umo = ? AND id > ? ORDER BY id LIMIT ?').all(umo, afterId, limit) as Array<Record<string, any>>
+    return rows.map(r => ({ ...fromRow(r), id: Number(r.id) }))
+  }
+
+  /** 有消息的会话（umo）和各自最大的存档 id。 */
+  umos(): Array<{ umo: string; maxId: number; kind: string }> {
+    return (this.db.prepare('SELECT umo, MAX(id) AS maxId, MAX(kind) AS kind FROM messages GROUP BY umo').all() as Array<{ umo: string; maxId: number; kind: string }>)
+      .map(r => ({ umo: r.umo, maxId: Number(r.maxId), kind: r.kind }))
+  }
+
+  /**
+   * 群里她没看到的消息：她上一次发言之后、没唤醒她的那些（唤醒她的已经在会话里了），
+   * 不含 excludeMessageId（正在处理的这条），最多 limit 条，按时间顺序。
+   */
+  unseen(umo: string, limit: number, excludeMessageId?: string): ArchivedMessage[] {
+    if (limit <= 0) return []
+    // 按存进来的先后（id）判断，不按时间：QQ 的消息时间只精确到秒，她发出的记的是毫秒，同一秒里会排错
+    const last = this.db.prepare("SELECT MAX(id) AS i FROM messages WHERE umo = ? AND direction = 'out'").get(umo) as { i: number | null }
+    const rows = this.db.prepare(`SELECT * FROM messages WHERE umo = ? AND direction = 'in' AND woke = 0 AND type = 'message' AND id > ?
+      AND (message_id IS NULL OR message_id != ?) ORDER BY id DESC LIMIT ?`)
+      .all(umo, last.i ?? 0, excludeMessageId ?? '', limit) as Array<Record<string, any>>
+    return rows.reverse().map(fromRow)
+  }
+
+  /** 「已整理到哪条」之类的小计数。 */
+  cursor(key: string): number {
+    const r = this.db.prepare('SELECT value FROM cursors WHERE key = ?').get(key) as { value: number } | undefined
+    return r === undefined ? 0 : Number(r.value)
+  }
+
+  setCursor(key: string, value: number): void {
+    this.db.prepare('INSERT INTO cursors (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(key, Math.round(value))
   }
 
   stats(): ArchiveStats {

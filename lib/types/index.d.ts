@@ -1,6 +1,14 @@
 import z from '@deepseek-ai/schemastery';
 import type { Context as CordisContext } from '@deepseek-ai/cordis';
-import { type ContextMode, type NapcatLike, type RuleRow } from './rules.js';
+import { type ContextMode, type ForgetMode, type NapcatLike, type RuleRow } from './rules.js';
+declare module '@deepseek-ai/dsh-llm' {
+    interface MessageSourceMap {
+        /** 本插件放进这一轮的召回记忆 */
+        'plugin:companion-memory': {
+            kind: 'plugin:companion-memory';
+        };
+    }
+}
 export type { BeforeCompactPayload, CompanionService, ContextPolicy } from './service.js';
 export type { RuleRow, Scope } from './rules.js';
 export interface Config {
@@ -25,6 +33,30 @@ export interface Config {
     archiveUnwoken: boolean;
     archiveDaysMaster: number;
     archiveDaysOthers: number;
+    recallEnabled: boolean;
+    recallTopK: number;
+    keywordThreshold: number;
+    vectorThreshold: number;
+    keywordWeight: number;
+    importanceWeight: number;
+    recencyWeight: number;
+    groupDiscount: number;
+    halfLifeDays: number;
+    activeMemory: boolean;
+    organizeEveryRounds: number;
+    organizeBeforeCompact: boolean;
+    memoryModel: string;
+    masterForget: ForgetMode;
+    privateForget: ForgetMode;
+    groupForget: ForgetMode;
+    cleanupEnabled: boolean;
+    cleanupAutoPurge: boolean;
+    embedApiUrl: string;
+    embedApiKey: string;
+    embedModel: string;
+    embedBatch: number;
+    groupContextCount: number;
+    groupContextImages: number;
     logLevel: 'debug' | 'info' | 'warn' | 'error';
 }
 export type LiveConfig = {

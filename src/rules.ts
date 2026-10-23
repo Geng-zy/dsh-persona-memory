@@ -75,12 +75,17 @@ export interface RuleRow {
   mode?: ContextMode | ''
   archiveDays?: number
   archiveUnwoken?: 'on' | 'off' | ''
+  /** 遗忘方式：normal 普通遗忘（可恢复）、purge 直接彻底遗忘 */
+  forgetMode?: 'normal' | 'purge' | ''
   note?: string
 }
+
+export type ForgetMode = 'normal' | 'purge'
 
 export interface RuleDefaults {
   context: Record<Category, ContextRule>
   archive: Record<Category, ArchiveRule>
+  forget: Record<Category, ForgetMode>
 }
 
 /** 这个会话命中的例外规则：群会话按群号，私聊（含主人）按对方 QQ 号。 */
@@ -112,4 +117,11 @@ export function archiveRule(scope: Scope, defaults: RuleDefaults, rows: readonly
     days: isCount(row.archiveDays) && row.archiveDays > 0 ? row.archiveDays : base.days,
     unwoken: row.archiveUnwoken === 'on' ? true : row.archiveUnwoken === 'off' ? false : base.unwoken,
   }
+}
+
+/** 这个会话的遗忘方式：默认主人普通遗忘、其他直接彻底遗忘，例外规则可改。 */
+export function forgetMode(scope: Scope, defaults: RuleDefaults, rows: readonly RuleRow[]): ForgetMode {
+  const row = matchRule(scope, rows)
+  if (row?.forgetMode === 'normal' || row?.forgetMode === 'purge') return row.forgetMode
+  return defaults.forget[scope.category]
 }

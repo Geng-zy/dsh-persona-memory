@@ -6,6 +6,8 @@
 // 改人格文件后同一个会话下一步就变；主人会话有改人格工具、群里没有；她用工具改人格后文件真的变了并留了历史；
 // 群聊超过轮数按轮截断；主人超过轮数用中文回忆压缩；模型报超出上限时截断后重试成功；
 // 消息存档（收到、发出、没唤醒的群消息）；设置页接口要登录、改文件要 JSON 请求。
+// 阶段 2：召回的记忆放进这一轮的消息；群聊附上她没看到的消息；每个会话都有回忆/记住/遗忘工具；
+// 手动整理和压缩前整理（假模型回 JSON）；向量索引（假向量接口）；接口里遗忘一条记忆。
 //
 // 需要：DSH_BIN 指向 dsh；先在两个仓库都 pnpm run build。不联网、不需要真实 API Key。
 import { spawn } from 'node:child_process'
@@ -36,13 +38,23 @@ if (!existsSync(join(BRIDGE, 'lib', 'index.js'))) { console.error('[e2e] 找不�
 
 // ---- 假 DeepSeek（Anthropic Messages 流式）
 const requests = []
+const extractions = []
 let overflowOnce = true
 const textOf = content => (typeof content === 'string' ? content : (content ?? []).filter(b => b.type === 'text').map(b => b.text).join('\n'))
 const firstText = content => (typeof content === 'string' ? content : (content ?? []).find(b => b.type === 'text')?.text ?? '')
+const embedCalls = []
 const llm = createServer((req, res) => {
   let body = ''
   req.on('data', c => { body += c })
   req.on('end', () => {
+    if (req.method === 'POST' && req.url.endsWith('/v1/embeddings')) {
+      // 假向量接口：按字的编码给个 4 维向量
+      const { input } = JSON.parse(body)
+      embedCalls.push(input.length)
+      const vec = t => { const v = [0, 0, 0, 0]; for (const ch of t) v[ch.codePointAt(0) % 4] += 1; return v }
+      res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ data: input.map((t, index) => ({ index, embedding: vec(t) })) }))
+      return
+    }
     if (req.method !== 'POST' || !req.url.endsWith('/messages')) {
       res.writeHead(404, { 'content-type': 'application/json' }).end('{"error":{"message":"not found"}}')
       return
@@ -55,8 +67,10 @@ const llm = createServer((req, res) => {
     const all = msgs.map(m => textOf(m.content)).join('\n')
     const toolResult = Array.isArray(lastUser?.content) && lastUser.content.some(b => b.type === 'tool_result')
     const lastAll = textOf(lastUser?.content)
-    const entry = { system, last, all, raw: JSON.stringify(json.messages ?? []), tools: (json.tools ?? []).map(t => t.name), toolResult }
-    requests.push(entry)
+    const extracting = lastAll.includes('请从中挑出值得你长期记住的事')
+    const entry = { system, last, lastAll, all, raw: JSON.stringify(json.messages ?? []), tools: (json.tools ?? []).map(t => t.name), toolResult, extracting }
+    if (extracting) extractions.push(lastAll)
+    else requests.push(entry)
     const ev = (type, data) => res.write('event: ' + type + '\ndata: ' + JSON.stringify({ type, ...data }) + '\n\n')
     const start = () => {
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' })
@@ -72,6 +86,10 @@ const llm = createServer((req, res) => {
       res.end()
     }
     if (lastAll.includes('现在暂停聊天')) return text('回忆：我们聊过苹果和香蕉。')
+    if (extracting) {
+      const tag = lastAll.includes('QQ 群') ? 'ORG-GROUP' : lastAll.includes('和主人的私聊') ? 'ORG-MASTER' : 'ORG-OTHER'
+      return text('```json\n[{"content":"整理出来的记忆 ' + tag + '","kind":"fact","importance":0.6}]\n```')
+    }
     if (last.includes('超长') && overflowOnce) {
       overflowOnce = false
       res.writeHead(400, { 'content-type': 'application/json' })
@@ -120,6 +138,9 @@ writeFileSync(join(profile, 'cordis.patch.yml'), `- id: napcat-bridge
 - id: companion-core
   config:
     logLevel: debug
+    embedApiUrl: ${llmUrl.replace('/anthropic', '')}/v1
+    embedApiKey: e2e-embed-key
+    embedModel: fake-embed
     masterMaxRounds: 6
     masterDropRounds: 3
     privateMaxRounds: 50
@@ -216,7 +237,8 @@ async function say(send, what) {
   send()
   await waitFor(() => sentCount() > before, what)
 }
-const reqWith = s => [...requests].reverse().find(r => r.last.includes(s))
+// 按这一轮整条用户消息找（前面可能插了群聊之前的消息）
+const reqWith = s => [...requests].reverse().find(r => r.lastAll.includes(s))
 
 // 1. 主人私聊：人格、两份核心记忆、去掉编程助手身份句、有改人格工具
 await say(() => privateMsg([text('你好呀 m1')]), '主人私聊回复')
@@ -235,6 +257,36 @@ if (!r.system.includes('PERSONA-V1') || !r.system.includes('CORE-PUBLIC')) await
 if (r.system.includes('CORE-MASTER')) await fail('群聊看到了主人的核心记忆')
 if (r.tools.includes('persona_edit') || r.tools.includes('core_memory_edit')) await fail('群聊里有改人格工具')
 log('群聊：只有公开核心记忆、没有改人格工具 OK')
+
+// 2b. 登录设置页接口（阶段 2 的检查要用）
+const tokenUrl0 = (dshLog.match(/http:\/\/127\.0\.0\.1:\d+\/\?token=[A-Za-z0-9_-]+/) ?? [])[0]
+if (!tokenUrl0) await fail('dsh 日志里找不到登录网址')
+const webBase0 = tokenUrl0.slice(0, tokenUrl0.indexOf('?'))
+const login0 = await fetch(tokenUrl0, { redirect: 'manual' })
+const cookie0 = (login0.headers.getSetCookie?.() ?? []).map(c => c.split(';')[0]).join('; ')
+const api = async (method, path, body) => {
+  const res = await fetch(webBase0 + 'api/companion/' + path, { method, headers: { cookie: cookie0, ...(body ? { 'content-type': 'application/json' } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) })
+  return { status: res.status, json: await res.json().catch(() => null) }
+}
+
+// 2c. 召回：设置页加一条主人记忆，主人问相关的事时，这一轮的消息里带着它（不在系统提示词里）
+const added = await api('POST', 'memory/add', { scope: 'master', content: '主人最爱吃的是红烧肉 MEM-1', kind: 'preference', importance: 0.8 })
+if (added.json?.action !== 'added') await fail('加记忆失败：' + JSON.stringify(added))
+await say(() => privateMsg([text('我最爱吃的红烧肉还记得吗 m1b')]), '召回后的回复')
+r = reqWith('m1b')
+if (!r.all.includes('<memory>') || !r.all.includes('MEM-1')) await fail('这一轮没带上召回的记忆：' + r.all.slice(-800))
+if (r.system.includes('MEM-1')) await fail('召回的记忆不该放进系统提示词')
+log('召回的记忆放进这一轮的消息 OK')
+
+// 2d. 群里：有回忆/记住/遗忘工具，没有改人格工具；附上她没看到的群消息；想不起主人的记忆
+groupMsg([text('没 @ 她的 ctx-a')])
+await new Promise(r => setTimeout(r, 800))
+await say(() => groupMsg([at(BOT), text(' 红烧肉好吃吗 g1b')]), '群 @ 回复（带之前的消息）')
+r = reqWith('g1b')
+if (!['memory_search', 'memory_save', 'memory_forget'].every(t => r.tools.includes(t))) await fail('群聊没有记忆工具：' + r.tools.join(','))
+if (!r.all.includes('<group_context>') || !r.all.includes('ctx-a')) await fail('没附上她没看到的群消息：' + r.all.slice(0, 600))
+if (r.all.includes('MEM-1')) await fail('群里想起了主人的记忆')
+log('群聊：记忆工具、附上没看到的消息、记忆隔离 OK')
 
 // 3. 改人格文件 → 同一个会话下一步就变
 writeFileSync(personaFile, '你是测试用的陪伴角色 PERSONA-V2。')
@@ -274,6 +326,38 @@ const retry = requests.find(q => q.all.includes('超长') && q.all.includes('已
 if (retry === undefined) await fail('超出上限后没有截断再重试：' + JSON.stringify(requests.slice(-2).map(q => q.all.slice(0, 300))))
 if (retry.all.includes('x1')) await fail('重试时还带着最早的消息：' + retry.all.slice(0, 800))
 log('超出上限截断后重试 OK')
+
+// 7b. 整理：压缩前已经整理过（群和主人），手动整理再把剩下的整理掉；记忆按归属分开
+if (!extractions.some(e => e.includes('QQ 群'))) await fail('群聊截断前没有先整理')
+if (!extractions.some(e => e.includes('和主人的私聊'))) await fail('主人会话压缩前没有先整理')
+const organized = await api('POST', 'organize', { wait: true })
+if (organized.status !== 200) await fail('手动整理失败：' + JSON.stringify(organized))
+const listed = await api('GET', 'memory?status=active&limit=100')
+const scopes = Object.fromEntries((listed.json?.items ?? []).map(m => [m.content, m.scope]))
+if (scopes['整理出来的记忆 ORG-GROUP'] !== 'group:' + GROUP || scopes['整理出来的记忆 ORG-MASTER'] !== 'master' || scopes['整理出来的记忆 ORG-OTHER'] !== 'user:' + OTHER) await fail('整理出来的记忆归属不对：' + JSON.stringify(scopes))
+log('压缩前整理、手动整理、记忆归属 OK（模型整理了 ' + extractions.length + ' 次）')
+
+// 7c. 向量索引：填了 Key 就在后台补算
+let idx
+for (let i = 0; i < 40; i++) {
+  idx = (await api('GET', 'index')).json
+  if (idx?.state === 'done' && idx.embedded === idx.total) break
+  await new Promise(r => setTimeout(r, 500))
+}
+if (idx?.state !== 'done' || idx.embedded !== idx.total || idx.dim !== 4 || embedCalls.length === 0) await fail('向量索引没建好：' + JSON.stringify(idx))
+const rebuilt = await api('POST', 'index/rebuild', {})
+if (rebuilt.status !== 200) await fail('手动重建失败：' + JSON.stringify(rebuilt))
+log('向量索引 OK（' + idx.embedded + ' 条，' + idx.dim + ' 维）')
+
+// 7d. 接口里遗忘：主人记忆普通遗忘后能恢复；彻底遗忘后不能再加回来
+const mem1 = (listed.json?.items ?? []).find(m => m.content.includes('MEM-1'))
+if ((await api('POST', 'memory/' + mem1.id + '/forget', {})).json?.ok !== true) await fail('普通遗忘失败')
+if ((await api('GET', 'memory?status=forgotten')).json?.total !== 1) await fail('普通遗忘后列表不对')
+if ((await api('POST', 'memory/' + mem1.id + '/restore', {})).json?.ok !== true) await fail('恢复失败')
+if ((await api('POST', 'memory/' + mem1.id + '/purge', {})).json?.ok !== true) await fail('彻底遗忘失败')
+const again = await api('POST', 'memory/add', { scope: 'master', content: '主人最爱吃的是红烧肉 MEM-1' })
+if (again.json?.action !== 'blocked') await fail('彻底遗忘的内容又被加回来了：' + JSON.stringify(again))
+log('遗忘、恢复、彻底遗忘、指纹挡住回写 OK')
 
 // 8. 没唤醒的群消息也存档；收到、发出都存
 groupMsg([text('没有 @ 她的群消息')])
