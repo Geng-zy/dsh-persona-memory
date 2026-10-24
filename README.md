@@ -148,9 +148,9 @@ dsh --version                        # 0.2.1-rc.2
 
 # 6. 两个插件（回到家目录）
 cd ~
-dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.12.0 github:Geng-zy/dsh-companion-core#v0.11.0
+dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.13.0 github:Geng-zy/dsh-companion-core#v0.12.0
 #    连不上 GitHub：到两个仓库的 Releases 下载 .tgz，传到 ~/pkgs/ 后
-#    dsh plugin --profile web add ./pkgs/dsh-napcat-bridge-0.12.0.tgz ./pkgs/dsh-companion-core-0.11.0.tgz
+#    dsh plugin --profile web add ./pkgs/dsh-napcat-bridge-0.13.0.tgz ./pkgs/dsh-companion-core-0.12.0.tgz
 #    （~/pkgs 以后不能删：dsh 的 profile 里记着它）
 
 # 7. 配置
@@ -264,7 +264,7 @@ sudo systemctl daemon-reload && sudo systemctl enable --now napcat
 ## 安装
 
 ```bash
-dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.12.0
+dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.13.0
 ```
 
 然后在 profile 的 `cordis.patch.yml` 里写配置（行 id 固定是 `napcat-bridge`）：
@@ -335,8 +335,8 @@ NapCat 那边在「网络配置」里新建一个 **WebSocket 客户端**：
 | | `uniqueSession` | `false` | 群里每人单独一个会话 |
 | | `agentPreset` | 空 | 默认预设 |
 | | `adminPrivateAgentPreset` / `privateAgentPreset` / `groupAgentPreset` | 空 | 分类型预设 |
-| | `adminPrivateModel` / `privateModel` / `groupModel` | `deepseek-official/deepseek-flash` | 分类型模型，写成 `提供方/模型`（用 API Key 的 DeepSeek 是 `deepseek-official/deepseek-flash`） |
-| | `adminPrivateReasoning` / `privateReasoning` / `groupReasoning` | `high` / `low` / `low` | 分类型思考等级（DeepSeek：`off` / `low` / `high` / `max`）；改了以后，那个会话下一条消息起生效（正在回复的等说完），聊天记录不变 |
+| | `adminPrivateModel` / `privateModel` / `groupModel` | `deepseek-official/deepseek-flash` | 分类型模型，`提供方/模型`；设置页里从 dsh 已配置的模型里选 |
+| | `adminPrivateReasoning` / `privateReasoning` / `groupReasoning` | `high` / `low` / `low` | 分类型思考等级，按模型支持的档来（DeepSeek：`off` / `low` / `high` / `max`；设置页下拉里只列这个模型支持的）；改了以后，那个会话下一条消息起生效（正在回复的等说完），聊天记录不变 |
 | | `silenceToken` | `[不发]` | 她的回复以这个开头时不发出去（主动唤醒时她决定不说话） |
 | 发消息节奏 | `typingPrivate` / `typingGroup` | `true` / `true` | 私聊、群里模拟打字 |
 | | `typingCharsPerMinute` / `typingMinSeconds` / `typingMaxSeconds` | `100` / `1` / `10` | 打字速度（0 = 不等）、最少和最多等几秒 |

@@ -59,9 +59,9 @@ export interface Config {
   privateModel: string
   groupModel: string
   adminPrivateModel: string
-  adminPrivateReasoning: 'off' | 'low' | 'high' | 'max'
-  privateReasoning: 'off' | 'low' | 'high' | 'max'
-  groupReasoning: 'off' | 'low' | 'high' | 'max'
+  adminPrivateReasoning: string
+  privateReasoning: string
+  groupReasoning: string
   sttMode: 'off' | 'command' | 'openai'
   sttCommand: string
   sttApiUrl: string
@@ -140,9 +140,9 @@ export const Config: z<LiveConfig> = z.object({
   privateModel: z.string().default('deepseek-official/deepseek-flash').volatile().description('私聊用的模型（提供方/模型）'),
   groupModel: z.string().default('deepseek-official/deepseek-flash').volatile().description('群聊用的模型（提供方/模型）'),
   adminPrivateModel: z.string().default('deepseek-official/deepseek-flash').volatile().description('管理员私聊用的模型（提供方/模型）'),
-  adminPrivateReasoning: z.union(['off', 'low', 'high', 'max']).default('high').volatile().description('管理员私聊的思考等级（DeepSeek：off 不思考，low / high / max 越来越深）'),
-  privateReasoning: z.union(['off', 'low', 'high', 'max']).default('low').volatile().description('其他私聊的思考等级'),
-  groupReasoning: z.union(['off', 'low', 'high', 'max']).default('low').volatile().description('群聊的思考等级'),
+  adminPrivateReasoning: z.string().default('high').volatile().description('管理员私聊的思考等级（按模型支持的来；DeepSeek：off 不思考，low / high / max 越来越深）'),
+  privateReasoning: z.string().default('low').volatile().description('其他私聊的思考等级'),
+  groupReasoning: z.string().default('low').volatile().description('群聊的思考等级'),
   // 语音转文字
   sttMode: z.union(['off', 'command', 'openai']).default('off').volatile().description('语音转文字：off 关闭，command 本机命令，openai 兼容接口'),
   sttCommand: z.string().default('').volatile().description('本机命令，{file} 换成语音文件路径，输出就是文字'),
@@ -405,6 +405,37 @@ export function apply(ctx: Context, live: LiveConfig): void {
     if (path.endsWith('/napcat-bridge/ffmpeg') && req.method === 'GET') return json(200, await ffmpegStatus(true))
     // 设置页「测试」语音转文字：POST <dsh>/api/napcat-bridge/stt/test（用保存过的设置，拿一段静音试）
     // 设置页「获取模型列表」：POST <dsh>/api/napcat-bridge/stt/models { apiUrl?, apiKey?, query? }（没给的用保存过的；Key 只在这次请求里用）
+    // 设置页选模型：GET <dsh>/api/napcat-bridge/llm/dsh-models（dsh 里配置的模型）；POST …/llm/efforts { provider, model }（这个模型能选哪些思考等级）
+    if (path.endsWith('/napcat-bridge/llm/dsh-models') && req.method === 'GET') {
+      const l = ctx.get('llm' as never) as any
+      if (l === undefined) return json(200, { providers: [], default: null })
+      const providers = []
+      for (const p of (l.listProviders?.() ?? []) as Array<{ id: string; name: string }>) {
+        let models: Array<{ id: string; name: string }> = []
+        try { models = ((await l.listModels(p.id)) as Array<{ id: string; name: string }>).map(m => ({ id: m.id, name: m.name || m.id })) } catch { models = [] }
+        providers.push({ id: p.id, name: p.name || p.id, models })
+      }
+      const sel = (ctx.get('agentDefaultModel' as never) as any)?.currentSelection?.()
+      return json(200, { providers, default: sel ? { provider: sel.provider, model: sel.model } : null })
+    }
+    if (path.endsWith('/napcat-bridge/llm/efforts')) {
+      if (req.method !== 'POST') return json(405, { error: 'POST only' })
+      let body: { provider?: unknown; model?: unknown } = {}
+      try {
+        const chunks: Buffer[] = []
+        for await (const c of req) chunks.push(c as Buffer)
+        body = JSON.parse(Buffer.concat(chunks).toString('utf8').slice(0, 64 * 1024) || '{}')
+      } catch { return json(400, { error: 'bad json' }) }
+      const l = ctx.get('llm' as never) as any
+      const sel = (ctx.get('agentDefaultModel' as never) as any)?.currentSelection?.()
+      const provider = typeof body.provider === 'string' && body.provider ? body.provider : sel?.provider
+      const model = typeof body.model === 'string' && body.model ? body.model : sel?.model
+      if (l === undefined || !provider || !model) return json(200, { efforts: [], model: null })
+      try {
+        const info = await l.resolveModelInfo(provider, model)
+        return json(200, { efforts: (info?.reasoning?.efforts ?? []).map((e: any) => ({ id: String(e.id), name: String(e.name ?? e.id) })), model: { provider, model } })
+      } catch (e) { return json(200, { efforts: [], error: e instanceof Error ? e.message : String(e), model: { provider, model } }) }
+    }
     if (path.endsWith('/napcat-bridge/stt/models')) {
       if (req.method !== 'POST') return json(405, { error: 'POST only' })
       if (!String(req.headers['content-type'] ?? '').includes('application/json')) return json(415, { error: 'application/json only' })

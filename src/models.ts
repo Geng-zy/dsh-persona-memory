@@ -2,11 +2,13 @@
 // 拉不到（接口不支持 /models、Key 不对、连不上）时返回错误，设置页退回到预设里写好的常用模型。
 // 这个文件在 dsh-napcat-bridge 和 dsh-companion-core 里各有一份，内容一样，改的时候两边一起改。
 
-export type ModelKind = 'embedding' | 'stt'
+export type ModelKind = 'embedding' | 'stt' | 'chat'
 
 const PATTERNS: Record<ModelKind, RegExp> = {
   embedding: /embed|bge|bce-|m3e|gte-|\be5-|e5-|nomic|jina-emb|text-embedding/i,
   stt: /whisper|asr|transcri|sensevoice|speech|voxtral|paraformer|telespeech/i,
+  // 聊天模型：名字看不出用途的都算，排除明显是别的用途的
+  chat: /^(?!.*(embed|rerank|bge|bce-|m3e|whisper|asr|transcri|sensevoice|tts|speech|voice|audio|image|flux|stable-diffusion|sdxl|kolors|video|wan2|moderation|dall-e|ocr)).*$/i,
 }
 
 export interface ModelList {
