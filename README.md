@@ -23,7 +23,7 @@
    - **群聊**：@ 机器人、引用机器人的消息、或以唤醒前缀（默认 `/`）开头时才交给模型，唤醒前缀会去掉。
 5. 每个会话对应一个 dsh 会话（发 /new 或 /reset 换新的），新会话按"管理员私聊 > 私聊/群聊 > 默认"选预设和模型。会话标识按 AstrBot 的 `平台ID:消息类型:会话ID` 来分，群聊的会话 ID 是群号，私聊的是对方 QQ 号。
 6. 交给模型的内容：群消息前面加 `[昵称(QQ号)]`；`<system_reminder>` 里写当前时间、群名、发送者是不是管理员；有引用时接上 `<Quoted Message>(昵称): 内容</Quoted Message>`，引用的是聊天记录会逐层展开；直接发来的聊天记录写成 `<Forward Message>`；图片（包括商城表情、引用和聊天记录里的图片）作为附件一起交给模型；视频在文字里写 `[视频]`，有 ffmpeg 时另外截几张画面当图片给模型。交给模型前先发 `napcat/prompt`，其他插件（例如记忆）可以往里加内容。
-7. 模型一轮结束后，把最后一条回复的文字发回去：私聊用 `send_private_msg`，群聊用 `send_group_msg`，然后发 `napcat/sent`。发之前按「发消息节奏」像真人一样等一会儿：按打字速度（默认每分钟 60 字，最少 2 秒、最多 30 秒）；群里两条之间至少隔 5 秒、一分钟最多 5 条，超出就排队，排队超过 2 分钟这条就不发。同一个会话的消息按顺序发。
+7. 模型一轮结束后，把最后一条回复的文字发回去：私聊用 `send_private_msg`，群聊用 `send_group_msg`，然后发 `napcat/sent`。发之前按「发消息节奏」像真人一样等一会儿：按打字速度（默认每分钟 300 字，也就是每个字 0.2 秒，最少 1 秒、最多 10 秒）；群里两条之间至少隔 5 秒、一分钟最多 5 条，超出就排队，排队超过 2 分钟这条就不发。同一个会话的消息按顺序发。
 
 ## 和 AstrBot 不同的地方
 
@@ -51,7 +51,7 @@
 ## 安装
 
 ```bash
-dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.9.1
+dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.9.2
 ```
 
 然后在 profile 的 `cordis.patch.yml` 里写配置（行 id 固定是 `napcat-bridge`）：
@@ -121,11 +121,11 @@ NapCat 那边在「网络配置」里新建一个 **WebSocket 客户端**：
 | | `uniqueSession` | `false` | 群里每人单独一个会话 |
 | | `agentPreset` | 空 | 默认预设 |
 | | `adminPrivateAgentPreset` / `privateAgentPreset` / `groupAgentPreset` | 空 | 分类型预设 |
-| | `adminPrivateModel` / `privateModel` / `groupModel` | 空 | 分类型模型，写成 `提供方/模型`（用 API Key 的 DeepSeek 是 `deepseek-official/deepseek-flash`） |
+| | `adminPrivateModel` / `privateModel` / `groupModel` | `deepseek-official/deepseek-flash` | 分类型模型，写成 `提供方/模型`（用 API Key 的 DeepSeek 是 `deepseek-official/deepseek-flash`） |
 | | `adminPrivateReasoning` / `privateReasoning` / `groupReasoning` | `high` / `low` / `low` | 分类型思考等级（DeepSeek：`off` / `low` / `high` / `max`）；改了以后，那个会话下一条消息起生效（正在回复的等说完），聊天记录不变 |
 | | `silenceToken` | `[不发]` | 她的回复以这个开头时不发出去（主动唤醒时她决定不说话） |
 | 发消息节奏 | `typingPrivate` / `typingGroup` | `true` / `true` | 私聊、群里模拟打字 |
-| | `typingCharsPerMinute` / `typingMinSeconds` / `typingMaxSeconds` | `60` / `2` / `30` | 打字速度（0 = 不等）、最少和最多等几秒 |
+| | `typingCharsPerMinute` / `typingMinSeconds` / `typingMaxSeconds` | `300` / `1` / `10` | 打字速度（0 = 不等）、最少和最多等几秒 |
 | | `groupMinGapSeconds` / `groupMaxPerWindow` / `groupWindowSeconds` | `5` / `5` / `60` | 同一个群她两条之间至少隔几秒、一段时间里最多几条（0 = 不限） |
 | | `sendMaxWaitSeconds` | `120` | 为了守频率最多排队几秒，超过就不发 |
 | 指令 | `commandsEnabled` / `noPermissionReply` | `true` / `true` | QQ 指令；没有权限时回一句 |
