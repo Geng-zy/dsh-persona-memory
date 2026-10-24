@@ -160,7 +160,7 @@ export const Config: z<LiveConfig> = z.object({
   personaGuard: z.boolean().default(true).volatile().description('限制她改人格时能写什么（字数、日期、数字、链接、隐私、改规则的话）'),
   personaReview: z.boolean().default(true).volatile().description('她改人格前先让模型按下面两张清单审核'),
   personaEditMaxChars: z.natural().min(10).default(300).volatile().description('一次最多加几个字'),
-  personaMaxChars: z.natural().min(100).default(8000).volatile().description('人格最多几个字（超过后只许变短）'),
+  personaMaxChars: z.natural().min(100).default(15000).volatile().description('人格最多几个字（超过后只许变短）'),
   personaAllowed: z.array(z.string()).default([...DEFAULT_ALLOWED]).volatile().description('人格里可以写什么'),
   personaForbidden: z.array(z.string()).default([...DEFAULT_FORBIDDEN]).volatile().description('人格里不许写什么'),
   thresholdPercent: z.natural().min(10).max(95).default(70).volatile().description('上下文到模型上限的百分之多少就处理'),
