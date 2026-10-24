@@ -17,6 +17,12 @@ export interface Config {
     selfEdit: boolean;
     historyKeep: number;
     coreMaxKB: number;
+    personaGuard: boolean;
+    personaReview: boolean;
+    personaEditMaxChars: number;
+    personaMaxChars: number;
+    personaAllowed: string[];
+    personaForbidden: string[];
     thresholdPercent: number;
     masterMaxRounds: number;
     masterDropRounds: number;

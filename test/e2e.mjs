@@ -47,6 +47,7 @@ const extractions = []
 const diaryPrompts = []
 const proactivePrompts = []
 const graphPrompts = []
+const reviewPrompts = []
 let proactiveSilent = false
 let overflowOnce = true
 const textOf = content => (typeof content === 'string' ? content : (content ?? []).filter(b => b.type === 'text').map(b => b.text).join('\n'))
@@ -103,6 +104,7 @@ const llm = createServer((req, res) => {
           : content.includes('GR-2') ? [{ src: '橘猫', rel: '打了', dst: '疫苗' }] : [],
       }))))
     }
+    if (lastAll.includes('你是一个审核员')) { reviewPrompts.push(lastAll); return text(lastAll.includes('违规') ? '{"ok": false, "reason": "这是具体的事，应该记进记忆"}' : '{"ok": true, "reason": ""}') }
     if (lastAll.includes('现在暂停聊天')) return text('回忆：我们聊过苹果和香蕉。')
     if (lastAll.includes('<proactive>')) { proactivePrompts.push(lastAll); return text(proactiveSilent ? '[不发]' : '在忙吗？PRO-1') }
     if (lastAll.includes('整理成更精炼的一到两条')) return text('[{"content":"主人养了一只叫咪咪的橘猫 CAT","kind":"fact","importance":0.7}]')
@@ -118,6 +120,16 @@ const llm = createServer((req, res) => {
       return
     }
     if (toolResult) return text('改好了')
+    if (last.includes('违规改人格') && entry.tools.includes('persona_edit')) {
+      start()
+      ev('content_block_start', { index: 0, content_block: { type: 'tool_use', id: 'toolu_e2e2', name: 'persona_edit', input: {} } })
+      ev('content_block_delta', { index: 0, delta: { type: 'input_json_delta', partial_json: JSON.stringify({ old_text: '', new_text: '主人昨天请我吃了违规火锅。', reason: '想记住' }) } })
+      ev('content_block_stop', { index: 0 })
+      ev('message_delta', { delta: { stop_reason: 'tool_use' }, usage: { output_tokens: 5 } })
+      ev('message_stop', {})
+      res.end()
+      return
+    }
     if (last.includes('改人格') && entry.tools.includes('persona_edit')) {
       start()
       ev('content_block_start', { index: 0, content_block: { type: 'tool_use', id: 'toolu_e2e1', name: 'persona_edit', input: {} } })
@@ -161,6 +173,9 @@ writeFileSync(join(profile, 'cordis.patch.yml'), `- id: napcat-bridge
     admins: ['${MASTER}']
     agentPreset: companion
     datetimeReminder: false
+    typingCharsPerMinute: 0
+    groupMinGapSeconds: 0
+    groupMaxPerWindow: 0
 - id: companion-core
   config:
     logLevel: debug
@@ -331,7 +346,12 @@ await say(() => privateMsg([text('m3 改人格')]), '工具改人格后的回复
 await waitFor(() => readFileSync(personaFile, 'utf-8').includes('芒果'), '人格文件被工具改掉')
 const hist = readdirSync(join(data, 'persona', 'history')).filter(n => n.endsWith('.json'))
 if (hist.length !== 1) await fail('改人格应该留 1 份历史，实际 ' + hist.length)
-log('她用工具改人格、留历史版本 OK')
+if (reviewPrompts.length !== 1 || !reviewPrompts[0].includes('芒果')) await fail('改人格前没有审核')
+// 不合适的修改被退回：人格不变，她拿到原因
+await say(() => privateMsg([text('m3b 违规改人格')]), '违规改人格后的回复')
+if (readFileSync(personaFile, 'utf-8').includes('火锅')) await fail('不合适的人格修改没被退回')
+if (!requests.some(q => q.raw.includes('没通过审核'))) await fail('她没拿到退回的原因')
+log('她用工具改人格、留历史版本、不合适的被退回 OK')
 
 // 5. 群聊按轮截断（最多 3 轮，一次截 2 轮）
 for (const g of ['g2', 'g3', 'g4']) await say(() => groupMsg([at(BOT), text(' ' + g)]), '群 ' + g)

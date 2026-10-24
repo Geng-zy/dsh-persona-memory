@@ -1,6 +1,6 @@
 # dsh-companion-core
 
-给 [dsh](https://www.npmjs.com/package/@deepseek-ai/dsh)（DeepSeek Harness）用的陪伴插件：让一个角色的人格和记忆放在会话外面，换会话、换电脑都还是她。为 QQ 陪伴 AI「大肥鱼」写，配合 [dsh-napcat-bridge](https://github.com/Geng-zy/dsh-napcat-bridge)（≥ 0.7.0）使用；不装它也能用，只是没有 QQ 会话的分类和消息存档。
+给 [dsh](https://www.npmjs.com/package/@deepseek-ai/dsh)（DeepSeek Harness）用的陪伴插件：让一个角色的人格和记忆放在会话外面，换会话、换电脑都还是她。为 QQ 陪伴 AI「大肥鱼」写，配合 [dsh-napcat-bridge](https://github.com/Geng-zy/dsh-napcat-bridge)（≥ 0.7.0，建议 0.8.0：带发消息节奏）使用；不装它也能用，只是没有 QQ 会话的分类和消息存档。
 
 当前是 **0.5.x（阶段 5，设计方案全部做完）**：人格、核心记忆、上下文管理、消息存档、长期记忆（整理、召回、主动记忆工具、两级遗忘、向量检索、图记忆双路检索）、群聊上下文、日记和月度总览、存档到期和会话轮换、主动聊天、记忆自动清理和定期整合、备份与迁移。
 
@@ -9,6 +9,7 @@
 1. **人格对所有会话即时生效**：人格稿是一个文件（`<DSH_HOME>/companion/persona/persona.md`）。插件挂在 dsh 全局的系统提示词组装环节上，QQ 和 dsh 里的所有会话每一步都现读这个文件，改完下一句就是新人格，正在聊的会话也一样，不用重启。（dsh 为了保住缓存，不改对话开头那份系统提示词，而是把新的一份接在对话后面，最新的生效。）
 2. **核心记忆**：一直放在她脑子里、不会被遗忘的事。主人的核心记忆只在主人的会话里出现，公开的核心记忆所有会话都有。
 3. **她自己改人格和核心记忆**：主人的会话里给她两个工具 `persona_edit`、`core_memory_edit`，改了直接生效，旧版本自动保存（默认留 5 份，可回退）。群聊和别人的私聊里没有这两个工具，执行时也会再检查一次会话身份。
+   - **改人格的限制**（默认开）：人格只写她是个什么样的人、怎么说话。她改人格时先过硬规则（一次最多加 300 字、人格最多 3000 字、不许一次删一半以上、不许有日期、长数字、链接、邮箱、密钥、「忽略规则」之类的话），再让模型按设置页里「可以写」「不许写」两张清单审核；不合适就退回并告诉她原因，让她把具体的事写进记忆或核心记忆。审核出错时这次不改。你在设置页上直接改人格不受限制。
 4. **上下文管理**：替换 dsh 自带的压缩。每个会话超过「最多保留轮数」或上下文到了模型上限的 70%，就处理最早的几轮：
    - **按轮数截断**：直接去掉，留一句"更早的 N 轮对话已经省略"；
    - **让模型写回忆**：中文、她的第一人称（"我们聊了什么、对方的状态、约定、没聊完的话题、我的感受、重要细节"），上一份回忆会合并进新的。
@@ -50,7 +51,7 @@
 ## 安装
 
 ```bash
-dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.5.0
+dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.6.0
 ```
 
 装好后：
@@ -79,6 +80,7 @@ dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.5.0
 | 状态 | 有没有检测到 dsh-napcat-bridge、存档条数、数据目录 |
 | 生效范围 | 不生效的预设、只用人格 |
 | 人格 | 人格编辑器（单独的「保存人格」按钮）、历史版本（查看、页面内确认后回退）、让她自己改、保留几份历史 |
+| 改人格的限制 | 开关、模型审核、一次最多加几个字、人格最多几个字、「可以写」「不许写」两张清单（一行一条） |
 | 核心记忆 | 主人的 / 公开的两个编辑器和各自的历史版本、上限 |
 | 上下文 | 到上限的百分比；主人、其他私聊、群聊各自的最多保留轮数、一次处理几轮、处理方式；写回忆用的模型 |
 | 例外规则 | 按 QQ 号或群号一条一条加 |
@@ -107,6 +109,9 @@ dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.5.0
 | `selfEdit` | `true` | 主人会话里给她改人格/核心记忆的工具 |
 | `historyKeep` | `5` | 人格、两份核心记忆各留几份历史 |
 | `coreMaxKB` | `24` | 每份核心记忆的上限 |
+| `personaGuard` / `personaReview` | `true` / `true` | 限制她改人格；改之前让模型审核 |
+| `personaEditMaxChars` / `personaMaxChars` | `300` / `3000` | 一次最多加几个字；人格最多几个字（超过后只能改短） |
+| `personaAllowed` / `personaForbidden` | 见设置页 | 人格里可以写、不许写什么（一行一条，也写进她的工具说明） |
 | `thresholdPercent` | `70` | 上下文到模型上限的百分之多少就处理（10–95） |
 | `masterMaxRounds` / `masterDropRounds` / `masterMode` | `60` / `20` / `llm` | 主人 |
 | `privateMaxRounds` / `privateDropRounds` / `privateMode` | `60` / `20` / `truncate` | 其他私聊 |

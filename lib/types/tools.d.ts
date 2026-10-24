@@ -8,6 +8,13 @@ export interface ToolDeps {
     /** 核心记忆最多多少字节 */
     coreMaxBytes(): number;
     log(level: 'info' | 'warn', message: string): void;
+    /** 改人格前检查（persona-guard.ts）：通过返回 undefined，否则返回退回的原因 */
+    guardPersona?(current: string, next: string, oldText: string, newText: string, reason: string): Promise<string | undefined>;
+    /** 人格里可以写、不许写什么（写进工具说明） */
+    personaRules?(): {
+        allowed: readonly string[];
+        forbidden: readonly string[];
+    };
 }
 export declare function personaTool(deps: ToolDeps): import("@deepseek-ai/dsh-tools").ToolDefinition;
 export declare function coreTool(deps: ToolDeps): import("@deepseek-ai/dsh-tools").ToolDefinition;
