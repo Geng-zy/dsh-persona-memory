@@ -51,6 +51,7 @@ export type { RuleRow, Scope } from './rules.js'
 
 export interface Config {
   excludedPresets: string[]
+  personaPresets: string[]
   personaOnly: boolean
   selfEdit: boolean
   historyKeep: number
@@ -154,6 +155,7 @@ const mode = (def: ContextMode) => z.union(['truncate', 'llm']).default(def).vol
 
 // 每项都 .volatile()：dsh 的设置服务只在线编辑这种字段，保存后插件直接读到新值
 export const Config: z<LiveConfig> = z.object({
+  personaPresets: z.array(z.string()).default(['companion']).volatile().description('生效的预设 id（默认只有陪伴模式；* = 所有预设）。别的插件带来的预设不会被套上人格和记忆'),
   excludedPresets: z.array(z.string()).default([]).volatile().description('不生效的预设 id（例如写代码用的预设）'),
   personaOnly: z.boolean().default(true).volatile().description('只用人格：去掉 dsh 的编程助手身份句'),
   selfEdit: z.boolean().default(true).volatile().description('让她能自己改人格和核心记忆（只在主人的会话里）'),
@@ -305,7 +307,7 @@ export function apply(ctx: Context, live: LiveConfig): void {
   // 导入：上一次在设置页确认导入后，插件重新加载时在这里替换数据（数据库还没打开）
   let lastImport: { manifest: Manifest; plan?: RestorePlan; at: number; error?: string } | undefined
   try {
-    const imported = applyPendingImport(dir)
+    const imported = applyPendingImport(dir, keep)
     if (imported !== undefined) {
       lastImport = { manifest: imported.manifest, plan: imported.plan, at: Date.now() }
       log('info', '导入了备份包（' + new Date(imported.manifest.createdAt).toISOString() + ' 做的，还原了：' + imported.plan.items.join('、') + '）')
@@ -323,7 +325,13 @@ export function apply(ctx: Context, live: LiveConfig): void {
 
   const napcat = (): NapcatLike | undefined => ctx.get('napcat' as never) as NapcatLike | undefined
   const scope = (sessionId: string): Scope => scopeOf(sessionId, napcat())
-  const excluded = (presetId: string | undefined): boolean => presetId !== undefined && presetId !== '' && get('excludedPresets').map(s => s.trim()).includes(presetId)
+  /** 这个预设的会话不归插件二管：不在「生效的预设」里（* 表示全部），或在「不生效的预设」里。不知道预设的会话照常管。 */
+  const excluded = (presetId: string | undefined): boolean => {
+    if (presetId === undefined || presetId === '') return false
+    if (get('excludedPresets').map(s => s.trim()).includes(presetId)) return true
+    const only = get('personaPresets').map(s => s.trim()).filter(Boolean)
+    return !(only.length === 0 || only.includes('*') || only.includes(presetId))
+  }
   const defaults = (): RuleDefaults => ({
     context: {
       master: { maxRounds: get('masterMaxRounds'), dropRounds: get('masterDropRounds'), mode: get('masterMode') },

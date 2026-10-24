@@ -98,7 +98,7 @@ export interface RestorePlan {
  * 先换数据库（一个事务，失败什么都不动），再换文件夹（旧的先挪开，失败放回去），图片只补不删。
  * 返回导入的清单和勾选（没有待导入时 undefined）。
  */
-export declare function applyPendingImport(dataDir: string): {
+export declare function applyPendingImport(dataDir: string, historyKeep?: () => number): {
     manifest: Manifest;
     plan: RestorePlan;
 } | undefined;

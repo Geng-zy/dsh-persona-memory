@@ -13,6 +13,7 @@ export type { BeforeCompactPayload, CompanionService, ContextPolicy } from './se
 export type { RuleRow, Scope } from './rules.js';
 export interface Config {
     excludedPresets: string[];
+    personaPresets: string[];
     personaOnly: boolean;
     selfEdit: boolean;
     historyKeep: number;

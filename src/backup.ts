@@ -12,6 +12,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, r
 import { join, relative, sep } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import { Archive } from './archive.js'
+import { TextDoc } from './docs.js'
 
 export const BACKUP_FORMAT = 'dsh-companion-backup'
 export const BACKUP_FORMAT_VERSION = 2
@@ -25,6 +26,11 @@ export const DEFAULT_ITEMS: BackupItem[] = ITEMS.filter(i => i !== 'archiveOther
 const LEGACY_ITEMS: BackupItem[] = ['persona', 'core', 'diary', 'memory', 'archiveMaster', 'settingsCompanion']
 export const SETTINGS_ITEMS: BackupItem[] = ['settingsCompanion', 'settingsBridge', 'settingsDsh']
 const DIR_ITEMS: BackupItem[] = ['persona', 'core', 'diary']
+/** 人格和核心记忆只带现在的文件，不带历史版本；还原时照常写入（被换掉的那版进历史） */
+const DOC_FILES: Record<string, Array<[file: string, history: string]>> = {
+  persona: [['persona/persona.md', 'persona/history']],
+  core: [['core/master.md', 'core/history-master'], ['core/public.md', 'core/history-public']],
+}
 const DB_ITEMS: BackupItem[] = ['memory', 'archiveMaster', 'archiveOthers']
 /** 记忆库的表（换「记忆库」时整表换） */
 const MEMORY_TABLES = ['memories', 'tombstones', 'consolidations', 'graph_entities', 'graph_edges', 'graph_mentions', 'graph_done']
@@ -119,7 +125,16 @@ export async function createBackup(o: CreateOptions): Promise<{ name: string; ma
   mkdirSync(staging, { recursive: true })
   const items = new Set<BackupItem>(o.items ?? DEFAULT_ITEMS)
   try {
-    for (const d of DIR_ITEMS) if (items.has(d) && existsSync(join(o.dataDir, d))) cpSync(join(o.dataDir, d), join(staging, d), { recursive: true })
+    for (const d of DIR_ITEMS) {
+      if (!items.has(d)) continue
+      const files = DOC_FILES[d]
+      if (files === undefined) { if (existsSync(join(o.dataDir, d))) cpSync(join(o.dataDir, d), join(staging, d), { recursive: true }); continue }
+      for (const [file] of files) {
+        if (!existsSync(join(o.dataDir, file))) continue
+        mkdirSync(join(staging, d), { recursive: true })
+        cpSync(join(o.dataDir, file), join(staging, file))
+      }
+    }
     let archiveMessages = 0
     let othersMessages = 0
     let range: Manifest['range'] = {}
@@ -248,7 +263,7 @@ export interface RestorePlan { items: BackupItem[]; notes?: string[] }
  * 先换数据库（一个事务，失败什么都不动），再换文件夹（旧的先挪开，失败放回去），图片只补不删。
  * 返回导入的清单和勾选（没有待导入时 undefined）。
  */
-export function applyPendingImport(dataDir: string): { manifest: Manifest; plan: RestorePlan } | undefined {
+export function applyPendingImport(dataDir: string, historyKeep: () => number = () => 20): { manifest: Manifest; plan: RestorePlan } | undefined {
   const pending = join(dataDir, '.pending-import')
   if (!existsSync(join(pending, 'manifest.json'))) return undefined
   const manifest = JSON.parse(readFileSync(join(pending, 'manifest.json'), 'utf-8')) as Manifest
@@ -256,7 +271,15 @@ export function applyPendingImport(dataDir: string): { manifest: Manifest; plan:
   const plan: RestorePlan = existsSync(planPath) ? JSON.parse(readFileSync(planPath, 'utf-8')) as RestorePlan : { items: itemsOf(manifest) }
   const items = new Set(cleanItems(plan.items).filter(i => itemsOf(manifest).includes(i)))
   if (DB_ITEMS.some(i => items.has(i)) && existsSync(join(pending, 'companion.db'))) mergeDb(join(dataDir, 'companion.db'), join(pending, 'companion.db'), items)
-  const dirs = DIR_ITEMS.filter(d => items.has(d))
+  // 人格、核心记忆：只换文件，历史版本留着（被换掉的那版也存进去，导错了能在设置页回退）
+  for (const d of Object.keys(DOC_FILES)) {
+    if (!items.has(d as BackupItem)) continue
+    for (const [file, history] of DOC_FILES[d]) {
+      if (!existsSync(join(pending, file))) continue
+      new TextDoc(join(dataDir, file), join(dataDir, history), historyKeep).write(readFileSync(join(pending, file), 'utf-8'), { by: 'import', reason: '导入备份包' })
+    }
+  }
+  const dirs = DIR_ITEMS.filter(d => items.has(d) && DOC_FILES[d] === undefined)
   const aside = join(dataDir, '.replaced-' + Date.now().toString(36))
   mkdirSync(aside, { recursive: true })
   const moved: string[] = []

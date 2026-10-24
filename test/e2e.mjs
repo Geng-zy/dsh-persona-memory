@@ -175,6 +175,10 @@ writeFileSync(join(profile, 'cordis.patch.yml'), `- id: napcat-bridge
     typingCharsPerMinute: 0
     groupMinGapSeconds: 0
     groupMaxPerWindow: 0
+- id: agent-preset-registry
+  config:
+    default: companion
+    selectedDefault: companion
 - id: companion-core
   config:
     logLevel: debug
@@ -534,7 +538,7 @@ const bytes = Buffer.from(await dl.arrayBuffer())
 if (!dl.ok || bytes[0] !== 0x1f || bytes[1] !== 0x8b) await fail('下载备份不对：' + dl.status)
 // 包里有两个插件的设置，但没有 Key 和 Token
 const tarText = (await import('node:zlib')).gunzipSync(bytes).toString('utf-8')
-if (!tarText.includes('typingCharsPerMinute') || !tarText.includes('masterMaxRounds')) await fail('备份包里没有插件设置')
+if (!tarText.includes('typingCharsPerMinute') || !tarText.includes('masterMaxRounds') || !tarText.includes('selectedDefault')) await fail('备份包里没有插件设置或 dsh 设置')
 if (tarText.includes(TOKEN) || tarText.includes('e2e-embed-key')) await fail('备份包里有 Key 或 Token')
 writeFileSync(personaFile, '你是 PERSONA-V4（备份之后改的）')
 // 备份之后新记的记忆：下面不还原记忆库，它应该还在
@@ -554,7 +558,7 @@ for (let i = 0; i < 40; i++) {
 if (!after?.json?.lastImport || after.json.lastImport.error) await fail('还原后状态不对：' + JSON.stringify(after?.json?.lastImport))
 if (!readFileSync(personaFile, 'utf-8').includes('PERSONA-V3')) await fail('还原后人格不对：' + readFileSync(personaFile, 'utf-8'))
 if (!after.json.backups.some(b => b.reason === 'before-import')) await fail('还原前没有自动备份当前数据')
-if (after.json.lastImport.plan?.items?.includes('memory') || !(after.json.lastImport.plan?.notes ?? []).some(n => n.startsWith('插件一的设置：已套用'))) await fail('还原勾选或设置套用不对：' + JSON.stringify(after.json.lastImport.plan))
+if (after.json.lastImport.plan?.items?.includes('memory') || !['插件一的设置：已套用', '插件二的设置：已套用', 'dsh 设置 agent-preset-registry：已套用'].every(x => (after.json.lastImport.plan?.notes ?? []).includes(x))) await fail('还原勾选或设置套用不对：' + JSON.stringify(after.json.lastImport.plan))
 if (!(await api('GET', 'memory?q=AFTER-BACKUP-MEM')).json.items.some(m => m.content.includes('AFTER-BACKUP-MEM'))) await fail('没勾记忆库，记忆却被换掉了')
 if (!Array.isArray(after.json.selfCheck?.results) || after.json.selfCheck.results.length !== 3) await fail('还原后没自检：' + JSON.stringify(after.json.selfCheck))
 await say(() => privateMsg([text('还原以后还在吗 m200')]), '还原以后的回复')

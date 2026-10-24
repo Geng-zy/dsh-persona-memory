@@ -1,8 +1,8 @@
 # dsh-companion-core
 
-给 [dsh](https://www.npmjs.com/package/@deepseek-ai/dsh)（DeepSeek Harness）用的陪伴插件：让一个角色的人格和记忆放在会话外面，换会话、换电脑都还是她。为 QQ 陪伴 AI「大肥鱼」写，配合 [dsh-napcat-bridge](https://github.com/Geng-zy/dsh-napcat-bridge)（≥ 0.7.0，建议 0.8.0：带发消息节奏）使用；不装它也能用，只是没有 QQ 会话的分类和消息存档。
+给 [dsh](https://www.npmjs.com/package/@deepseek-ai/dsh)（DeepSeek Harness）用的陪伴插件：让一个角色的人格和记忆放在会话外面，换会话、换电脑都还是她。为 QQ 陪伴 AI「大肥鱼」写，配合它的搭档 [dsh-napcat-bridge](https://github.com/Geng-zy/dsh-napcat-bridge)（插件一，负责 QQ 收发）使用；不装它也能用，只是没有 QQ。**两个一起从零部署的步骤和一键脚本见下面「部署」。**
 
-当前是 **0.5.x（阶段 5，设计方案全部做完）**：人格、核心记忆、上下文管理、消息存档、长期记忆（整理、召回、主动记忆工具、两级遗忘、向量检索、图记忆双路检索）、群聊上下文、日记和月度总览、存档到期和会话轮换、主动聊天、记忆自动清理和定期整合、备份与迁移。
+设计方案已全部做完：人格、核心记忆、上下文管理、消息存档、长期记忆（整理、召回、主动记忆工具、两级遗忘、向量检索、图记忆双路检索）、群聊上下文、日记和月度总览、存档到期和会话轮换、主动聊天、记忆自动清理和定期整合、备份与迁移。
 
 ## 它做什么
 
@@ -48,15 +48,80 @@
 | dsh 里直接开的会话（只有主人能打开 dsh） | 主人 |
 | id 是 `napcat-…` 但插件一没登记的会话（例如在 dsh 网页里打开了一个 QQ 会话） | 按 id 归到群聊或其他私聊，**不当主人** |
 
+## 部署：从零装好整套 QQ 陪伴 AI
+
+本插件和 [dsh-napcat-bridge](https://github.com/Geng-zy/dsh-napcat-bridge) 是一套，互相补充：**dsh-napcat-bridge**（插件一）负责连 NapCat、收发 QQ 消息、发消息节奏；**dsh-companion-core**（插件二）负责人格、核心记忆、长期记忆、日记、主动聊天、备份迁移。只装本插件也能在 dsh 网页里用（人格、记忆照样生效），但没有 QQ；一键部署脚本就在本仓库的 `deploy/` 里，会把两个插件一起装好。
+
+需要：一台 Ubuntu 22.04 / 24.04 服务器（建议 2 核 4G，NapCat 里的 QQ 要占 1G 左右内存）、一个能 sudo 的普通用户（比如云服务器自带的 `ubuntu`）、一个 QQ 小号、一个 DeepSeek API Key。
+
+### 方式一：一键脚本（推荐）
+
+服务器**连得上 GitHub**，就在服务器上：
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/Geng-zy/dsh-companion-core/main/deploy/install-server.sh
+bash install-server.sh --admin <你的 QQ 号> --bot-qq <小号 QQ 号>
+```
+
+服务器**连不上 GitHub**（国内云服务器常见），就在自己电脑上（Mac / Linux，要有 curl、python3、ssh）：
+
+```bash
+git clone https://github.com/Geng-zy/dsh-companion-core
+dsh-companion-core/deploy/deploy.sh ubuntu@<服务器 IP> --admin <你的 QQ 号> --bot-qq <小号 QQ 号>
+```
+
+`deploy.sh` 先在你电脑上下好两个插件的最新版、NapCat 和它的安装脚本（核对 GitHub 给的 SHA-256），传到服务器，再运行同一个 `install-server.sh`。Node 和 dsh 从国内镜像（npmmirror）装，不走 GitHub。
+
+脚本做的事（可以重复跑，装过的跳过，已有的配置不覆盖）：
+
+1. 装 ffmpeg 等系统软件；建一个没有 sudo 的用户 `dafeiyu` 专门跑 dsh（她能在自己目录里执行命令，碰不到系统）。
+2. 在这个用户下装 Node 24、dsh 0.2.1-rc.2 和两个插件。
+3. 写好 dsh 的配置：登录记住 365 天、信任公网地址、主人 QQ；**随机生成插件一和 NapCat 之间的连接 Token，两边同时写好，不打印**。
+4. 装 NapCat（官方安装脚本），把「WebSocket 客户端」连接配置写好。
+5. 把 dsh 和 NapCat 做成开机自启、挂了自动重启的服务。
+
+跑完还剩几步，脚本最后会逐条提示：
+
+1. 云服务器安全组放行 dsh 网页端口 3080（建议只放行自己的 IP），用脚本最后打印的带 token 的链接打开网页（浏览器记住 365 天）。不想开端口就走 SSH 隧道。
+2. 网页里「设置 → 模型」填 DeepSeek API Key。想用 **DeepSeek 账号登录**的话，dsh 只允许在 `localhost` 地址上登录账号：先 `ssh -L 3080:<内网 IP>:3080 ubuntu@<服务器>`，再在本机打开 `http://localhost:3080/?token=…` 登录。
+3. 扫码登录 QQ 小号（二维码路径和 NapCat 网页地址脚本会告诉你）。
+4. 在侧栏「插件」里两个插件的设置页调白名单、唤醒词、人格、核心记忆等。
+
+| 端口 | 谁 | 要不要在安全组放行 |
+|---|---|---|
+| 3080 | dsh 网页（含两个插件的设置页） | 想从公网直接打开就放行；否则用 SSH 隧道 |
+| 6199 | 插件一，NapCat 连进来 | 不用（同一台机器走本机） |
+| 6099 | NapCat 网页（扫码、改设置） | 自己定；用完可以关 |
+
+### 方式二：手动
+
+1. 装 Node 24 和 dsh：`npm install -g @deepseek-ai/dsh@0.2.1-rc.2`（国内可以先 `npm config set registry https://registry.npmmirror.com/`）。
+2. 装两个插件：
+   ```bash
+   dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.11.2 github:Geng-zy/dsh-companion-core#v0.8.1
+   ```
+   服务器连不上 GitHub 时，到两个仓库的 Releases 页面下载 `.tgz`，传上去后 `dsh plugin --profile web add ./xxx.tgz`。
+3. 启动网页：本机用 `dsh web`；服务器上 `dsh web --host <内网 IP> --port 3080`（dsh 不接受 0.0.0.0），并在 `~/.dsh/profiles/web/cordis.patch.yml` 里信任公网地址：
+   ```yaml
+   - id: connection
+     name: '@deepseek-ai/dsh-client-connection'
+     config:
+       cookieMaxAgeDays: 365
+       trustedHosts: [ '<公网 IP>:3080' ]
+   ```
+4. 打开插件一的设置页：「连接」里点「随机生成 Token」→ 保存；「权限」里填主人 QQ。
+5. 装 [NapCat](https://github.com/NapNeko/NapCatQQ)，扫码登录小号，在「网络配置」里新建 **WebSocket 客户端**：URL `ws://127.0.0.1:6199/ws`、消息格式 `array`、Token 和插件一一样。插件一设置页「测试连接」显示已连上就好了。
+6. 插件二不用额外配置：装上后「陪伴模式」预设自动成为默认预设，QQ 会话和新开的 dsh 任务都用它。在它的设置页写人格和核心记忆。
+
 ## 安装
 
 ```bash
-dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.8.0
+dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.8.1
 ```
 
 装好后：
 1. 重启 dsh。插件会自动加一个 **「陪伴模式」预设**（id `companion`）：工具照抄 dsh 0.2.1 的标准模式，不带 `dsh-persona`，压缩换成本插件的上下文管理。
-2. 在 dsh「设置 → Agent 预设」里把「陪伴模式」设成**新任务默认**；dsh-napcat-bridge 设置页「默认的 Agent 预设」填 `companion`。（已经开着的会话锁定了原来的预设，要新开会话才用上上下文管理；人格和核心记忆不受这个限制。）
+2. 插件同时把「陪伴模式」设成 dsh 的部署默认预设，新开的 dsh 任务和没单独设预设的 QQ 会话都用它（你在网页里另选了默认预设时以你选的为准；已经开着的会话锁定了原来的预设，要新开会话才用上）。
 3. 在侧栏 **插件 → dsh-companion-core** 打开设置页，填人格和核心记忆。
 
 人格留空时不替换，用预设原来的人格。
@@ -71,7 +136,9 @@ dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.8.0
 
 装上本插件后，dsh 的默认预设就是「陪伴模式」（id `companion`）：新开的 dsh 会话、没单独设预设的 QQ 会话（dsh-napcat-bridge ≥ 0.9.1）都用它；你在 dsh 网页里另选了默认预设时以你选的为准。
 
-人格只在本插件的设置页改；`AGENTS.md` 里别再写人格，否则会叠在一起。写代码用的预设可以加进「不生效的预设」，这些会话保持 dsh 原样。
+**只有「生效的预设」（`personaPresets`，默认只有 `companion`）的会话才会被套上人格、核心记忆、召回和上下文管理。** 别的插件带来的预设（写代码的、翻译的……）保持它们自己的样子，不会变成你的角色；想让所有预设都套就填 `*`。另有「不生效的预设」可以单独排除。
+
+人格只在本插件的设置页改；`AGENTS.md` 里别再写人格，否则会叠在一起。
 
 ## 设置页
 
@@ -106,6 +173,7 @@ dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.8.0
 
 | 配置 | 默认值 | 说明 |
 |---|---|---|
+| `personaPresets` | `["companion"]` | 生效的预设 id：只有这些预设的会话才套人格、核心记忆、召回和上下文管理；`*` = 所有预设。别的插件带来的预设保持原样 |
 | `excludedPresets` | `[]` | 不生效的预设 id |
 | `personaOnly` | `true` | 去掉 dsh 的编程助手身份句 |
 | `selfEdit` | `true` | 主人会话里给她改人格/核心记忆的工具 |
