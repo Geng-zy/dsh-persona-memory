@@ -1,5 +1,10 @@
 # 更新记录
 
+## 0.11.2
+
+- 设置页「连接」加了「随机生成 Token」：生成一个 64 位随机 Token 填进框里（保存后生效），可以一键复制，旁边写明 NapCat 那边 WebSocket 客户端该填的地址和格式。手动部署不用再自己想 Token。
+- README 加了「部署：从零装好整套 QQ 陪伴 AI」：一键脚本（在 dsh-companion-core 仓库的 `deploy/`）和手动步骤，并写明和 dsh-companion-core 是一套。
+
 ## 0.11.1
 
 - 设置页「ffmpeg 位置」：找到 ffmpeg 后，框里（留空时）显示它的完整路径；状态那行也写出路径。系统里装的也会在 PATH 里找出具体位置（例如 `/usr/bin/ffmpeg`），不再只写「系统里的」。
