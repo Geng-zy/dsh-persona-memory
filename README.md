@@ -51,7 +51,7 @@
 ## 安装
 
 ```bash
-dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.7.1
+dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.7.2
 ```
 
 装好后：
@@ -122,7 +122,7 @@ dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.7.1
 | `rules` | `[]` | 例外规则：`{ target, kind: user|group, maxRounds?, dropRounds?, mode?, archiveDays?, archiveUnwoken?: on|off, forgetMode?: normal|purge, proactive?: on|off, note? }` |
 | `archiveEnabled` / `archiveUnwoken` | `true` / `true` | 消息存档；存没唤醒她的群消息 |
 | `archiveDaysMaster` / `archiveDaysOthers` | `365` / `5` | 保留天数 |
-| `recallEnabled` / `recallTopK` | `true` / `6` | 每轮自动想起几条 |
+| `recallEnabled` / `recallTopKMaster` / `recallTopK` | `true` / `10` / `6` | 每轮自动想起几条：主人的会话 / 别人的私聊和群聊（群里只想得起这个群的和公开的记忆） |
 | `keywordThreshold` / `vectorThreshold` / `keywordWeight` | `0.3` / `0.45` / `0.3` | 门槛和关键词占比 |
 | `importanceWeight` / `recencyWeight` / `groupDiscount` / `halfLifeDays` | `0.2` / `0.1` / `0.7` / `30` | 排名权重、群记忆折扣、半衰期 |
 | `activeMemory` | `true` | 回忆/记住/遗忘工具 |

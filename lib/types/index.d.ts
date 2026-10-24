@@ -41,6 +41,7 @@ export interface Config {
     archiveDaysOthers: number;
     recallEnabled: boolean;
     recallTopK: number;
+    recallTopKMaster: number;
     keywordThreshold: number;
     vectorThreshold: number;
     keywordWeight: number;

@@ -79,6 +79,7 @@ export interface Config {
   archiveDaysOthers: number
   recallEnabled: boolean
   recallTopK: number
+  recallTopKMaster: number
   keywordThreshold: number
   vectorThreshold: number
   keywordWeight: number
@@ -192,7 +193,8 @@ export const Config: z<LiveConfig> = z.object({
   archiveDaysOthers: z.natural().min(1).default(5).volatile().description('其他私聊和群聊存档保留天数'),
   // 记忆召回
   recallEnabled: z.boolean().default(true).volatile().description('每轮自动想起相关的记忆'),
-  recallTopK: z.natural().default(6).volatile().description('每轮最多想起几条'),
+  recallTopK: z.natural().default(6).volatile().description('每轮最多想起几条（别人的私聊和群聊）'),
+  recallTopKMaster: z.natural().default(10).volatile().description('每轮最多想起几条（主人的会话：QQ 私聊和 dsh 里的会话）'),
   keywordThreshold: z.number().min(0).max(1).default(0.3).volatile().description('只用关键词时的相关度门槛'),
   vectorThreshold: z.number().min(0).max(1).default(0.45).volatile().description('用向量时的相似度门槛'),
   keywordWeight: z.number().min(0).max(1).default(0.3).volatile().description('用向量时关键词占的比重'),
@@ -620,7 +622,7 @@ export function apply(ctx: Context, live: LiveConfig): void {
       if (!get('recallEnabled')) return withOpening
       const query = queryText(human.map(m => (Array.isArray(m.content) ? m.content : []).filter((b: any) => b?.type === 'text').map((b: any) => String(b.text)).join('\n')).join('\n'))
       if (query === '') return withOpening
-      const found = await search(s0, query, get('recallTopK'))
+      const found = await search(s0, query, s0.category === 'master' ? get('recallTopKMaster') : get('recallTopK'))
       if (found.length === 0) return withOpening
       const text = formatRecall(found)
       log('debug', '会话 ' + agent.session.id + ' 想起了 ' + found.length + ' 条记忆')
