@@ -11,6 +11,7 @@ import { findFfmpeg, installFfmpeg, platformTag, type InstallState } from './ffm
 import { Media, type ModelPart } from './media.js'
 import type { Logger } from './onebot/server.js'
 import { SessionStore, defaultDataDir } from './store.js'
+import { testStt } from './stt.js'
 import { join } from 'node:path'
 
 export * from './adapter.js'
@@ -398,6 +399,11 @@ export function apply(ctx: Context, live: LiveConfig): void {
     }
     if (path.endsWith('/napcat-bridge/status')) return json(200, await status())
     if (path.endsWith('/napcat-bridge/ffmpeg') && req.method === 'GET') return json(200, await ffmpegStatus(true))
+    // 设置页「测试」语音转文字：POST <dsh>/api/napcat-bridge/stt/test（用保存过的设置，拿一段静音试）
+    if (path.endsWith('/napcat-bridge/stt/test')) {
+      if (req.method !== 'POST') return json(405, { error: 'POST only' })
+      return json(200, await testStt(sttSettings()))
+    }
     if (path.endsWith('/napcat-bridge/ffmpeg/install')) {
       if (req.method !== 'POST') return json(405, { error: 'POST only' })
       startInstall()

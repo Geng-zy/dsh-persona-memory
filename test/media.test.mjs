@@ -104,3 +104,36 @@ test('一键安装：连不上 GitHub 时告诉怎么用系统软件源装', asy
     /连不上 GitHub[\s\S]*sudo apt install -y ffmpeg[\s\S]*fetch failed/,
   )
 })
+
+test('语音转文字的测试按钮：命令方式和接口方式都拿一秒静音试，失败时说原因', async () => {
+  const { testStt, silentWav } = await import('../lib/stt.js')
+  assert.equal(silentWav(1000).length, 44 + 32000)
+  const dir = mkdtempSync(join(tmpdir(), 'stt-test-'))
+  const script = join(dir, 'fake-stt.sh')
+  writeFileSync(script, '#!/bin/sh\n[ -s "$1" ] && echo 静音\n')
+  chmodSync(script, 0o755)
+  const base = { mode: 'command', command: script + ' {file}', apiUrl: '', apiKey: '', model: '' }
+  const r1 = await testStt(base)
+  assert.equal(r1.ok, true); assert.equal(r1.text, '静音')
+  assert.deepEqual(await testStt({ ...base, mode: 'off' }), { ok: false, error: '语音转文字关着' })
+  const { createServer } = await import('node:http')
+  let seen
+  const server = createServer((req, res) => {
+    let body = ''
+    req.on('data', c => { body += c.toString('latin1') })
+    req.on('end', () => {
+      seen = { auth: req.headers.authorization, url: req.url, hasWav: body.includes('RIFF') && body.includes('test-model') }
+      if (req.headers.authorization !== 'Bearer good') { res.writeHead(401); res.end('{"message":"Invalid token"}'); return }
+      res.writeHead(200, { 'content-type': 'application/json' }); res.end('{"text":""}')
+    })
+  })
+  await new Promise(r => server.listen(0, '127.0.0.1', r))
+  const url = 'http://127.0.0.1:' + server.address().port + '/v1'
+  const ok = await testStt({ mode: 'openai', command: '', apiUrl: url, apiKey: 'good', model: 'test-model' })
+  assert.equal(ok.ok, true)
+  assert.deepEqual(seen, { auth: 'Bearer good', url: '/v1/audio/transcriptions', hasWav: true })
+  const bad = await testStt({ mode: 'openai', command: '', apiUrl: url, apiKey: 'bad', model: 'test-model' })
+  assert.equal(bad.ok, false); assert.match(bad.error, /HTTP 401.*Invalid token/)
+  assert.doesNotMatch(bad.error, /bad/, '错误信息里不带 Key')
+  server.close()
+})

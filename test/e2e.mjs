@@ -311,6 +311,14 @@ await waitFor(() => modelRequests.length > before13, '视频消息交给模型')
 if (modelRequests.slice(before13)[0] !== '[视频]') await fail('视频消息模型收到的不对：' + JSON.stringify(modelRequests.slice(before13)))
 log('视频占位 OK')
 
+// 13b. 语音转文字的测试按钮：要先登录；测试环境里关着，就说关着
+const anonStt = await fetch(webBase + 'api/napcat-bridge/stt/test', { method: 'POST' })
+if (anonStt.status !== 401) await fail('没登录也能访问语音测试接口：' + anonStt.status)
+const sttRes = await fetch(webBase + 'api/napcat-bridge/stt/test', { method: 'POST', headers: { cookie } })
+const sttJson = sttRes.ok ? await sttRes.json() : null
+if (!sttJson || sttJson.ok !== false || sttJson.error !== '语音转文字关着') await fail('语音测试接口返回不对：' + sttRes.status + ' ' + JSON.stringify(sttJson))
+log('语音转文字测试接口 OK（需登录）')
+
 // 14. ffmpeg 状态接口：要先登录；返回有没有 ffmpeg、能不能一键安装
 const anonFf = await fetch(webBase + 'api/napcat-bridge/ffmpeg')
 if (anonFf.status !== 401) await fail('没登录也能访问 ffmpeg 接口：' + anonFf.status)
