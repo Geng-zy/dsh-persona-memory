@@ -7,6 +7,7 @@ import type { Media, ModelPart } from './media.js';
 import type { SttSettings } from './stt.js';
 import type { SessionStore } from './store.js';
 import { type PaceSettings } from './pacer.js';
+import { type SegmentSettings } from './segment.js';
 import type { Logger } from './onebot/server.js';
 declare module '@deepseek-ai/dsh-llm' {
     interface MessageSourceMap {
@@ -144,6 +145,8 @@ export interface BridgeSettings {
     silenceToken: string;
     /** 发消息的节奏：打字速度、群里的发言频率（本插件新增，见 pacer.ts） */
     pace: PaceSettings;
+    /** 分段发送（本插件新增，见 segment.ts） */
+    segment: SegmentSettings;
 }
 /** 一个 dsh 会话对应哪个 QQ 会话（本插件新增，给其他插件按会话分规则用）。 */
 export interface SessionInfo {

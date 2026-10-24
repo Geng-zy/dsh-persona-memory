@@ -73,6 +73,10 @@ export interface Config {
     groupMaxPerWindow: number;
     groupWindowSeconds: number;
     sendMaxWaitSeconds: number;
+    segmentAdminPrivate: boolean;
+    segmentPrivate: boolean;
+    segmentGroup: boolean;
+    segmentMax: number;
     logLevel: 'debug' | 'info' | 'warn' | 'error';
 }
 /** 插件收到的配置：每项都是可实时读取的引用（.get()），设置页保存后立即更新。 */

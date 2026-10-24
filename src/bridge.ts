@@ -22,6 +22,7 @@ import { extractForwards, extractQuoted } from './quoted.js'
 import type { SttSettings } from './stt.js'
 import type { SessionStore } from './store.js'
 import { Pacer, type PaceSettings } from './pacer.js'
+import { segmentEnabled, splitReply, type SegmentSettings } from './segment.js'
 import type { Logger } from './onebot/server.js'
 
 declare module '@deepseek-ai/dsh-llm' {
@@ -112,6 +113,8 @@ export interface BridgeSettings {
   silenceToken: string
   /** 发消息的节奏：打字速度、群里的发言频率（本插件新增，见 pacer.ts） */
   pace: PaceSettings
+  /** 分段发送（本插件新增，见 segment.ts） */
+  segment: SegmentSettings
 }
 
 /** 一个 dsh 会话对应哪个 QQ 会话（本插件新增，给其他插件按会话分规则用）。 */
@@ -746,14 +749,21 @@ export class Bridge {
         this.deps.log('info', umo + '：她决定不发')
         return
       }
-      const reply: MessageChain = { chain: [Plain(text)] }
-      // 本插件新增：像真人一样按打字速度等一会儿，群里守发言频率
-      void this.pacer.run(umo, chat.info.type === 'group', text, () => chat.send(reply)).then(result => {
-        if (result === 'dropped') return
-        this.notifySent({ umo, session: chat.session, text, chain: reply, source: 'reply', time: Date.now() })
-      }, e => {
-        this.deps.log('error', '发送回复失败（' + umo + '）: ' + (e instanceof Error ? e.message : String(e)))
-      })
+      // 本插件新增：分段发送（按设置拆成几条），每一条都像真人一样按打字速度等一会儿，群里守发言频率
+      const settings = this.deps.settings()
+      const isGroup = chat.info.type === 'group'
+      const segments = segmentEnabled(settings.segment, { group: isGroup, adminPrivate: chat.info.adminPrivate })
+        ? splitReply(text, settings.segment.maxSegments)
+        : [text]
+      for (const segment of segments) {
+        const reply: MessageChain = { chain: [Plain(segment)] }
+        void this.pacer.run(umo, isGroup, segment, () => chat.send(reply)).then(result => {
+          if (result === 'dropped') return
+          this.notifySent({ umo, session: chat.session, text: segment, chain: reply, source: 'reply', time: Date.now() })
+        }, e => {
+          this.deps.log('error', '发送回复失败（' + umo + '）: ' + (e instanceof Error ? e.message : String(e)))
+        })
+      }
     }
   }
 

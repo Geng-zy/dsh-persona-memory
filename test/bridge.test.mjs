@@ -33,6 +33,7 @@ function settings(over = {}) {
     stt: { mode: 'off', command: '', apiUrl: '', apiKey: '', model: '' },
     video: { enabled: true, maxFrames: 4, secondsPerFrame: 5, maxEdge: 1024, maxMB: 100, maxMinutes: 10, timeoutSeconds: 30, ffmpegPath: '/nonexistent/ffmpeg' },
     silenceToken: '[不发]',
+    segment: { adminPrivate: false, private: false, group: false, maxSegments: 10 },
     pace: { typingPrivate: false, typingGroup: false, charsPerMinute: 0, typingMinSeconds: 0, typingMaxSeconds: 0, groupMinGapSeconds: 0, groupMaxPerWindow: 0, groupWindowSeconds: 60, maxWaitSeconds: 120 },
     ...over,
   }
@@ -313,6 +314,19 @@ test('rotateSession：换新的 dsh 会话，发 napcat/session-changed，下一
   assert.equal(h.events.prompt[1].newSession, true)
   await h.privateMsg(8, [text('/new')])
   assert.equal(h.events.changed[1].reason, 'command')
+})
+
+test('分段发送：主人私聊按行拆成几条、按顺序发，每条都通知；别人私聊不拆', async () => {
+  const h = harness({ segment: { adminPrivate: true, private: false, group: false, maxSegments: 3 } }, memberInfo)
+  await h.privateMsg(Number(ADMIN), [text('在吗')])
+  h.turn(String(h.created[0].sessionId), '在的\n\n刚刚在摸鱼\n想你了\n真的')
+  await new Promise(r => setTimeout(r, 30))
+  assert.deepEqual(h.sent.map(m => m.text), ['在的', '刚刚在摸鱼', '想你了\n真的'], '最多 3 条，多的并进最后一条')
+  assert.deepEqual(h.events.sent.map(e => e.text), ['在的', '刚刚在摸鱼', '想你了\n真的'])
+  await h.privateMsg(8, [text('你好')])
+  h.turn(String(h.created[1].sessionId), '你好呀\n我是大肥鱼')
+  await new Promise(r => setTimeout(r, 30))
+  assert.equal(h.sent.at(-1).text, '你好呀\n我是大肥鱼')
 })
 
 test('napcat/sent：她一轮说完、回复发出去以后通知其他插件', async () => {

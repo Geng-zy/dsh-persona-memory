@@ -52,3 +52,15 @@ test('打字等待和发送顺序：长的先排就先发', async () => {
   assert.deepEqual(out, ['长', '短'])
   assert.deepEqual(c.waits, [27_000, 3_000])
 })
+
+test('分段：按行拆、去空行、代码块不拆、超过上限并进最后一条；开关按会话类型', async () => {
+  const { splitReply, segmentEnabled } = await import('../lib/segment.js')
+  assert.deepEqual(splitReply('嗯\n\n  好呀  \n', 10), ['嗯', '好呀'])
+  assert.deepEqual(splitReply('看这个\n```js\nconst a = 1\n\nconst b = 2\n```\n懂了吗', 10), ['看这个', '```js\nconst a = 1\n\nconst b = 2\n```', '懂了吗'])
+  assert.deepEqual(splitReply('一\n二\n三\n四', 2), ['一', '二\n三\n四'])
+  assert.deepEqual(splitReply('只有一句', 1), ['只有一句'])
+  const s = { adminPrivate: true, private: false, group: false, maxSegments: 10 }
+  assert.equal(segmentEnabled(s, { group: false, adminPrivate: true }), true)
+  assert.equal(segmentEnabled(s, { group: false, adminPrivate: false }), false)
+  assert.equal(segmentEnabled(s, { group: true, adminPrivate: false }), false)
+})
