@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
 
-import { checksumFor, formatDuration, installFfmpeg, parseDuration, pickAsset, planFrames, platformTag } from '../lib/ffmpeg.js'
+import { checksumFor, formatDuration, installFfmpeg, onPath, parseDuration, pickAsset, planFrames, platformTag } from '../lib/ffmpeg.js'
 
 const S = { maxFrames: 4, secondsPerFrame: 5 }
 
@@ -136,4 +136,16 @@ test('语音转文字的测试按钮：命令方式和接口方式都拿一秒�
   assert.equal(bad.ok, false); assert.match(bad.error, /HTTP 401.*Invalid token/)
   assert.doesNotMatch(bad.error, /bad/, '错误信息里不带 Key')
   server.close()
+})
+
+test('在 PATH 里找出程序的完整路径', async () => {
+  const { mkdtempSync, writeFileSync, chmodSync, mkdirSync } = await import('node:fs')
+  const { join, delimiter } = await import('node:path')
+  const { tmpdir } = await import('node:os')
+  const root = mkdtempSync(join(tmpdir(), 'napcatb-path-'))
+  mkdirSync(join(root, 'a')); mkdirSync(join(root, 'b'))
+  writeFileSync(join(root, 'b', 'ffmpeg'), '#!/bin/sh\n'); chmodSync(join(root, 'b', 'ffmpeg'), 0o755)
+  writeFileSync(join(root, 'a', 'ffmpeg'), 'not executable'); chmodSync(join(root, 'a', 'ffmpeg'), 0o644)
+  if (process.platform !== 'win32') assert.equal(await onPath('ffmpeg', { PATH: [join(root, 'a'), join(root, 'b')].join(delimiter) }), join(root, 'b', 'ffmpeg'))
+  assert.equal(await onPath('ffmpeg', { PATH: join(root, 'nothing') }), 'ffmpeg')
 })

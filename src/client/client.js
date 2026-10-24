@@ -138,7 +138,8 @@ window.__ModuleLoader__.load({
 			ffmpegPath: "ffmpeg 位置",
 			ffmpegPathHint: "一般不用填。留空时先找下面「安装」装到插件目录里的，再找系统里的。",
 			ffmpegChecking: "正在查找 ffmpeg…",
-			ffmpegFound: "已找到 ffmpeg（{source}）：{version}",
+			ffmpegFound: "已找到 ffmpeg（{source}）：{path} · {version}",
+			ffmpegPathAuto: "留空，自动用：{path}",
 			ffmpegSourceConfigured: "上面填的位置",
 			ffmpegSourceBundled: "插件目录",
 			ffmpegSourceSystem: "系统里的",
@@ -347,7 +348,8 @@ window.__ModuleLoader__.load({
 			ffmpegPath: "ffmpeg path",
 			ffmpegPathHint: "Usually blank: the copy installed below into the plugin directory is used first, then the system one.",
 			ffmpegChecking: "Looking for ffmpeg…",
-			ffmpegFound: "ffmpeg found ({source}): {version}",
+			ffmpegFound: "ffmpeg found ({source}): {path} · {version}",
+			ffmpegPathAuto: "Blank, using: {path}",
 			ffmpegSourceConfigured: "configured path",
 			ffmpegSourceBundled: "plugin directory",
 			ffmpegSourceSystem: "system",
@@ -650,6 +652,7 @@ window.__ModuleLoader__.load({
 				resetLabel: t("reset"),
 				invalidLabel: props.invalidLabel || t("invalid"),
 				numeric: props.numeric === true,
+				placeholder: props.placeholder,
 				disabled: props.disabled
 			}, props.state[props.field], {
 				onEdit: function (text) { props.edit(props.field, text); },
@@ -738,7 +741,7 @@ window.__ModuleLoader__.load({
 			function load(method, path) {
 				return fetch(url(path), { method: method, credentials: "same-origin", cache: "no-store" })
 					.then(function (res) { if (!res.ok) throw new Error("HTTP " + res.status); return res.json(); })
-					.then(function (next) { setErr(null); setSt(next); return next; },
+					.then(function (next) { setErr(null); setSt(next); if (props.onFound) props.onFound(next && next.found ? next.found.path : null); return next; },
 						function (error) { setErr(error && error.message || String(error)); });
 			}
 			React.useEffect(function () { load("GET", "ffmpeg"); }, []);
@@ -762,7 +765,7 @@ window.__ModuleLoader__.load({
 			else {
 				if (st.found) {
 					var source = t(st.found.source === "configured" ? "ffmpegSourceConfigured" : st.found.source === "bundled" ? "ffmpegSourceBundled" : "ffmpegSourceSystem");
-					lines.push({ tone: "ok", text: t("ffmpegFound", { source: source, version: st.found.version }) });
+					lines.push({ tone: "ok", text: t("ffmpegFound", { source: source, path: st.found.path, version: st.found.version }) });
 				} else {
 					lines.push({ tone: "warn", text: t("ffmpegMissing") });
 					if (!st.installSupported) lines.push({ tone: "hint", text: t("ffmpegUnsupported", { platform: st.platform }) });
@@ -826,6 +829,8 @@ window.__ModuleLoader__.load({
 			var common = { t: t, state: state, disabled: disabled, edit: props.edit, resetField: props.resetField };
 			var sttMode = state.sttMode.text || "off";
 			var tabHook = React.useState(readTab), tab = tabHook[0], setTab = tabHook[1];
+			// 找到的 ffmpeg 在哪（「ffmpeg 位置」留空时显示在框里）
+			var ffHook = React.useState(null), ffmpegAt = ffHook[0], setFfmpegAt = ffHook[1];
 			var reasoningOptions = REASONING.map(function (v) { return { value: v, label: t("reasoning" + v.charAt(0).toUpperCase() + v.slice(1)) }; });
 			return h(P.SettingsForm, {
 				labels: { unavailable: t("unavailable"), readOnly: t("readOnly"), saveFailed: t("saveFailed"), save: t("save"), saving: t("saving") },
@@ -902,14 +907,14 @@ window.__ModuleLoader__.load({
 						sttMode !== "off" ? h(SttTest, { t: t, dirty: state.dirty }) : null),
 					h(Section, { key: "v", title: t("video"), hint: t("videoHint") },
 						h(Toggle, Object.assign({ field: "videoFrames", label: t("videoFrames"), hint: t("videoFramesHint") }, common)),
-						h(FfmpegStatus, { t: t }),
+						h(FfmpegStatus, { t: t, onFound: setFfmpegAt }),
 						G(h(Value, Object.assign({ field: "videoMaxFrames", label: t("videoMaxFrames"), hint: t("videoMaxFramesHint"), numeric: true, invalidLabel: t("invalidPositive") }, common)),
 							h(Value, Object.assign({ field: "videoSecondsPerFrame", label: t("videoSecondsPerFrame"), hint: t("videoSecondsPerFrameHint"), numeric: true, invalidLabel: t("invalidPositive") }, common)),
 							h(Value, Object.assign({ field: "videoMaxEdge", label: t("videoMaxEdge"), hint: t("videoMaxEdgeHint"), numeric: true, invalidLabel: t("invalid") }, common)),
 							h(Value, Object.assign({ field: "videoMaxMB", label: t("videoMaxMB"), hint: t("videoMaxMBHint"), numeric: true, invalidLabel: t("invalidPositive") }, common)),
 							h(Value, Object.assign({ field: "videoMaxMinutes", label: t("videoMaxMinutes"), hint: t("videoMaxMinutesHint"), numeric: true, invalidLabel: t("invalidPositive") }, common)),
 							h(Value, Object.assign({ field: "videoTimeoutSeconds", label: t("videoTimeout"), hint: t("videoTimeoutHint"), numeric: true, invalidLabel: t("invalid") }, common))),
-						h(Value, Object.assign({ field: "ffmpegPath", label: t("ffmpegPath"), hint: t("ffmpegPathHint") }, common)))
+						h(Value, Object.assign({ field: "ffmpegPath", label: t("ffmpegPath"), hint: t("ffmpegPathHint"), placeholder: ffmpegAt ? t("ffmpegPathAuto", { path: ffmpegAt }) : void 0 }, common)))
 				] : null,
 				tab === "send" ? h(Section, { title: t("paceSec"), hint: t("paceHint") },
 					Sub(t("typingSub")),

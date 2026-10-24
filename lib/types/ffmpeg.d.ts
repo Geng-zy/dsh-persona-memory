@@ -31,6 +31,8 @@ export interface FfmpegFound {
     version: string;
     source: 'configured' | 'bundled' | 'system';
 }
+/** 在 PATH 里找到程序的完整路径（设置页要显示 ffmpeg 具体在哪）；找不到就原样返回名字。 */
+export declare function onPath(name: string, env?: NodeJS.ProcessEnv): Promise<string>;
 /** 找 ffmpeg：设置里填的 → 插件目录里装的 → 系统 PATH 上的。结果缓存一分钟。 */
 export declare function findFfmpeg(configured: string, fresh?: boolean): Promise<FfmpegFound | undefined>;
 /** 从 `ffmpeg -i` 的输出里读时长：Duration: 00:01:02.50 */

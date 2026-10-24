@@ -5,8 +5,9 @@
 import { execFile } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { createWriteStream } from 'node:fs'
-import { chmod, mkdir, readdir, rename, rm, stat } from 'node:fs/promises'
-import { join } from 'node:path'
+import { constants } from 'node:fs'
+import { access, chmod, mkdir, readdir, rename, rm, stat } from 'node:fs/promises'
+import { delimiter, join } from 'node:path'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import { defaultDataDir } from './store.js'
@@ -80,6 +81,22 @@ export interface FfmpegFound { path: string; version: string; source: 'configure
 let cache: { key: string; at: number; value: FfmpegFound | undefined } | undefined
 const CACHE_MS = 60_000
 
+/** 在 PATH 里找到程序的完整路径（设置页要显示 ffmpeg 具体在哪）；找不到就原样返回名字。 */
+export async function onPath(name: string, env: NodeJS.ProcessEnv = process.env): Promise<string> {
+  const exts = process.platform === 'win32' ? (env.PATHEXT ?? '.EXE').split(';') : ['']
+  for (const dir of (env.PATH ?? '').split(delimiter)) {
+    if (dir === '') continue
+    for (const ext of exts) {
+      const p = join(dir, name + ext)
+      try {
+        await access(p, constants.X_OK)
+        if ((await stat(p)).isFile()) return p
+      } catch { /* 这里没有 */ }
+    }
+  }
+  return name
+}
+
 /** 找 ffmpeg：设置里填的 → 插件目录里装的 → 系统 PATH 上的。结果缓存一分钟。 */
 export async function findFfmpeg(configured: string, fresh = false): Promise<FfmpegFound | undefined> {
   const key = configured.trim()
@@ -89,7 +106,7 @@ export async function findFfmpeg(configured: string, fresh = false): Promise<Ffm
   for (const [path, source] of candidates) {
     const v = await version(path)
     if (v !== undefined) {
-      value = { path, version: v, source }
+      value = { path: source === 'system' ? await onPath(path) : path, version: v, source }
       break
     }
   }
