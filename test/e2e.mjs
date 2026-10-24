@@ -526,16 +526,24 @@ if (undone.json?.undone < 1 || (await api('GET', 'memory?q=CAT')).json.items.som
 log('定期整合、撤销 OK')
 
 // 17. 备份：手动备份、下载；改掉人格后从备份还原（插件自动重新加载），还原后自检
-const made = await api('POST', 'backup/create', {})
+const ALL_ITEMS = ['persona', 'core', 'diary', 'memory', 'archiveMaster', 'archiveOthers', 'settingsCompanion', 'settingsBridge', 'settingsDsh']
+const made = await api('POST', 'backup/create', { items: ALL_ITEMS })
 if (!made.json?.name) await fail('手动备份失败：' + JSON.stringify(made.json))
 const dl = await fetch(webBase0 + 'api/companion/backup/file/' + made.json.name, { headers: { cookie: cookie0 } })
 const bytes = Buffer.from(await dl.arrayBuffer())
 if (!dl.ok || bytes[0] !== 0x1f || bytes[1] !== 0x8b) await fail('下载备份不对：' + dl.status)
+// 包里有两个插件的设置，但没有 Key 和 Token
+const tarText = (await import('node:zlib')).gunzipSync(bytes).toString('utf-8')
+if (!tarText.includes('typingCharsPerMinute') || !tarText.includes('masterMaxRounds')) await fail('备份包里没有插件设置')
+if (tarText.includes(TOKEN) || tarText.includes('e2e-embed-key')) await fail('备份包里有 Key 或 Token')
 writeFileSync(personaFile, '你是 PERSONA-V4（备份之后改的）')
+// 备份之后新记的记忆：下面不还原记忆库，它应该还在
+await api('POST', 'memory/add', { scope: 'master', content: '备份之后记的 AFTER-BACKUP-MEM', kind: 'fact', importance: 0.5 })
 const preview = await api('POST', 'backup/restore', { name: made.json.name })
 const importing = preview.json?.importing
 if (!importing?.id || !(importing.manifest?.counts?.memories > 0) || JSON.stringify(importing.manifest).includes('e2e-embed-key')) await fail('还原预览不对：' + JSON.stringify(preview.json).slice(0, 500))
-const confirmed = await api('POST', 'backup/confirm', { id: importing.id })
+if (JSON.stringify(importing.manifest.items) !== JSON.stringify(ALL_ITEMS)) await fail('备份内容勾选不对：' + JSON.stringify(importing.manifest.items))
+const confirmed = await api('POST', 'backup/confirm', { id: importing.id, items: ALL_ITEMS.filter(i => i !== 'memory') })
 if (!confirmed.json?.restarting) await fail('确认还原失败：' + JSON.stringify(confirmed.json))
 let after
 for (let i = 0; i < 40; i++) {
@@ -546,6 +554,8 @@ for (let i = 0; i < 40; i++) {
 if (!after?.json?.lastImport || after.json.lastImport.error) await fail('还原后状态不对：' + JSON.stringify(after?.json?.lastImport))
 if (!readFileSync(personaFile, 'utf-8').includes('PERSONA-V3')) await fail('还原后人格不对：' + readFileSync(personaFile, 'utf-8'))
 if (!after.json.backups.some(b => b.reason === 'before-import')) await fail('还原前没有自动备份当前数据')
+if (after.json.lastImport.plan?.items?.includes('memory') || !(after.json.lastImport.plan?.notes ?? []).some(n => n.startsWith('插件一的设置：已套用'))) await fail('还原勾选或设置套用不对：' + JSON.stringify(after.json.lastImport.plan))
+if (!(await api('GET', 'memory?q=AFTER-BACKUP-MEM')).json.items.some(m => m.content.includes('AFTER-BACKUP-MEM'))) await fail('没勾记忆库，记忆却被换掉了')
 if (!Array.isArray(after.json.selfCheck?.results) || after.json.selfCheck.results.length !== 3) await fail('还原后没自检：' + JSON.stringify(after.json.selfCheck))
 await say(() => privateMsg([text('还原以后还在吗 m200')]), '还原以后的回复')
 

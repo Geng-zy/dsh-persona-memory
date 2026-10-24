@@ -8,7 +8,7 @@ import { join } from 'node:path'
 import { test } from 'node:test'
 
 import { Archive } from '../lib/archive.js'
-import { applyPendingImport, createBackup, inspectBackup, listBackups, prune } from '../lib/backup.js'
+import { applyPendingImport, createBackup, inspectBackup, listBackups, prune, readSavedSettings } from '../lib/backup.js'
 import { Care, similarGroups } from '../lib/care.js'
 import { MemoryStore } from '../lib/memory.js'
 import { Organizer } from '../lib/organizer.js'
@@ -168,7 +168,8 @@ test('备份：打包（不含别人的存档、不含 Key）、列表、每类�
   // 文件名用本地时间
   const d = new Date(Date.parse('2026-10-24T10:00:00Z')), p2 = n => String(n).padStart(2, '0')
   assert.equal(name, 'companion-manual-' + d.getFullYear() + p2(d.getMonth() + 1) + p2(d.getDate()) + '-' + p2(d.getHours()) + p2(d.getMinutes()) + '00.tar.gz')
-  assert.deepEqual(manifest.counts, { memories: 1, diaryDays: 1, months: 0, archiveMessages: 1, media: 1 })
+  assert.deepEqual(manifest.counts, { memories: 1, diaryDays: 1, months: 0, archiveMessages: 1, media: 1, othersMessages: 0 })
+  assert.ok(!manifest.items.includes('archiveOthers'), '默认不带别人的存档')
   assert.ok(!JSON.stringify(manifest).includes('embedApiKey'))
   for (let i = 1; i <= 3; i++) await createBackup({ ...opts, reason: 'auto', now: Date.parse('2026-10-2' + i + 'T04:00:00Z') })
   assert.deepEqual(listBackups(out).map(b => b.reason).sort(), ['auto', 'auto', 'manual'], '自动的只留 2 份，手动的另算')
@@ -183,15 +184,75 @@ test('备份：打包（不含别人的存档、不含 Key）、列表、每类�
   const { renameSync } = await import('node:fs')
   renameSync(work, join(dataDir, '.pending-import'))
   const applied = applyPendingImport(dataDir)
-  assert.equal(applied.counts.memories, 1)
+  assert.equal(applied.manifest.counts.memories, 1)
   assert.equal(readFileSync(join(dataDir, 'persona', 'persona.md'), 'utf-8'), '你是大肥鱼')
-  assert.equal(existsSync(join(dataDir, 'media', 'd'.repeat(64) + '.png')), false, '别人存档的图片不在包里')
+  assert.ok(!m2.files.some(f => f.path === 'media/' + 'd'.repeat(64) + '.png'), '别人存档的图片不在包里')
+  assert.ok(existsSync(join(dataDir, 'media', 'd'.repeat(64) + '.png')), '导入时图片只补不删')
   const reopened = new Archive(join(dataDir, 'companion.db'))
-  assert.deepEqual(reopened.recent('napcat:GroupMessage:5', 5), [], '别人的存档不在包里')
+  assert.equal(reopened.recent('napcat:GroupMessage:5', 5).length, 1, '别人的存档不在包里，导入时保持原样')
   assert.equal(reopened.recent('napcat:FriendMessage:42', 5).length, 1)
   reopened.close()
   assert.equal(applyPendingImport(dataDir), undefined, '没有待导入的就不动')
   // 坏包
   writeFileSync(join(dataDir, 'bad.tar.gz'), 'not a tarball')
   await assert.rejects(inspectBackup(join(dataDir, 'bad.tar.gz'), join(dataDir, '.import-bad')))
+})
+
+test('备份：按勾选打包；导入时只换勾选的部分，没勾的保持原样；存档换进来后「已整理到哪条」跟着换算', async () => {
+  const dataDir = tmp()
+  let archive = new Archive(join(dataDir, 'companion.db'))
+  let store = new MemoryStore(archive.db)
+  mkdirSync(join(dataDir, 'persona'), { recursive: true })
+  writeFileSync(join(dataDir, 'persona', 'persona.md'), '人格 A')
+  mkdirSync(join(dataDir, 'core'), { recursive: true })
+  writeFileSync(join(dataDir, 'core', 'master.md'), '核心 A')
+  const M = 'napcat:FriendMessage:42', G = 'napcat:GroupMessage:5'
+  archive.setCursor('cat:' + M, 1)
+  archive.setCursor('cat:' + G, 3)
+  const msg = (umo, text, time) => archive.add({ umo, kind: umo === M ? 'private' : 'group', type: 'message', woke: true, direction: 'in', senderName: 'x', senderId: '1', time, text })
+  msg(M, '主人 1', 1000); msg(M, '主人 2', 2000); msg(G, '群 1', 1500)
+  const firstId = archive.db.prepare('SELECT MIN(id) AS id FROM messages WHERE umo = ?').get(M).id
+  archive.setCursor('org:' + M, firstId) // 整理到第 1 条
+  store.add({ scope: 'master', content: '备份时的记忆', writer: 'settings' })
+  const out = join(dataDir, 'backups')
+  const opts = { dataDir, db: archive.db, outDir: out, plugin: 'x', schema: 5, settings: { a: 1 }, embed: {}, keep: 5 }
+  // 只备份人格和别人的存档，外加三份设置
+  const settingsFiles = { 'companion-core': { ns: 'companion-core', user: { a: 1 } }, 'napcat-bridge': { ns: 'napcat-bridge', user: { b: 2 } }, dsh: {} }
+  const small = await createBackup({ ...opts, reason: 'manual', items: ['persona', 'archiveOthers', 'settingsBridge'], settingsFiles })
+  assert.deepEqual(small.manifest.items, ['persona', 'archiveOthers', 'settingsBridge'])
+  assert.equal(small.manifest.counts.memories, 0)
+  assert.equal(small.manifest.counts.archiveMessages, 0)
+  assert.equal(small.manifest.counts.othersMessages, 1)
+  assert.deepEqual(small.manifest.settings, {}, '没勾插件二的设置')
+  const paths = small.manifest.files.map(f => f.path).sort()
+  assert.deepEqual(paths, ['companion.db', 'persona/persona.md', 'settings/napcat-bridge.json'])
+  const smallInspect = await inspectBackup(join(out, small.name), join(dataDir, '.i1'))
+  assert.deepEqual(readSavedSettings(smallInspect.dir, ['settingsBridge']), { 'napcat-bridge': { ns: 'napcat-bridge', user: { b: 2 } } })
+  // 全备份
+  const full = await createBackup({ ...opts, reason: 'manual', items: ['persona', 'core', 'diary', 'memory', 'archiveMaster', 'archiveOthers', 'settingsCompanion'], now: Date.now() + 2000 })
+  // 之后数据变了
+  writeFileSync(join(dataDir, 'persona', 'persona.md'), '人格 B')
+  writeFileSync(join(dataDir, 'core', 'master.md'), '核心 B')
+  store.add({ scope: 'master', content: '备份之后的记忆', writer: 'settings' })
+  msg(G, '群 2（备份之后）', 3000)
+  archive.close()
+  // 只还原人格和主人的存档
+  const { renameSync } = await import('node:fs')
+  const work = (await inspectBackup(join(out, full.name), join(dataDir, '.i2'))).dir
+  writeFileSync(join(work, 'restore.json'), JSON.stringify({ items: ['persona', 'archiveMaster'], notes: ['n'] }))
+  renameSync(work, join(dataDir, '.pending-import'))
+  const applied = applyPendingImport(dataDir)
+  assert.deepEqual(applied.plan.items, ['persona', 'archiveMaster'])
+  assert.equal(readFileSync(join(dataDir, 'persona', 'persona.md'), 'utf-8'), '人格 A')
+  assert.equal(readFileSync(join(dataDir, 'core', 'master.md'), 'utf-8'), '核心 B', '没勾核心记忆')
+  archive = new Archive(join(dataDir, 'companion.db'))
+  store = new MemoryStore(archive.db)
+  assert.equal(store.list({ scope: 'master', limit: 10 }).items.length, 2, '没勾记忆库，备份之后的记忆还在')
+  assert.deepEqual(archive.recent(G, 5).map(m => m.text), ['群 1', '群 2（备份之后）'], '没勾别人的存档')
+  assert.deepEqual(archive.recent(M, 5).map(m => m.text), ['主人 1', '主人 2'])
+  const ids = archive.db.prepare('SELECT id FROM messages WHERE umo = ? ORDER BY id').all(M).map(r => r.id)
+  assert.notEqual(ids[0], firstId, '换进来的消息是新 id')
+  assert.equal(archive.cursor('org:' + M), ids[0], '整理进度换算到新的 id')
+  assert.equal(archive.cursor('cat:' + M), 1)
+  archive.close()
 })

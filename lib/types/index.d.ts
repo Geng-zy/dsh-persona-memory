@@ -105,6 +105,7 @@ export interface Config {
     backupEnabled: boolean;
     backupTime: string;
     backupKeep: number;
+    backupItems: string[];
     selfCheckQueries: string[];
     logLevel: 'debug' | 'info' | 'warn' | 'error';
 }

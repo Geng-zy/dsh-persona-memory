@@ -31,12 +31,12 @@ import { DiaryStore, diaryBlock, guessDate, localClock, logicalDay } from './dia
 import { Maintenance } from './maintenance.js'
 import { Proactive } from './proactive.js'
 import { Care } from './care.js'
-import { applyPendingImport, createBackup, inspectBackup, listBackups, safeBackupName, type Manifest } from './backup.js'
+import { applyPendingImport, cleanItems, createBackup, DEFAULT_ITEMS, inspectBackup, ITEMS, itemsOf, listBackups, readSavedSettings, safeBackupName, SETTINGS_ITEMS, type BackupItem, type Manifest, type RestorePlan, type SavedSettings } from './backup.js'
 import { SCHEMA_VERSION } from './archive.js'
 import { createReadStream, createWriteStream, renameSync, rmSync, statSync } from 'node:fs'
 import { pipeline } from 'node:stream/promises'
 import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 
 declare module '@deepseek-ai/dsh-llm' {
@@ -143,6 +143,7 @@ export interface Config {
   backupEnabled: boolean
   backupTime: string
   backupKeep: number
+  backupItems: string[]
   selfCheckQueries: string[]
   logLevel: 'debug' | 'info' | 'warn' | 'error'
 }
@@ -267,6 +268,7 @@ export const Config: z<LiveConfig> = z.object({
   backupEnabled: z.boolean().default(true).volatile().description('每天自动备份'),
   backupTime: z.string().default('04:00').volatile().description('自动备份时间（HH:MM）'),
   backupKeep: z.natural().min(1).default(5).volatile().description('每一类备份最多留几份'),
+  backupItems: z.array(z.string()).default([...DEFAULT_ITEMS]).volatile().description('备份哪些：' + ITEMS.join(' ') + '（默认除了 archiveOthers 都备份）'),
   selfCheckQueries: z.array(z.string()).default(['主人叫什么名字', '我们约好了什么', '主人喜欢吃什么']).volatile().description('迁移后自检用的问题'),
   logLevel: z.union(['debug', 'info', 'warn', 'error']).default('info').volatile().description('日志级别'),
 }) as never
@@ -301,12 +303,12 @@ export function apply(ctx: Context, live: LiveConfig): void {
   const corePublic = new TextDoc(join(dir, 'core', 'public.md'), join(dir, 'core', 'history-public'), keep)
   const docs: Record<string, TextDoc> = { persona, 'core-master': coreMaster, 'core-public': corePublic }
   // 导入：上一次在设置页确认导入后，插件重新加载时在这里替换数据（数据库还没打开）
-  let lastImport: { manifest: Manifest; at: number; error?: string } | undefined
+  let lastImport: { manifest: Manifest; plan?: RestorePlan; at: number; error?: string } | undefined
   try {
     const imported = applyPendingImport(dir)
     if (imported !== undefined) {
-      lastImport = { manifest: imported, at: Date.now() }
-      log('info', '导入了备份包（' + new Date(imported.createdAt).toISOString() + ' 做的，记忆 ' + imported.counts.memories + ' 条、日记 ' + imported.counts.diaryDays + ' 篇）')
+      lastImport = { manifest: imported.manifest, plan: imported.plan, at: Date.now() }
+      log('info', '导入了备份包（' + new Date(imported.manifest.createdAt).toISOString() + ' 做的，还原了：' + imported.plan.items.join('、') + '）')
     }
   } catch (e) {
     lastImport = { manifest: undefined as never, at: Date.now(), error: errText(e) }
@@ -513,13 +515,62 @@ export function apply(ctx: Context, live: LiveConfig): void {
   const pluginVersion = (() => { try { return String(JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8')).version) } catch { return '?' } })()
   /** 不含任何 Key 的设置快照 */
   const settingsSnapshot = (): Record<string, unknown> => Object.fromEntries(Object.keys(live).filter(k => k !== 'embedApiKey').map(k => [k, (live as any)[k]?.get()]))
-  const backupNow = async (reason: 'auto' | 'manual' | 'before-import') => {
+  // 插件设置走 dsh 的设置服务：读的时候它已经去掉了标成 Key 的字段（我们的向量 Key、插件一的连接 Token 和语音 Key 等）
+  type SettingsForm = { ns: string; value?: Record<string, unknown>; user?: Record<string, unknown>; secrets?: Array<{ path: string[] }> }
+  const settingsService = (): { describe(o: { redactSecrets: boolean }): SettingsForm[]; mutate(ns: string, ops: unknown[]): Promise<void> } | undefined => ctx.get('settings' as never) as never
+  /** 认出两个插件的设置（按自己的字段认，不靠 profile 里的 id） */
+  const formKind = (f: SettingsForm): 'companion-core' | 'napcat-bridge' | 'dsh' => {
+    const keys = Object.keys(f.value ?? {})
+    if (keys.includes('personaMaxChars') && keys.includes('backupItems')) return 'companion-core'
+    if (keys.includes('ws_reverse_host') || keys.includes('wakeKeywords')) return 'napcat-bridge'
+    return 'dsh'
+  }
+  const captureSettings = (): Record<string, unknown> => {
+    const forms = settingsService()?.describe({ redactSecrets: true }) ?? []
+    const out: Record<string, unknown> = {}
+    const dsh: Record<string, SavedSettings> = {}
+    for (const f of forms) {
+      const saved: SavedSettings = { ns: f.ns, user: f.user ?? {} }
+      const kind = formKind(f)
+      if (kind === 'dsh') { if (Object.keys(saved.user).length > 0) dsh[f.ns] = saved } else out[kind] = saved
+    }
+    out.dsh = dsh
+    return out
+  }
+  /** 把包里的设置套用到现在的 dsh：改过的字段设成包里的值，包里没改过的恢复默认；Key 不动。返回每一份的结果。 */
+  const applySettings = async (saved: Record<string, any>): Promise<string[]> => {
+    const svc = settingsService()
+    if (svc === undefined) return ['dsh 没有设置服务，设置没套用']
+    const forms = svc.describe({ redactSecrets: true })
+    const notes: string[] = []
+    const one = async (label: string, form: SettingsForm | undefined, s: SavedSettings): Promise<void> => {
+      if (form === undefined) { notes.push(label + '：这台 dsh 里没有，跳过'); return }
+      const secret = new Set((form.secrets ?? []).map(x => x.path[0]))
+      const ops = Object.keys(form.value ?? {}).filter(k => !secret.has(k)).flatMap(k =>
+        Object.prototype.hasOwnProperty.call(s.user, k) ? [{ op: 'set', path: [k], value: s.user[k] }]
+          : form.user !== undefined && Object.prototype.hasOwnProperty.call(form.user, k) ? [{ op: 'unset', path: [k] }] : [])
+      try {
+        if (ops.length > 0) await svc.mutate(form.ns, ops)
+        notes.push(label + '：已套用')
+      } catch (e) {
+        notes.push(label + '：没套用（' + errText(e) + '）')
+      }
+    }
+    if (saved['companion-core']) await one('插件二的设置', forms.find(f => formKind(f) === 'companion-core'), saved['companion-core'])
+    if (saved['napcat-bridge']) await one('插件一的设置', forms.find(f => formKind(f) === 'napcat-bridge'), saved['napcat-bridge'])
+    for (const s of Object.values((saved.dsh ?? {}) as Record<string, SavedSettings>)) await one('dsh 设置 ' + s.ns, forms.find(f => f.ns === s.ns), s)
+    return notes
+  }
+  const backupNow = async (reason: 'auto' | 'manual' | 'before-import', items?: readonly BackupItem[]) => {
     if (archive === undefined) throw new Error('数据库没打开')
     const es = embedSettings()
     const dim = Number(meta.get('embed_dim:' + es.model.trim()) ?? NaN)
+    // 导入前的备份什么都带上，万一要退回去
+    const chosen = reason === 'before-import' ? [...ITEMS] : items ?? cleanItems(get('backupItems'))
     const r = await createBackup({
       dataDir: dir, db: archive.db, outDir: backupsDir, reason, plugin: pluginVersion, schema: SCHEMA_VERSION, settings: settingsSnapshot(),
       embed: { ...(es.model.trim() ? { model: es.model.trim() } : {}), ...(Number.isFinite(dim) ? { dim } : {}) }, keep: get('backupKeep'),
+      items: chosen, settingsFiles: chosen.some(i => SETTINGS_ITEMS.includes(i)) ? captureSettings() : {},
     })
     log('info', '备份好了：' + r.name)
     return r
@@ -924,7 +975,8 @@ export function apply(ctx: Context, live: LiveConfig): void {
     care: { lastCleanup: Number(meta.get('care:cleanup') ?? 0) || null, lastConsolidate: Number(meta.get('care:consolidate') ?? 0) || null, lastRun: care?.lastRun() ?? null },
     backups: listBackups(backupsDir),
     importing: pendingInspect === undefined ? null : { id: pendingInspect.id, manifest: pendingInspect.manifest },
-    lastImport: lastImport === undefined ? null : { at: lastImport.at, error: lastImport.error ?? null, manifest: lastImport.manifest ?? null },
+    lastImport: lastImport === undefined ? null : { at: lastImport.at, error: lastImport.error ?? null, manifest: lastImport.manifest ?? null, plan: lastImport.plan ?? null },
+    backupItemsAll: ITEMS,
     selfCheck: (() => { try { return JSON.parse(meta.get('selfcheck:last') ?? 'null') } catch { return null } })(),
     logs: logs.slice(-100),
   })
@@ -1008,7 +1060,7 @@ export function apply(ctx: Context, live: LiveConfig): void {
           return json(404, { error: 'not found' })
         }
         // backup
-        if (parts[1] === 'create') { const r = await backupNow('manual'); return json(200, { name: r.name, state: state() }) }
+        if (parts[1] === 'create') { const r = await backupNow('manual', Array.isArray(body?.items) ? cleanItems(body.items) : undefined); return json(200, { name: r.name, state: state() }) }
         if (parts[1] === 'delete') {
           const name = String(body?.name ?? '')
           if (!safeBackupName(name)) return json(400, { error: '名字不对' })
@@ -1030,8 +1082,13 @@ export function apply(ctx: Context, live: LiveConfig): void {
         }
         if (parts[1] === 'confirm') {
           if (pendingInspect === undefined || pendingInspect.id !== String(body?.id ?? '')) return json(409, { error: '没有等确认的导入，或者已经过期，请重新上传' })
-          // 先自动备份当前数据，再放到待导入的位置，插件重新加载时替换
+          // 要还原哪些：没给就是包里全部
+          const items = (Array.isArray(body?.items) ? cleanItems(body.items) : itemsOf(pendingInspect.manifest)).filter(i => itemsOf(pendingInspect!.manifest).includes(i))
+          if (items.length === 0) return json(400, { error: '一样都没勾' })
+          // 先自动备份当前全部数据；设置马上套用；文件和数据库放到待导入的位置，插件重新加载时按勾选替换
           await backupNow('before-import')
+          const notes = await applySettings(readSavedSettings(pendingInspect.dir, items))
+          writeFileSync(join(pendingInspect.dir, 'restore.json'), JSON.stringify({ items, notes } satisfies RestorePlan))
           rmSync(join(dir, '.pending-import'), { recursive: true, force: true })
           renameSync(pendingInspect.dir, join(dir, '.pending-import'))
           pendingInspect = undefined
