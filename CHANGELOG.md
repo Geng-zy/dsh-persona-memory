@@ -1,5 +1,13 @@
 # 更新记录
 
+## 0.12.0
+
+- 压缩、整理记忆、抽关系三处的模型都能三选一：**跟随 dsh 配置**（默认；压缩用会话自己的模型，整理用 dsh 的默认模型，抽关系和整理用同一个）、**dsh 里配置的模型**（下拉选，按服务商分组）、**其他服务商**（带 logo 的 15 家预设 + 自定义，用自己的 Key，能获取模型列表）。「写回忆用的模型」改名「压缩用的模型」。
+- 每处都有**思考等级**，默认「低」：dsh 模型按 dsh 报告的这个模型支持的档列出；别家按各家的写法翻译（OpenAI / Gemini / Groq 用 `reasoning_effort`，百炼 / 硅基流动用 `enable_thinking` + `thinking_budget`，智谱 / 火山方舟用 `thinking.type`，OpenRouter 用 `reasoning.effort`），看不出来的不传。每处都有「测试这个模型」按钮。
+- 新设置：`summarySource` / `memorySource` / `graphSource`、`…Effort`、`…ApiUrl` / `…ApiKey` / `…ApiModel`（Key 都标成密钥，不进备份、不显示）。新接口：`GET /api/companion/llm/dsh-models`、`POST /api/companion/llm/efforts`、`/llm/models`、`/llm/test`。
+- 向量检索的模型设置默认收起，标题上直接显示现在用的服务商和模型。
+- 修：图记忆没开时状态写成「没填 Key」，改成「图记忆开关是关的」；向量索引失败时状态显示成「删除失败」（两条说明重名）。检查脚本加了「设置页词典重名」检查。
+
 ## 0.11.0
 
 - 向量检索多了带 logo 的「服务商」选择：硅基流动、阿里云百炼、智谱 BigModel、火山方舟、腾讯混元、百度千帆、OpenAI、Google Gemini、Mistral、Jina、Cohere、Ollama（本机）、LM Studio（本机），选一家就自动填好接口地址和常用向量模型，旁边有「去这家拿 Key」的链接；别的服务商选「自定义」自己填地址。

@@ -600,6 +600,19 @@ log('备份、下载、还原（插件重新加载）、自检 OK')
   log('给其他插件的接口（身份、召回、整段提示词、替她记）OK')
 }
 
+// 20. 设置页选模型：dsh 里的模型列表、思考等级、用保存过的设置测试整理用的模型、别家没填时说清楚
+{
+  const models = (await api('GET', 'llm/dsh-models')).json
+  if (!Array.isArray(models?.providers) || models.providers.length === 0) await fail('读不到 dsh 的模型列表：' + JSON.stringify(models).slice(0, 300))
+  const eff = (await api('POST', 'llm/efforts', { task: 'memory' })).json
+  if (!Array.isArray(eff?.efforts)) await fail('思考等级接口不对：' + JSON.stringify(eff).slice(0, 300))
+  const tested = (await api('POST', 'llm/test', { task: 'memory' })).json
+  if (!tested?.ok) await fail('测试整理用的模型失败：' + JSON.stringify(tested).slice(0, 300))
+  const noApi = (await api('POST', 'llm/models', { task: 'memory', apiUrl: 'not-a-url' })).json
+  if (noApi?.ok !== false) await fail('别家地址不对时应该说清楚：' + JSON.stringify(noApi))
+  log('设置页选模型：dsh 模型列表、思考等级、测试模型 OK')
+}
+
 // 14. 删过会话以后重启 dsh：能正常起来、不报错、设置页接口照常
 if (!process.env.E2E_HOLD) {
   finished = true

@@ -5,10 +5,8 @@ export interface ContextPolicy {
     /** 上下文到模型上限的百分之多少就处理 */
     thresholdPercent: number;
     /** LLM 压缩用哪个模型；不填用当前会话的 */
-    summaryModel?: {
-        provider: string;
-        model: string;
-    };
+    /** 压缩用哪个模型（带思考等级；带 api 时直接调别家）；没有 = 用会话自己的 */
+    summaryModel?: import('./extract.js').ModelTarget;
 }
 /** 截断或压缩之前发出的通知（阶段 2 的记忆在这里先把要紧内容写进记忆）。 */
 export interface BeforeCompactPayload {

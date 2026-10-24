@@ -30,6 +30,16 @@ echo "== 编译"
 echo "== 设置页脚本语法"
 # 设置页 client.js 是手写、不经编译的，写坏了 dsh 网页整个打不开；单元测试和端到端测试都碰不到它，单独查一遍
 node --check lib/client.js || { echo "lib/client.js 有语法错误，dsh 网页会加载失败" >&2; exit 1; }
+# 中英文词典里同一个名字写两次时，后面的会悄悄盖掉前面的，界面上显示错的字
+node -e '
+const s = require("fs").readFileSync("lib/client.js", "utf8"); let bad = []
+for (const lang of ["zh", "en"]) {
+  const start = s.indexOf("\n\t\tvar " + lang + " = {\n"); const end = s.indexOf("\n\t\t};", start)
+  const keys = [...s.slice(start, end).matchAll(/^\t\t\t([A-Za-z_][A-Za-z0-9_]*):/gm)].map(m => m[1])
+  bad.push(...keys.filter((k, i) => keys.indexOf(k) !== i).map(k => lang + "." + k))
+}
+if (bad.length) { console.error("设置页词典里有重名：" + bad.join(", ")); process.exit(1) }
+' || exit 1
 
 echo "== 单元测试"
 "${PNPM[@]}" test 2>&1 | grep -E "^(not ok|ℹ (pass|fail))" || true

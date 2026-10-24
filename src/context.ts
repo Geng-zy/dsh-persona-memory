@@ -13,6 +13,25 @@ import { BlockAssembler, LlmError, contentHasImage } from '@deepseek-ai/dsh-llm'
 import type { Context } from '@deepseek-ai/cordis'
 import { countRounds, isHumanTurn, pendingHumanTurn, selectRounds, SUMMARY_INSTRUCTION, truncationNote, type DropRange, type SurfaceLike } from './rounds.js'
 import type { BeforeCompactPayload, CompanionService, ContextPolicy } from './service.js'
+import { chatComplete } from './chat.js'
+import { effortFor } from './extract.js'
+
+/** 用别家模型压缩时，把会话消息摊平成文字（别家接口看不懂 dsh 的工具调用和附件格式）。 */
+function transcriptText(messages: unknown[]): string {
+  const out: string[] = []
+  for (const m of messages as Array<{ role?: string; content?: unknown }>) {
+    const blocks = Array.isArray(m?.content) ? m.content as Array<Record<string, any>> : [{ type: 'text', text: String(m?.content ?? '') }]
+    const parts: string[] = []
+    for (const b of blocks) {
+      if (b?.type === 'text' && String(b.text ?? '').trim()) parts.push(String(b.text))
+      else if (b?.type === 'tool-call' || b?.type === 'tool_use') parts.push('[调用工具 ' + String(b.name ?? b.toolName ?? '') + ']')
+      else if (b?.type === 'tool-result' || b?.type === 'tool_result') parts.push('[工具结果] ' + String(typeof b.content === 'string' ? b.content : JSON.stringify(b.content ?? b.output ?? '')).slice(0, 2000))
+      else if (b?.type === 'image') parts.push('[图片]')
+    }
+    if (parts.length > 0) out.push('[' + String(m?.role ?? '') + '] ' + parts.join('\n'))
+  }
+  return out.join('\n\n')
+}
 
 export const name = 'companion-context'
 
@@ -157,12 +176,19 @@ export class CompanionContextEngine extends (BasicCompactionEngine as unknown as
     const target = policy?.summaryModel
       ?? (header?.provider && header?.model ? { provider: header.provider, model: header.model } : undefined)
       ?? (agent.options.provider && agent.options.model ? { provider: agent.options.provider, model: agent.options.model } : undefined)
-    if (target === undefined) throw new Error('没有可用的模型来写回忆：请在设置里填「压缩用的模型」')
+    if (target === undefined) throw new Error('没有可用的模型来压缩：请在设置里选「压缩用的模型」')
     const maxTokens = (this as any).config?.maxTokens ?? 8192
+    if ('api' in target && target.api !== undefined) {
+      // 别家模型：把要压缩的对话摊平成文字再交给它
+      const text = await chatComplete(target.api, transcriptText(input.messages) + '\n\n' + SUMMARY_INSTRUCTION, maxTokens, signal)
+      return { summary: [{ type: 'text', text }], provider: 'api', model: target.model, maxTokens }
+    }
+    const effort = 'effort' in target ? await effortFor((this as any).ctx.llm, target) : undefined
     const assembler = new BlockAssembler()
     const options = {
       provider: target.provider,
       model: target.model,
+      ...(effort === undefined ? {} : { reasoningEffort: effort }),
       messages: [...input.messages, { role: 'user', content: [{ type: 'text', text: SUMMARY_INSTRUCTION }] }],
       toolHistory: agent.session.toolHistory(),
       ...(input.tools === undefined ? {} : { tools: [...input.tools] }),

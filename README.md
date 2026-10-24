@@ -148,9 +148,9 @@ dsh --version                        # 0.2.1-rc.2
 
 # 6. 两个插件（回到家目录）
 cd ~
-dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.12.0 github:Geng-zy/dsh-companion-core#v0.11.0
+dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.13.0 github:Geng-zy/dsh-companion-core#v0.12.0
 #    连不上 GitHub：到两个仓库的 Releases 下载 .tgz，传到 ~/pkgs/ 后
-#    dsh plugin --profile web add ./pkgs/dsh-napcat-bridge-0.12.0.tgz ./pkgs/dsh-companion-core-0.11.0.tgz
+#    dsh plugin --profile web add ./pkgs/dsh-napcat-bridge-0.13.0.tgz ./pkgs/dsh-companion-core-0.12.0.tgz
 #    （~/pkgs 以后不能删：dsh 的 profile 里记着它）
 
 # 7. 配置
@@ -264,7 +264,7 @@ sudo systemctl daemon-reload && sudo systemctl enable --now napcat
 ## 安装
 
 ```bash
-dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.11.0
+dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.12.0
 ```
 
 装好后：
@@ -335,7 +335,7 @@ dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.11.0
 | `masterMaxRounds` / `masterDropRounds` / `masterMode` | `60` / `20` / `llm` | 主人 |
 | `privateMaxRounds` / `privateDropRounds` / `privateMode` | `60` / `20` / `truncate` | 其他私聊 |
 | `groupMaxRounds` / `groupDropRounds` / `groupMode` | `60` / `20` / `truncate` | 群聊 |
-| `summaryModel` | 空 | 写回忆用的模型（`提供方/模型`），空 = 会话自己的 |
+| `summarySource` / `summaryModel` / `summaryEffort` | `follow` / 空 / `low` | 压缩用的模型：`follow` 跟随 dsh 配置（会话自己的模型）、`dsh` 选 dsh 里配置的模型（`提供方/模型`）、`api` 用自己的 Key 调别家（`summaryApiUrl` / `summaryApiKey` / `summaryApiModel`）；思考等级按模型支持的来 |
 | `rules` | `[]` | 例外规则：`{ target, kind: user|group, maxRounds?, dropRounds?, mode?, archiveDays?, archiveUnwoken?: on|off, forgetMode?: normal|purge, proactive?: on|off, note? }` |
 | `archiveEnabled` / `archiveUnwoken` | `true` / `true` | 消息存档；存没唤醒她的群消息 |
 | `archiveDaysMaster` / `archiveDaysOthers` | `365` / `5` | 保留天数 |
@@ -343,11 +343,13 @@ dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.11.0
 | `keywordThreshold` / `vectorThreshold` / `keywordWeight` | `0.3` / `0.45` / `0.3` | 门槛和关键词占比 |
 | `importanceWeight` / `recencyWeight` / `groupDiscount` / `halfLifeDays` | `0.2` / `0.1` / `0.7` / `30` | 排名权重、群记忆折扣、半衰期 |
 | `activeMemory` | `true` | 回忆/记住/遗忘工具 |
-| `organizeEveryRounds` / `organizeBeforeCompact` / `memoryModel` | `20` / `true` / 空 | 整理 |
+| `organizeEveryRounds` / `organizeBeforeCompact` | `20` / `true` | 整理 |
+| `memorySource` / `memoryModel` / `memoryEffort` / `memoryApi*` | `follow` / 空 / `low` | 整理用的模型（也写日记、清理、整合、审核人格）：`follow` 跟随 dsh 的默认模型，其余同上 |
 | `masterForget` / `privateForget` / `groupForget` | `normal` / `purge` / `purge` | 遗忘方式 |
 | `cleanupEnabled` / `cleanupAutoPurge` | `false` / `false` | 主人记忆的模型清理 |
 | `embedApiUrl` / `embedApiKey` / `embedModel` / `embedBatch` | 硅基流动 / 不设 / `BAAI/bge-m3` / `16` | 向量检索 |
-| `graphEnabled` / `graphModel` / `graphBatch` / `graphHops` | `false` / 空 / `8` / `1` | 图记忆（模型空 = 和整理记忆用同一个） |
+| `graphEnabled` / `graphBatch` / `graphHops` | `false` / `8` / `1` | 图记忆 |
+| `graphSource` / `graphModel` / `graphEffort` / `graphApi*` | `follow` / 空 / `low` | 抽关系用的模型：`follow` 和整理用的模型一样，其余同上 |
 | `groupContextCount` | `10` | 群聊上下文：附上最近几条（图片不限） |
 | `diaryEnabled` / `diaryTime` / `dayBoundaryHour` / `timezone` / `monthlyEnabled` | `true` / `01:30` / `4` / `Asia/Shanghai` / `true` | 日记 |
 | `diaryOnNewSession` / `diaryDays` / `overviewMonths` / `diaryBudgetPercent` | `true` / `30` / `12` / `20` | 开新会话先读日记 |

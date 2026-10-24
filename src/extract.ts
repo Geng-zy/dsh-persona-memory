@@ -1,23 +1,49 @@
 // 让模型做两件事：
 //   1. 整理：读一段聊天，挑出值得长期记住的事，输出 JSON（内容、类型、重要程度、取代哪条旧记忆）；
 //   2. 清理：看一遍"普通遗忘"里的主人记忆，挑出可以彻底遗忘的（过时、重复、琐碎）。
-// 只用 dsh 自带的模型服务（ctx.llm），不另外要 Key。
+// 默认用 dsh 自带的模型服务（ctx.llm）；设置里选了「其他服务商」时直接用自己的 Key 调（chat.ts）。
 
 import { BlockAssembler } from '@deepseek-ai/dsh-llm'
+import { chatComplete, type ApiTarget } from './chat.js'
 import { KINDS, type Memory, type MemoryKind } from './memory.js'
 
-export interface ModelTarget { provider: string; model: string }
+/**
+ * 用哪个模型。provider/model 是 dsh 里的；带 api 时不走 dsh，直接调别家（provider 固定写 'api'）。
+ * effort：思考等级（dsh 模型按模型自己支持的等级；不支持就不传）。
+ */
+export interface ModelTarget { provider: string; model: string; effort?: string; api?: ApiTarget }
 
 export interface LlmLike {
   stream(options: Record<string, unknown>): AsyncIterable<unknown>
+  resolveModelInfo?(provider: string, model: string): Promise<{ reasoning?: { efforts: ReadonlyArray<{ id: string; name?: string }>; defaultEffort?: string } }>
+}
+
+const effortCache = new Map<string, { at: number; ids: string[] }>()
+/** 这个 dsh 模型支持哪些思考等级（缓存 10 分钟；查不到当作不支持）。 */
+export async function dshEfforts(llm: LlmLike, provider: string, model: string): Promise<string[]> {
+  const key = provider + '/' + model
+  const hit = effortCache.get(key)
+  if (hit !== undefined && Date.now() - hit.at < 600_000) return hit.ids
+  let ids: string[] = []
+  try { ids = ((await llm.resolveModelInfo?.(provider, model))?.reasoning?.efforts ?? []).map(e => String(e.id)) } catch { ids = [] }
+  effortCache.set(key, { at: Date.now(), ids })
+  return ids
+}
+/** 想要的等级这个模型支持就用；不支持就不传（用模型自己的默认）。 */
+export async function effortFor(llm: LlmLike, target: ModelTarget): Promise<string | undefined> {
+  if (!target.effort || target.api !== undefined) return undefined
+  return (await dshEfforts(llm, target.provider, target.model)).includes(target.effort) ? target.effort : undefined
 }
 
 /** 发一条提示词，拿回文字。 */
 export async function complete(llm: LlmLike, target: ModelTarget, prompt: string, maxTokens = 4096, signal?: AbortSignal): Promise<string> {
+  if (target.api !== undefined) return chatComplete(target.api, prompt, maxTokens, signal)
   const assembler = new BlockAssembler()
+  const effort = await effortFor(llm, target)
   const options = {
     provider: target.provider,
     model: target.model,
+    ...(effort === undefined ? {} : { reasoningEffort: effort }),
     messages: [{ role: 'user', content: [{ type: 'text', text: prompt }] }],
     maxTokens,
     ...(signal === undefined ? {} : { signal }),

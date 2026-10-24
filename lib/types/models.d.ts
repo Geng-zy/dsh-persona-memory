@@ -1,4 +1,4 @@
-export type ModelKind = 'embedding' | 'stt';
+export type ModelKind = 'embedding' | 'stt' | 'chat';
 export interface ModelList {
     ok: true;
     /** 按用途挑出来的模型 id（排好序） */

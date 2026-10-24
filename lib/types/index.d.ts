@@ -37,6 +37,11 @@ export interface Config {
     groupDropRounds: number;
     groupMode: ContextMode;
     summaryModel: string;
+    summarySource: 'follow' | 'dsh' | 'api';
+    summaryEffort: string;
+    summaryApiUrl: string;
+    summaryApiKey: string;
+    summaryApiModel: string;
     rules: RuleRow[];
     archiveEnabled: boolean;
     archiveUnwoken: boolean;
@@ -56,6 +61,11 @@ export interface Config {
     organizeEveryRounds: number;
     organizeBeforeCompact: boolean;
     memoryModel: string;
+    memorySource: 'follow' | 'dsh' | 'api';
+    memoryEffort: string;
+    memoryApiUrl: string;
+    memoryApiKey: string;
+    memoryApiModel: string;
     masterForget: ForgetMode;
     privateForget: ForgetMode;
     groupForget: ForgetMode;
@@ -67,6 +77,11 @@ export interface Config {
     embedBatch: number;
     graphEnabled: boolean;
     graphModel: string;
+    graphSource: 'follow' | 'dsh' | 'api';
+    graphEffort: string;
+    graphApiUrl: string;
+    graphApiKey: string;
+    graphApiModel: string;
     graphBatch: number;
     graphHops: number;
     groupContextCount: number;
