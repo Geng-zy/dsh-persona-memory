@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 一键部署（在服务器上跑）：从一台刚装好的 Ubuntu 开始，装好 dsh + 两个插件（dsh-napcat-bridge、dsh-companion-core）+ NapCat，
+# 一键部署（在服务器上跑）：从一台刚装好的 Ubuntu 开始，装好 Node 和 pnpm（系统软件）、dsh + 两个插件（dsh-napcat-bridge、dsh-companion-core）+ NapCat，
 # 两边的连接 Token 自动生成并配好（不打印），做成开机自启的服务。跑完只剩：扫码登录 QQ 小号、在网页里填 DeepSeek Key。
 #
 # 用法（用有 sudo 的普通用户跑，比如腾讯云的 ubuntu；不要用 root 直接跑）：
@@ -67,7 +67,7 @@ esac
 ME="$(id -un)"
 ME_HOME="$(getent passwd "$ME" | cut -d: -f6)"
 DSH_HOME_DIR="/home/$DSH_USER"
-as_dsh() { sudo -u "$DSH_USER" -H env PATH="$DSH_HOME_DIR/.local/node/bin:$DSH_HOME_DIR/.local/dsh/node_modules/.bin:/usr/local/bin:/usr/bin:/bin" bash -c "$1"; }
+as_dsh() { sudo -u "$DSH_USER" -H env PATH="$DSH_HOME_DIR/.local/dsh/node_modules/.bin:/usr/local/bin:/usr/bin:/bin" bash -c "$1"; }
 
 step "1/8 系统软件（ffmpeg、curl、openssl 等）"
 sudo apt-get update -qq
@@ -83,8 +83,8 @@ else
   note "建好了（密码锁定，只能用 sudo -iu $DSH_USER 进去）"
 fi
 
-step "3/8 Node $NODE_VERSION 和 dsh $DSH_VERSION（装在 $DSH_USER 自己的目录里）"
-if as_dsh "node --version 2>/dev/null" | grep -qx "v$NODE_VERSION"; then note "Node 已经装好"
+step "3/8 Node $NODE_VERSION 和 pnpm（系统软件，装到 /usr/local，所有用户共用）"
+if [ "$(/usr/local/bin/node --version 2>/dev/null || true)" = "v$NODE_VERSION" ]; then note "Node 已经装好"
 else
   TMP="$(mktemp -d)"; NAME="node-v$NODE_VERSION-linux-$NODE_ARCH.tar.xz"
   curl -fsSL -o "$TMP/$NAME" "$NODE_MIRROR/v$NODE_VERSION/$NAME" || die "下载 Node 失败（$NODE_MIRROR）"
@@ -94,14 +94,24 @@ else
     cmp -s <(grep " $NAME\$" "$TMP/SHASUMS256.txt") <(grep " $NAME\$" "$TMP/official.txt") || die "镜像的 Node 校验值和 nodejs.org 的不一样"
   fi
   (cd "$TMP" && grep " $NAME\$" SHASUMS256.txt | sha256sum -c --quiet) || die "Node 安装包校验失败"
-  chmod 755 "$TMP"; chmod 644 "$TMP/$NAME"
-  as_dsh "rm -rf ~/.local/node && mkdir -p ~/.local/node && tar -xJf '$TMP/$NAME' -C ~/.local/node --strip-components=1"
+  # 官方二进制包解压到 /usr/local：node、npm、npx 进 /usr/local/bin（所有用户和 systemd 服务的 PATH 里本来就有）
+  sudo tar -xJf "$TMP/$NAME" -C /usr/local --strip-components=1 --no-same-owner \
+    --exclude='*/CHANGELOG.md' --exclude='*/LICENSE' --exclude='*/README.md'
   rm -rf "$TMP"
-  note "Node $(as_dsh 'node --version')"
+  note "Node $(/usr/local/bin/node --version)（/usr/local/bin/node）"
 fi
+# npm 源写进全局配置 /usr/local/etc/npmrc，所有用户（包括 $DSH_USER 的 pnpm）都用它
+sudo /usr/local/bin/npm config set registry "$NPM_REGISTRY" --location=global >/dev/null
+if [ "$(/usr/local/bin/pnpm --version 2>/dev/null || true)" = "$PNPM_VERSION" ]; then note "pnpm 已经装好"
+else
+  sudo /usr/local/bin/npm install -g "pnpm@$PNPM_VERSION" >/dev/null 2>&1 || die "装 pnpm 失败"
+  note "pnpm $(/usr/local/bin/pnpm --version)（/usr/local/bin/pnpm）"
+fi
+
+step "3/8（续）dsh $DSH_VERSION（装在 $DSH_USER 自己的 ~/.local/dsh，不用 sudo）"
+# 她自己的 ~/.npmrc 也写上源（pnpm 一定会读用户级配置）
 as_dsh "npm config set registry '$NPM_REGISTRY' >/dev/null"
-as_dsh "grep -q '.local/node/bin' ~/.profile 2>/dev/null || echo 'export PATH=\"\$HOME/.local/node/bin:\$HOME/.local/dsh/node_modules/.bin:\$PATH\"' >> ~/.profile"
-as_dsh "command -v pnpm >/dev/null && [ \"\$(pnpm --version)\" = '$PNPM_VERSION' ] || npm install -g pnpm@$PNPM_VERSION >/dev/null 2>&1"
+as_dsh "grep -q '.local/dsh/node_modules/.bin' ~/.profile 2>/dev/null || echo 'export PATH=\"\$HOME/.local/dsh/node_modules/.bin:\$PATH\"' >> ~/.profile"
 if [ "$(as_dsh 'dsh --version 2>/dev/null' || true)" = "$DSH_VERSION" ]; then note "dsh 已经装好"
 else
   note "安装 dsh（几百个包，要几分钟）…"
@@ -191,7 +201,7 @@ Wants=network-online.target
 User=$DSH_USER
 Group=$DSH_USER
 WorkingDirectory=$DSH_HOME_DIR
-Environment=PATH=$DSH_HOME_DIR/.local/node/bin:$DSH_HOME_DIR/.local/dsh/node_modules/.bin:/usr/local/bin:/usr/bin:/bin
+Environment=PATH=$DSH_HOME_DIR/.local/dsh/node_modules/.bin:/usr/local/bin:/usr/bin:/bin
 # dsh 不接受 0.0.0.0，绑内网网卡地址；换了内网 IP 要改这里
 ExecStart=$DSH_HOME_DIR/.local/dsh/node_modules/.bin/dsh web --host $BIND_IP --port $WEB_PORT --no-open
 Restart=always
