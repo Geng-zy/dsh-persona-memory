@@ -11,6 +11,8 @@ export interface GuardSettings {
 }
 export declare const DEFAULT_ALLOWED: string[];
 export declare const DEFAULT_FORBIDDEN: string[];
+/** 数字数：不算空白（空格、换行），中文英文都是一个字一个 */
+export declare const countChars: (s: string) => number;
 /** 硬规则。返回 undefined 表示通过，否则是退回的原因。 */
 export declare function checkPersonaEdit(current: string, next: string, newText: string, s: GuardSettings): string | undefined;
 export declare function reviewPrompt(current: string, oldText: string, newText: string, reason: string, s: GuardSettings): string;

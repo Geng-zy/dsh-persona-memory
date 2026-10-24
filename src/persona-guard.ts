@@ -38,7 +38,9 @@ export const DEFAULT_FORBIDDEN = [
   '一时的心情和当天的状态',
 ]
 
-const chars = (s: string): number => [...s.replace(/\s+/g, '')].length
+/** 数字数：不算空白（空格、换行），中文英文都是一个字一个 */
+export const countChars = (s: string): number => [...s.replace(/\s+/g, '')].length
+const chars = countChars
 
 /** 硬规则。返回 undefined 表示通过，否则是退回的原因。 */
 export function checkPersonaEdit(current: string, next: string, newText: string, s: GuardSettings): string | undefined {

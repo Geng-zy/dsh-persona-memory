@@ -1,5 +1,10 @@
 # 更新记录
 
+## 0.10.0
+
+- 核心记忆上限改成按字数，主人的和公开的分开设：新设置 `coreMasterMaxChars`、`corePublicMaxChars`（默认都是 8000 字，不算空格和换行，和人格的数法一样），去掉原来按大小算的 `coreMaxKB`（24KB）。到了上限她只能把那一份改短；设置页保存超过上限的内容会被拒绝并告诉你差多少。
+- 设置页和提示里不再说「插件一 / 插件二」，改成插件名 dsh-napcat-bridge、dsh-companion-core（本插件自己就说「本插件」）。
+
 ## 0.9.0
 
 - 给其他插件的接口（`ctx.companion`）：`identity()` 她的人格和核心记忆（带一段能直接当系统提示词的 `prompt`）、`recall(query)` 相关长期记忆、`prompt({ query })` 人格 + 核心记忆 + 相关记忆一整段、`remember(content, { by })` 替她记一件事。按 `audience`（`public` 默认 / `master`）或 `sessionId` 决定给哪些。让在后台自己调模型的插件（比如刷 B 站、写评论）也用她的人格和记忆。

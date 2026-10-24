@@ -3,6 +3,7 @@
 
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import { applyEdit, type TextDoc } from './docs.js'
+import { countChars } from './persona-guard.js'
 
 export interface ToolDeps {
   persona: TextDoc
@@ -10,8 +11,8 @@ export interface ToolDeps {
   corePublic: TextDoc
   /** 这个会话现在还算不算主人的（执行时再查一次） */
   isMaster(sessionId: string): boolean
-  /** 核心记忆最多多少字节 */
-  coreMaxBytes(): number
+  /** 每份核心记忆最多几个字（不算空白） */
+  coreMaxChars(which: 'master' | 'public'): number
   log(level: 'info' | 'warn', message: string): void
   /** 改人格前检查（persona-guard.ts）：通过返回 undefined，否则返回退回的原因 */
   guardPersona?(current: string, next: string, oldText: string, newText: string, reason: string): Promise<string | undefined>
@@ -87,8 +88,9 @@ export function coreTool(deps: ToolDeps) {
       const doc = args.memory === 'public' ? deps.corePublic : deps.coreMaster
       const edit = applyEdit(doc.read(), String(args.old_text ?? ''), String(args.new_text ?? ''))
       if (!edit.ok) return { ok: false, message: edit.error }
-      const bytes = Buffer.byteLength(edit.text)
-      if (bytes > deps.coreMaxBytes()) return { ok: false, message: '核心记忆会超过上限（' + Math.round(bytes / 1024) + 'KB > ' + Math.round(deps.coreMaxBytes() / 1024) + 'KB），请先精简再加。' }
+      const which = args.memory === 'public' ? 'public' : 'master'
+      const n = countChars(edit.text), max = deps.coreMaxChars(which)
+      if (n > max && n > countChars(doc.read())) return { ok: false, message: (which === 'public' ? '公开' : '主人') + '核心记忆会超过上限（' + n + ' 字 > ' + max + ' 字），请先精简（把具体的事挪进长期记忆）再加。' }
       doc.write(edit.text, { by: 'tool', sessionId, reason: String(args.reason ?? '') })
       deps.log('info', '她修改了' + (args.memory === 'public' ? '公开' : '主人') + '核心记忆（会话 ' + sessionId + '）：' + String(args.reason ?? ''))
       return { ok: true, message: '核心记忆已更新。旧版本已保存。' }

@@ -19,7 +19,7 @@ import type { BeforeCompactPayload, CompanionService, ContextPolicy } from './se
 import { coreTool, personaTool, type ToolDeps } from './tools.js'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { embed, embedEnabled, Indexer, testEmbed, type EmbedSettings } from './embed.js'
-import { DEFAULT_ALLOWED, DEFAULT_FORBIDDEN, guardPersonaEdit } from './persona-guard.js'
+import { DEFAULT_ALLOWED, DEFAULT_FORBIDDEN, guardPersonaEdit, countChars } from './persona-guard.js'
 import { GraphBuilder, graphScores, GraphStore, type GraphSettings } from './graph.js'
 import { cleanupPrompt, complete, parseCleanup, type LlmLike, type ModelTarget } from './extract.js'
 import { KINDS, MemoryStore, defaultTrust, ownScope, type MemoryKind } from './memory.js'
@@ -56,7 +56,8 @@ export interface Config {
   personaOnly: boolean
   selfEdit: boolean
   historyKeep: number
-  coreMaxKB: number
+  coreMasterMaxChars: number
+  corePublicMaxChars: number
   personaGuard: boolean
   personaReview: boolean
   personaEditMaxChars: number
@@ -162,7 +163,8 @@ export const Config: z<LiveConfig> = z.object({
   personaOnly: z.boolean().default(true).volatile().description('只用人格：去掉 dsh 的编程助手身份句'),
   selfEdit: z.boolean().default(true).volatile().description('让她能自己改人格和核心记忆（只在主人的会话里）'),
   historyKeep: z.natural().default(5).volatile().description('人格、核心记忆各保留几份历史版本'),
-  coreMaxKB: z.natural().min(1).default(24).volatile().description('核心记忆上限（KB）'),
+  coreMasterMaxChars: z.natural().min(100).default(8000).volatile().description('主人的核心记忆最多几个字（不算空白；超过后只许变短）'),
+  corePublicMaxChars: z.natural().min(100).default(8000).volatile().description('公开的核心记忆最多几个字（不算空白；超过后只许变短）'),
   personaGuard: z.boolean().default(true).volatile().description('限制她改人格时能写什么（字数、日期、数字、链接、隐私、改规则的话）'),
   personaReview: z.boolean().default(true).volatile().description('她改人格前先让模型按下面两张清单审核'),
   personaEditMaxChars: z.natural().min(10).default(300).volatile().description('一次最多加几个字'),
@@ -608,8 +610,8 @@ export function apply(ctx: Context, live: LiveConfig): void {
         notes.push(label + '：没套用（' + errText(e) + '）')
       }
     }
-    if (saved['companion-core']) await one('插件二的设置', forms.find(f => formKind(f) === 'companion-core'), saved['companion-core'])
-    if (saved['napcat-bridge']) await one('插件一的设置', forms.find(f => formKind(f) === 'napcat-bridge'), saved['napcat-bridge'])
+    if (saved['companion-core']) await one('dsh-companion-core 的设置', forms.find(f => formKind(f) === 'companion-core'), saved['companion-core'])
+    if (saved['napcat-bridge']) await one('dsh-napcat-bridge 的设置', forms.find(f => formKind(f) === 'napcat-bridge'), saved['napcat-bridge'])
     for (const s of Object.values((saved.dsh ?? {}) as Record<string, SavedSettings>)) await one('dsh 设置 ' + s.ns, forms.find(f => f.ns === s.ns), s)
     return notes
   }
@@ -792,7 +794,7 @@ export function apply(ctx: Context, live: LiveConfig): void {
               extra += ' [图片，见下面]'
             }
             const comps = Array.isArray(all) ? all.filter((c: any) => !(c?.type === 'Image' && typeof c._local === 'string')) : []
-            if (media?.convert === undefined) throw new Error('没有插件一的媒体服务')
+            if (media?.convert === undefined) throw new Error('没有 dsh-napcat-bridge 的媒体服务')
             if (Array.isArray(comps) && comps.some((c: any) => c?.type === 'Image' || c?.type === 'Record' || c?.type === 'Video')) {
               const got = await media.convert(comps, budget)
               budget -= got.used
@@ -820,7 +822,7 @@ export function apply(ctx: Context, live: LiveConfig): void {
   const toolDeps: ToolDeps = {
     persona, coreMaster, corePublic,
     isMaster: sessionId => get('selfEdit') && scope(sessionId).category === 'master',
-    coreMaxBytes: () => get('coreMaxKB') * 1024,
+    coreMaxChars: (which: 'master' | 'public') => which === 'public' ? get('corePublicMaxChars') : get('coreMasterMaxChars'),
     log,
     personaRules: () => ({ allowed: get('personaAllowed'), forbidden: get('personaForbidden') }),
     guardPersona: (current, next, oldText, newText, reason) => guardPersonaEdit({
@@ -1296,7 +1298,10 @@ export function apply(ctx: Context, live: LiveConfig): void {
         }
         const body = await readBody(req)
         if (typeof body?.text !== 'string') return json(400, { error: '缺少 text' })
-        if (parts[1] !== 'persona' && Buffer.byteLength(body.text) > get('coreMaxKB') * 1024) return json(400, { error: '超过核心记忆上限' })
+        if (parts[1] !== 'persona') {
+          const max = parts[1] === 'core-public' ? get('corePublicMaxChars') : get('coreMasterMaxChars')
+          if (countChars(body.text) > max) return json(400, { error: '超过核心记忆上限（' + countChars(body.text) + ' 字 > ' + max + ' 字）' })
+        }
         doc.write(body.text, { by: 'settings' })
         log('info', '设置页修改了 ' + parts[1])
         return json(200, state())

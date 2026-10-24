@@ -18,7 +18,8 @@ export interface Config {
     personaOnly: boolean;
     selfEdit: boolean;
     historyKeep: number;
-    coreMaxKB: number;
+    coreMasterMaxChars: number;
+    corePublicMaxChars: number;
     personaGuard: boolean;
     personaReview: boolean;
     personaEditMaxChars: number;

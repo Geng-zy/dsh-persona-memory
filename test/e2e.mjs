@@ -558,7 +558,7 @@ for (let i = 0; i < 40; i++) {
 if (!after?.json?.lastImport || after.json.lastImport.error) await fail('还原后状态不对：' + JSON.stringify(after?.json?.lastImport))
 if (!readFileSync(personaFile, 'utf-8').includes('PERSONA-V3')) await fail('还原后人格不对：' + readFileSync(personaFile, 'utf-8'))
 if (!after.json.backups.some(b => b.reason === 'before-import')) await fail('还原前没有自动备份当前数据')
-if (after.json.lastImport.plan?.items?.includes('memory') || !['插件一的设置：已套用', '插件二的设置：已套用', 'dsh 设置 agent-preset-registry：已套用'].every(x => (after.json.lastImport.plan?.notes ?? []).includes(x))) await fail('还原勾选或设置套用不对：' + JSON.stringify(after.json.lastImport.plan))
+if (after.json.lastImport.plan?.items?.includes('memory') || !['dsh-napcat-bridge 的设置：已套用', 'dsh-companion-core 的设置：已套用', 'dsh 设置 agent-preset-registry：已套用'].every(x => (after.json.lastImport.plan?.notes ?? []).includes(x))) await fail('还原勾选或设置套用不对：' + JSON.stringify(after.json.lastImport.plan))
 if (!(await api('GET', 'memory?q=AFTER-BACKUP-MEM')).json.items.some(m => m.content.includes('AFTER-BACKUP-MEM'))) await fail('没勾记忆库，记忆却被换掉了')
 if (!Array.isArray(after.json.selfCheck?.results) || after.json.selfCheck.results.length !== 3) await fail('还原后没自检：' + JSON.stringify(after.json.selfCheck))
 await say(() => privateMsg([text('还原以后还在吗 m200')]), '还原以后的回复')

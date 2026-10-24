@@ -140,3 +140,17 @@ test('消息存档：存、同一条不重复、最近几条、统计', () => {
   assert.deepEqual(a.stats(), { total: 4, byKind: { group: 4 }, oldest: 1000, newest: 3001 })
   a.close()
 })
+
+test('核心记忆按字数限制：主人的和公开的分开算，到了上限只许改短', async () => {
+  const { coreTool } = await import('../lib/tools.js')
+  const dir = tmp()
+  const doc = name => new TextDoc(join(dir, name + '.md'), join(dir, 'history-' + name), () => 5)
+  const coreMaster = doc('master'), corePublic = doc('public')
+  corePublic.write('一二三四五', { by: 'settings' })
+  const tool = coreTool({ persona: doc('persona'), coreMaster, corePublic, isMaster: () => true, log: () => {}, coreMaxChars: which => which === 'public' ? 8 : 20 })
+  const run = args => tool.execute({ reason: '测试', ...args }, { session: { id: 'master' }, sessionId: 'master' })
+  assert.equal((await run({ memory: 'public', old_text: '', new_text: '六七八' })).ok, true, '8 个字以内（空格不算）')
+  assert.equal((await run({ memory: 'public', old_text: '', new_text: '九' })).ok, false, '公开的超过 8 字')
+  assert.equal((await run({ memory: 'private', old_text: '', new_text: '主人的可以写到二十个字这里十五个' })).ok, true, '主人的上限另算')
+  assert.equal((await run({ memory: 'public', old_text: '六七八', new_text: '六' })).ok, true, '改短总是可以')
+})

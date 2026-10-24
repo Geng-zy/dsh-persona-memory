@@ -229,9 +229,9 @@ export async function inspectBackup(file: string, workDir: string): Promise<{ di
   mkdirSync(dir, { recursive: true })
   await run('tar', ['-xzf', file, '-C', dir])
   const mPath = join(dir, 'manifest.json')
-  if (!existsSync(mPath)) throw new Error('不是插件二的备份包（没有 manifest.json）')
+  if (!existsSync(mPath)) throw new Error('不是 dsh-companion-core 的备份包（没有 manifest.json）')
   const manifest = JSON.parse(readFileSync(mPath, 'utf-8')) as Manifest
-  if (manifest.format !== BACKUP_FORMAT) throw new Error('不是插件二的备份包')
+  if (manifest.format !== BACKUP_FORMAT) throw new Error('不是 dsh-companion-core 的备份包')
   if (manifest.formatVersion > BACKUP_FORMAT_VERSION) throw new Error('备份包是更新版本的插件做的，请先升级插件')
   for (const f of manifest.files) {
     const p = join(dir, f.path)
