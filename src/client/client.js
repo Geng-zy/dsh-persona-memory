@@ -21,6 +21,23 @@ window.__ModuleLoader__.load({
 		var SECTION = "napcat-bridge";
 
 		var zh = {
+			langIsEn: "0",
+			provider: "服务商",
+			providerHint: "选一家就自动填好接口地址和常用模型；不在列表里的选「自定义」，自己填接口地址（OpenAI 兼容，到 /v1 为止）。",
+			providerSearch: "搜索服务商",
+			providerCustom: "自定义（OpenAI 兼容）",
+			providerGetKey: "去这家拿 Key ↗",
+			modelHint: "点「获取模型列表」用填的 Key 去这家拉你能用的模型；拉不到时下拉里是这家常用的几个。也可以选「手动填写」。",
+			modelFetch: "获取模型列表",
+			modelFetching: "正在获取…",
+			modelFetched: "拿到 {n} 个可用的模型，在下拉里选。",
+			modelFetchedAll: "拿到 {n} 个模型（从名字看不出哪些能用在这里，全列出来了）。",
+			modelFetchFailed: "没拉到模型列表：{error}。下拉里是这家常用的模型。",
+			modelManual: "手动填写…",
+			modelManualLabel: "模型名（手动填写）",
+			modelPickList: "从列表选",
+			modelNoteArk: "火山方舟的模型可以填模型名，也可以填控制台里建的推理接入点 ID（ep- 开头）。",
+			modelNoteLocal: "本机服务：先在服务器上装好并下载模型；Key 随便填一个（比如 local）。",
 			summary: "把 NapCat（OneBot v11）接到 dsh，照搬 AstrBot 的 aiocqhttp 适配器。",
 			connection: "连接",
 			connectionHint: "NapCat 在「网络配置」里新建 WebSocket 客户端，地址填 ws://<地址>:<端口>/ws，Token 与这里一致。改监听地址或端口后插件会自动重新监听，NapCat 会自动重连。",
@@ -117,7 +134,7 @@ window.__ModuleLoader__.load({
 			sttCommand: "命令",
 			sttCommandHint: "在 dsh 所在的机器上运行，{file} 换成语音文件路径（wav），命令输出的内容就是转出来的文字。例如 sherpa-onnx 的离线识别命令。",
 			sttApiUrl: "接口地址",
-			sttApiUrlHint: "写到 /v1 为止，例如 https://api.siliconflow.cn/v1；插件会请求 /audio/transcriptions。",
+			sttApiUrlHint: "选了服务商会自动填；自定义时写到 /v1 为止，插件会请求 /audio/transcriptions。",
 			sttApiKey: "接口 Key",
 			sttApiKeyHint: "不会显示出来；留空表示保持当前 Key。",
 			keySet: "已设置 Key。",
@@ -236,6 +253,23 @@ window.__ModuleLoader__.load({
 			saveFailed: "没有保存成功，修改已保留，请检查后重试。"
 		};
 		var en = {
+			langIsEn: "1",
+			provider: "Provider",
+			providerHint: "Pick one to fill in the API address and common models; choose Custom for any other OpenAI-compatible API (address up to /v1).",
+			providerSearch: "Search providers",
+			providerCustom: "Custom (OpenAI compatible)",
+			providerGetKey: "Get a key ↗",
+			modelHint: "\"Fetch models\" lists the models your key can use; if that fails the list shows this provider's common models. You can also type one.",
+			modelFetch: "Fetch models",
+			modelFetching: "Fetching…",
+			modelFetched: "Found {n} usable models.",
+			modelFetchedAll: "Found {n} models (could not tell which fit, showing all).",
+			modelFetchFailed: "Could not list models: {error}. Showing common ones.",
+			modelManual: "Type a model…",
+			modelManualLabel: "Model name",
+			modelPickList: "Pick from list",
+			modelNoteArk: "Ark accepts a model name or an endpoint ID (ep-…).",
+			modelNoteLocal: "Local service: install it and pull the model on the server first; any key works (e.g. local).",
 			summary: "Connect NapCat (OneBot v11) to dsh, a port of AstrBot's aiocqhttp adapter.",
 			connection: "Connection",
 			connectionHint: "In NapCat, add a WebSocket client at ws://<host>:<port>/ws with the same token. Changing the address or port makes the plugin listen again; NapCat reconnects by itself.",
@@ -488,6 +522,30 @@ window.__ModuleLoader__.load({
 			".napcatb-testBtn:disabled{opacity:.55;cursor:default}",
 			".napcatb-testBtn:focus-visible{outline:2px solid var(--dsw-alias-border-focus,var(--dsw-alias-label-tertiary));outline-offset:2px}",
 			".napcatb-testIcon{font-size:14px;line-height:1}",
+			".napcatb-row{display:flex;align-items:center;flex-wrap:wrap;gap:10px}",
+			".napcatb-input{height:35px;padding:0 12px;border:.5px solid var(--dsw-alias-border-l4);border-radius:12px;background:var(--dsw-alias-bg-layer-2,transparent);color:var(--dsw-alias-label-primary);font:inherit;font-size:13px}",
+			".napcatb-input:focus-visible{outline:2px solid var(--dsw-alias-border-focus,var(--dsw-alias-label-tertiary));outline-offset:1px}",
+			".napcatb-pCurrent{display:inline-flex;align-items:center;gap:10px;min-width:220px;max-width:100%;height:38px;padding:0 12px;border:.5px solid var(--dsw-alias-border-l4);border-radius:12px;background:var(--dsw-alias-bg-layer-2,transparent);color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;cursor:pointer}",
+			".napcatb-pCurrent:hover:not(:disabled){border-color:var(--dsw-alias-label-tertiary)}",
+			".napcatb-pCurrent .napcatb-pName{flex:1;text-align:left}",
+			".napcatb-pCaret{color:var(--dsw-alias-label-tertiary);font-size:11px}",
+			".napcatb-pIcon{display:inline-flex;align-items:center;justify-content:center;flex:none;width:22px;height:22px;border-radius:6px;object-fit:contain}",
+			".napcatb-pIconMono{background-color:var(--dsw-alias-label-primary);-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;-webkit-mask-size:contain;mask-size:contain}",
+			".napcatb-pIconText{background:var(--dsw-alias-bg-layer-3,rgba(127,127,127,.18));color:var(--dsw-alias-label-secondary,var(--dsw-alias-label-primary));font-size:12px;font-weight:600}",
+			".napcatb-pPanel{display:grid;gap:10px;margin-top:4px;padding:12px;border:.5px solid var(--dsw-alias-border-l4);border-radius:var(--dsw-radius-lg,12px);background:var(--dsw-alias-bg-layer-1,transparent)}",
+			".napcatb-pSearch{width:100%;box-sizing:border-box}",
+			".napcatb-pGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px}",
+			".napcatb-pCard{display:flex;align-items:center;gap:10px;min-width:0;height:46px;padding:0 12px;border:.5px solid var(--dsw-alias-border-l4);border-radius:12px;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;text-align:left;cursor:pointer}",
+			".napcatb-pCard:hover{background:var(--dsw-alias-bg-layer-2,rgba(127,127,127,.08));border-color:var(--dsw-alias-label-tertiary)}",
+			".napcatb-pCard.napcatb-pOn{border-color:var(--dsw-alias-label-primary);font-weight:600}",
+			".napcatb-pCard .napcatb-pName{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
+			".napcatb-pCard:focus-visible,.napcatb-pCurrent:focus-visible,.napcatb-pBtn:focus-visible{outline:2px solid var(--dsw-alias-border-focus,var(--dsw-alias-label-tertiary));outline-offset:1px}",
+			".napcatb-pModel{min-width:240px;max-width:100%;flex:1 1 240px}",
+			".napcatb-pBtn{height:35px;padding:0 14px;border:.5px solid var(--dsw-alias-border-l4);border-radius:12px;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;cursor:pointer;white-space:nowrap}",
+			".napcatb-pBtn:hover:not(:disabled){border-color:var(--dsw-alias-label-tertiary)}",
+			".napcatb-pBtn:disabled{opacity:.55;cursor:default}",
+			".napcatb-link{text-decoration:underline;text-underline-offset:2px}",
+			"@media (max-width:520px){.napcatb-pCurrent{width:100%}.napcatb-pGrid{grid-template-columns:1fr 1fr}}",
 			".napcatb-pill{display:inline-block;margin:0;padding:6px 10px;border-radius:8px;font-size:12px;line-height:1.5;overflow-wrap:anywhere}",
 			".napcatb-pill.napcatb-ok{background:color-mix(in srgb,var(--dsw-alias-state-success-primary,#2f9e44) 14%,transparent)}",
 			".napcatb-pill.napcatb-error{background:color-mix(in srgb,var(--dsw-alias-state-error-primary,#e03131) 14%,transparent)}",
@@ -866,6 +924,119 @@ window.__ModuleLoader__.load({
 				made ? h("p", { className: "napcatb-result napcatb-warn" }, t("tokenGenerated")) : null);
 		}
 
+		//#region 服务商预设（地址、常用模型、logo）和模型列表
+		// logo 来自 LobeHub 的 lobe-icons（MIT，见 NOTICE.md），以 data: 图片内嵌，不从外网加载；商标归各厂商所有。
+		// 单色的 logo 用 CSS 遮罩染成文字颜色，深色、浅色主题都看得清。
+		var PROVIDER_ICONS = {
+			"groq": { mono: true, src: "data:image/svg+xml;base64,PHN2ZyBmaWxsPSIjMDAwIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48dGl0bGU+R3JvcTwvdGl0bGU+PHBhdGggZD0iTTEyLjAzNiAyYy0zLjg1My0uMDM1LTcgMy03LjAzNiA2Ljc4MS0uMDM1IDMuNzgyIDMuMDU1IDYuODcyIDYuOTA4IDYuOTA3aDIuNDJ2LTIuNTY2aC0yLjI5MmMtMi40MDcuMDI4LTQuMzgtMS44NjYtNC40MDgtNC4yMy0uMDI5LTIuMzYyIDEuOTAxLTQuMjk4IDQuMzA4LTQuMzI2aC4xYzIuNDA3IDAgNC4zNTggMS45MTUgNC4zNjUgNC4yNzh2Ni4zMDVjMCAyLjM0Mi0xLjk0NCA0LjI1LTQuMzIzIDQuMjc5YTQuMzc1IDQuMzc1IDAgMDEtMy4wMzMtMS4yNTJsLTEuODUxIDEuODE4QTcgNyAwIDAwMTIuMDI5IDIyaC4wOTJjMy44MDMtLjA1NiA2Ljg1OC0zLjA4MyA2Ljg3OS02LjgxNnYtNi41QzE4LjkwNyA0Ljk2MyAxNS44MTcgMiAxMi4wMzYgMnoiPjwvcGF0aD48L3N2Zz4=" },
+			"mistral": { mono: false, src: "data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjQgMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHRpdGxlPk1pc3RyYWw8L3RpdGxlPjxwYXRoIGQ9Ik0zLjQyOCAzLjRoMy40Mjl2My40MjhIMy40MjhWMy40em0xMy43MTQgMGgzLjQzdjMuNDI4aC0zLjQzVjMuNHoiIGZpbGw9ImdvbGQiPjwvcGF0aD48cGF0aCBkPSJNMy40MjggNi44MjhoNi44NTd2My40MjlIMy40MjlWNi44Mjh6bTEwLjI4NiAwaDYuODU3djMuNDI5aC02Ljg1N1Y2LjgyOHoiIGZpbGw9IiNGRkFGMDAiPjwvcGF0aD48cGF0aCBkPSJNMy40MjggMTAuMjU4aDE3LjE0NHYzLjQyOEgzLjQyOHYtMy40Mjh6IiBmaWxsPSIjRkY4MjA1Ij48L3BhdGg+PHBhdGggZD0iTTMuNDI4IDEzLjY4NmgzLjQyOXYzLjQyOEgzLjQyOHYtMy40Mjh6bTYuODU4IDBoMy40Mjl2My40MjhoLTMuNDI5di0zLjQyOHptNi44NTYgMGgzLjQzdjMuNDI4aC0zLjQzdi0zLjQyOHoiIGZpbGw9IiNGQTUwMEYiPjwvcGF0aD48cGF0aCBkPSJNMCAxNy4xMTRoMTAuMjg2djMuNDI5SDB2LTMuNDI5em0xMy43MTQgMEgyNHYzLjQyOUgxMy43MTR2LTMuNDI5eiIgZmlsbD0iI0UxMDUwMCI+PC9wYXRoPjwvc3ZnPg==" },
+			"openai": { mono: true, src: "data:image/svg+xml;base64,PHN2ZyBmaWxsPSIjMDAwIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48dGl0bGU+T3BlbkFJPC90aXRsZT48cGF0aCBkPSJNOS4yMDUgOC42NTh2LTIuMjZjMC0uMTkuMDcyLS4zMzMuMjM4LS40MjhsNC41NDMtMi42MTZjLjYxOS0uMzU3IDEuMzU2LS41MjMgMi4xMTctLjUyMyAyLjg1NCAwIDQuNjYyIDIuMjEyIDQuNjYyIDQuNTY2IDAgLjE2NyAwIC4zNTctLjAyNC41NDdsLTQuNzEtMi43NTlhLjc5Ny43OTcgMCAwMC0uODU2IDBsLTUuOTcgMy40NzN6bTEwLjYwOSA4LjhWMTIuMDZjMC0uMzMzLS4xNDMtLjU3LS40MjktLjczN2wtNS45Ny0zLjQ3MyAxLjk1LTEuMTE4YS40MzMuNDMzIDAgMDEuNDc2IDBsNC41NDMgMi42MTdjMS4zMDkuNzYgMi4xODkgMi4zNzggMi4xODkgMy45NDggMCAxLjgwOC0xLjA3IDMuNDczLTIuNzYgNC4xNjN6TTcuODAyIDEyLjcwM2wtMS45NS0xLjE0MmMtLjE2Ny0uMDk1LS4yMzktLjIzOC0uMjM5LS40MjhWNS44OTljMC0yLjU0NSAxLjk1LTQuNDcyIDQuNTkxLTQuNDcyIDEgMCAxLjkyNy4zMzMgMi43MTIuOTI4TDguMjMgNS4wNjdjLS4yODUuMTY2LS40MjguNDA0LS40MjguNzM3djYuODk4ek0xMiAxNS4xMjhsLTIuNzk1LTEuNTd2LTMuMzNMMTIgOC42NThsMi43OTUgMS41N3YzLjMzTDEyIDE1LjEyOHptMS43OTYgNy4yM2MtMSAwLTEuOTI3LS4zMzItMi43MTItLjkyN2w0LjY4Ni0yLjcxMmMuMjg1LS4xNjYuNDI4LS40MDQuNDI4LS43Mzd2LTYuODk4bDEuOTc0IDEuMTQyYy4xNjcuMDk1LjIzOC4yMzguMjM4LjQyOHY1LjIzM2MwIDIuNTQ1LTEuOTc0IDQuNDcyLTQuNjE0IDQuNDcyem0tNS42MzctNS4zMDNsLTQuNTQ0LTIuNjE3Yy0xLjMwOC0uNzYxLTIuMTg4LTIuMzc4LTIuMTg4LTMuOTQ4QTQuNDgyIDQuNDgyIDAgMDE0LjIxIDYuMzI3djUuNDIzYzAgLjMzMy4xNDMuNTcxLjQyOC43MzhsNS45NDcgMy40NDktMS45NSAxLjExOGEuNDMyLjQzMiAwIDAxLS40NzYgMHptLS4yNjIgMy45Yy0yLjY4OCAwLTQuNjYyLTIuMDIxLTQuNjYyLTQuNTE5IDAtLjE5LjAyNC0uMzguMDQ3LS41N2w0LjY4NiAyLjcxYy4yODYuMTY3LjU3MS4xNjcuODU2IDBsNS45Ny0zLjQ0OHYyLjI2YzAgLjE5LS4wNy4zMzMtLjIzNy40MjhsLTQuNTQzIDIuNjE2Yy0uNjE5LjM1Ny0xLjM1Ni41MjMtMi4xMTcuNTIzem01Ljg5OSAyLjgzYTUuOTQ3IDUuOTQ3IDAgMDA1LjgyNy00Ljc1NkMyMi4yODcgMTguMzM5IDI0IDE1Ljg0IDI0IDEzLjI5NmMwLTEuNjY1LS43MTMtMy4yODItMS45OTgtNC40NDguMTE5LS41LjE5LS45OTkuMTktMS40OTggMC0zLjQwMS0yLjc1OS01Ljk0Ny01Ljk0Ni01Ljk0Ny0uNjQyIDAtMS4yNi4wOTUtMS44OC4zMUE1Ljk2MiA1Ljk2MiAwIDAwMTAuMjA1IDBhNS45NDcgNS45NDcgMCAwMC01LjgyNyA0Ljc1N0MxLjcxMyA1LjQ0NyAwIDcuOTQ1IDAgMTAuNDljMCAxLjY2Ni43MTMgMy4yODMgMS45OTggNC40NDgtLjExOS41LS4xOSAxLS4xOSAxLjQ5OSAwIDMuNDAxIDIuNzU5IDUuOTQ2IDUuOTQ2IDUuOTQ2LjY0MiAwIDEuMjYtLjA5NSAxLjg4LS4zMDlhNS45NiA1Ljk2IDAgMDA0LjE2MiAxLjcxM3oiPjwvcGF0aD48L3N2Zz4=" },
+			"siliconcloud": { mono: false, src: "data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjQgMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHRpdGxlPlNpbGljb25DbG91ZDwvdGl0bGU+PHBhdGggY2xpcC1ydWxlPSJldmVub2RkIiBkPSJNMjIuOTU2IDYuNTIxSDEyLjUyMmMtLjU3NyAwLTEuMDQ0LjQ2OC0xLjA0NCAxLjA0NHYzLjEzYzAgLjU3Ny0uNDY2IDEuMDQ0LTEuMDQzIDEuMDQ0SDEuMDQ0Yy0uNTc3IDAtMS4wNDQuNDY3LTEuMDQ0IDEuMDQ0djQuMTc0QzAgMTcuNTMzLjQ2NyAxOCAxLjA0NCAxOGgxMC40MzRjLjU3NyAwIDEuMDQ0LS40NjcgMS4wNDQtMS4wNDN2LTMuMTNjMC0uNTc4LjQ2Ni0xLjA0NCAxLjA0My0xLjA0NGg5LjM5MWMuNTc3IDAgMS4wNDQtLjQ2NyAxLjA0NC0xLjA0NFY3LjU2NWMwLS41NzYtLjQ2Ny0xLjA0NC0xLjA0NC0xLjA0NHoiIGZpbGw9IiM2RTI5RjYiIGZpbGwtcnVsZT0iZXZlbm9kZCI+PC9wYXRoPjwvc3ZnPg==" },
+			"zhipu": { mono: false, src: "data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjQgMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHRpdGxlPlpoaXB1PC90aXRsZT48cGF0aCBkPSJNMTEuOTkxIDIzLjUwM2EuMjQuMjQgMCAwMC0uMjQ0LjI0OC4yNC4yNCAwIDAwLjI0NC4yNDkuMjQuMjQgMCAwMC4yNDUtLjI0OS4yNC4yNCAwIDAwLS4yMi0uMjQ3bC0uMDI1LS4wMDF6TTkuNjcxIDUuMzY1YTEuNjk3IDEuNjk3IDAgMDExLjA5OSAyLjEzMmwtLjA3MS4xNzItLjAxNi4wNC0uMDE4LjA1NGMtLjA3LjE2LS4xMDQuMzItLjEwNC40OTgtLjAzNS43MS40NyAxLjI3OSAxLjE4NiAxLjMxNGguMzY2YzEuMzA5LjA1MyAyLjMzOCAxLjE3MyAyLjI4NiAyLjUyMy0uMDUyIDEuMzMyLTEuMTUyIDIuMzgtMi40NzggMi4zMjdoLS4xNzRjLS43MTUuMDE4LTEuMjc0LjY0LTEuMjM5IDEuMzY4IDAgLjEyNC4wMTguMjMuMDUzLjMzNy4yMDkuMzczLjU0LjY1OC45Ni44Ljc1LjIzIDEuNTE3LS4xMjUgMS45LS43ODJsLjAxOC0uMDM1Yy40MDItLjY0IDEuMTctLjk2IDEuOTItLjcxMS44NTQuMjg0IDEuMzc4IDEuMjI2IDEuMDk5IDIuMTY3YTEuNjYxIDEuNjYxIDAgMDEtMi4wNzcgMS4xMDIgMS43MTEgMS43MTEgMCAwMS0uOTA3LS43MTFsLS4wMTctLjAzNWMtLjItLjMyMy0uNDYzLS41OC0uODUxLS43MTFsLS4wNTYtLjAxOGExLjY0NiAxLjY0NiAwIDAwLTEuOTU0Ljc0NiAxLjY2IDEuNjYgMCAwMS0xLjA2NS43NjQgMS42NzcgMS42NzcgMCAwMS0xLjk4OS0xLjI3OWMtLjIwOS0uOTA2LjMzMi0xLjgzIDEuMjU3LTIuMDQzYTEuNTEgMS41MSAwIDAxLjI5Ni0uMDM1aC4wMThjLjY4LS4wNzEgMS4xNTEtLjYyMiAxLjExNi0xLjMzM2ExLjMwNyAxLjMwNyAwIDAwLS4yMjctLjY5MyAyLjUxNSAyLjUxNSAwIDAxLS4zNjYtMS40MDMgMi4zOSAyLjM5IDAgMDEuMzY2LTEuMjA4Yy4xNC0uMTk1LjIxLS40NDQuMjI3LS42OTMuMDE4LS43MS0uNTA2LTEuMjYxLTEuMTg2LTEuMzMybC0uMDctLjAxOGExLjQzIDEuNDMgMCAwMS0uMjk5LS4wN2wtLjA1LS4wMTlhMS43IDEuNyAwIDAxLTEuMDQ3LTIuMTE0IDEuNjggMS42OCAwIDAxMi4wOTQtMS4xMDF6bS01LjU3NSAxMC4xMWMuMjYtLjI2NC42MzktLjM2Ny45OTQtLjI3LjM1NS4wOTYuNjMzLjM3OS43MjguNzQuMDk1LjM2Mi0uMDA3Ljc0OC0uMjY3IDEuMDEzLS40MDIuNDEtMS4wNTMuNDEtMS40NTUgMGExLjA2MiAxLjA2MiAwIDAxMC0xLjQ4MnptMTQuODQ1LS4yOTRjLjM1OS0uMDkuNzM4LjAyNC45OTIuMjk3LjI1NC4yNzQuMzQ0LjY2NS4yMzcgMS4wMjUtLjEwNy4zNi0uMzk2LjYzNC0uNzU2LjcxOC0uNTUxLjEyOC0xLjEtLjIyLTEuMjMtLjc4MWExLjA1IDEuMDUgMCAwMS43NTctMS4yNnptLS4wNjQtNC4zOWMuMzE0LjMyLjQ5Ljc1My40OSAxLjIwNiAwIC40NTItLjE3Ni44ODYtLjQ5IDEuMjA2LS4zMTUuMzItLjc0LjUtMS4xODUuNS0uNDQ0IDAtLjg3LS4xOC0xLjE4NC0uNWExLjcyNyAxLjcyNyAwIDAxMC0yLjQxMiAxLjY1NCAxLjY1NCAwIDAxMi4zNjkgMHptLTExLjI0My4xNjNjLjM2NC40ODQuNDQ3IDEuMTI4LjIxOCAxLjY5MWExLjY2NSAxLjY2NSAwIDAxLTIuMTg4LjkyM2MtLjg1NS0uMzYtMS4yNi0xLjM1OC0uOTA3LTIuMjI4YTEuNjggMS42OCAwIDAxMS4zMy0xLjAzOGMuNTkzLS4wOCAxLjE4My4xNjkgMS41NDcuNjUyem0xMS41NDUtNC4yMjFjLjM2OCAwIC43MDguMi44OTIuNTI0LjE4NC4zMjQuMTg0LjcyNCAwIDEuMDQ4YTEuMDI2IDEuMDI2IDAgMDEtLjg5Mi41MjRjLS41NjggMC0xLjAzLS40Ny0xLjAzLTEuMDQ4IDAtLjU3OS40NjItMS4wNDggMS4wMy0xLjA0OHptLTE0LjM1OCAwYy4zNjggMCAuNzA3LjIuODkxLjUyNC4xODQuMzI0LjE4NC43MjQgMCAxLjA0OGExLjAyNiAxLjAyNiAwIDAxLS44OTEuNTI0Yy0uNTY5IDAtMS4wMy0uNDctMS4wMy0xLjA0OCAwLS41NzkuNDYxLTEuMDQ4IDEuMDMtMS4wNDh6bTEwLjAzMS0xLjQ3NWMuOTI1IDAgMS42NzUuNzY0IDEuNjc1IDEuNzA2cy0uNzUgMS43MDUtMS42NzUgMS43MDUtMS42NzQtLjc2My0xLjY3NC0xLjcwNWMwLS45NDIuNzUtMS43MDYgMS42NzQtMS43MDZ6bS0yLjYyNi0uNjg0Yy4zNjItLjA4Mi42NTMtLjM1Ni43NjEtLjcxOGExLjA2MiAxLjA2MiAwIDAwLS4yMzgtMS4wMjggMS4wMTcgMS4wMTcgMCAwMC0uOTk2LS4yOTRjLS41NDcuMTQtLjg4MS43LS43NTIgMS4yNTcuMTMuNTU4LjY3NS45MDcgMS4yMjUuNzgzem0wIDE2Ljg3NmMuMzU5LS4wODcuNjQ0LS4zNi43NS0uNzJhMS4wNjIgMS4wNjIgMCAwMC0uMjM3LTEuMDE5IDEuMDE4IDEuMDE4IDAgMDAtLjk4NS0uMzAxIDEuMDM3IDEuMDM3IDAgMDAtLjc2Mi43MTdjLS4xMDguMzYxLS4wMTcuNzU0LjIzOSAxLjAyOC4yNDUuMjYzLjYwNi4zNzcuOTUzLjMwNWwuMDQzLS4wMXpNMTcuMTkgMy41YS42MzEuNjMxIDAgMDAuNjI4LS42NGMwLS4zNTUtLjI3OS0uNjQtLjYyOC0uNjRhLjYzMS42MzEgMCAwMC0uNjI4LjY0YzAgLjM1NS4yOC42NC42MjguNjR6bS0xMC4zOCAwYS42MzEuNjMxIDAgMDAuNjI4LS42NGMwLS4zNTUtLjI4LS42NC0uNjI4LS42NGEuNjMxLjYzMSAwIDAwLS42MjguNjRjMCAuMzU1LjI3OS42NC42MjguNjR6bS01LjE4MiA3Ljg1MmEuNjMxLjYzMSAwIDAwLS42MjguNjRjMCAuMzU0LjI4LjYzOS42MjguNjM5YS42My42MyAwIDAwLjYyNy0uNjA2bC4wMDEtLjAzNGEuNjIuNjIgMCAwMC0uNjI4LS42NHptNS4xODIgOS4xM2EuNjMxLjYzMSAwIDAwLS42MjguNjRjMCAuMzU1LjI3OS42NC42MjguNjRhLjYzMS42MzEgMCAwMC42MjgtLjY0YzAtLjM1NS0uMjgtLjY0LS42MjgtLjY0em0xMC4zOC4wMThhLjYzMS42MzEgMCAwMC0uNjI4LjY0YzAgLjM1NS4yOC42NC42MjguNjRhLjYzMS42MzEgMCAwMC42MjgtLjY0YzAtLjM1NS0uMjc5LS42NC0uNjI4LS42NHptNS4xODItOS4xNDhhLjYzMS42MzEgMCAwMC0uNjI4LjY0YzAgLjM1NC4yNzkuNjM5LjYyOC42MzlhLjYzMS42MzEgMCAwMC42MjgtLjY0YzAtLjM1NS0uMjgtLjY0LS42MjgtLjY0em0tLjM4NC00Ljk5MmEuMjQuMjQgMCAwMC4yNDQtLjI0OS4yNC4yNCAwIDAwLS4yNDQtLjI0OS4yNC4yNCAwIDAwLS4yNDQuMjQ5YzAgLjE0Mi4xMjIuMjQ5LjI0NC4yNDl6TTExLjk5MS40OTdhLjI0LjI0IDAgMDAuMjQ1LS4yNDhBLjI0LjI0IDAgMDAxMS45OSAwYS4yNC4yNCAwIDAwLS4yNDQuMjQ5YzAgLjEzMy4xMDguMjM2LjIyMy4yNDdsLjAyMS4wMDF6TTIuMDExIDYuMzZhLjI0LjI0IDAgMDAuMjQ1LS4yNDkuMjQuMjQgMCAwMC0uMjQ0LS4yNDkuMjQuMjQgMCAwMC0uMjQ0LjI0OS4yNC4yNCAwIDAwLjI0NC4yNDl6bTAgMTEuMjYzYS4yNC4yNCAwIDAwLS4yNDMuMjQ4LjI0LjI0IDAgMDAuMjQ0LjI0OS4yNC4yNCAwIDAwLjI0NC0uMjQ5LjI1Mi4yNTIgMCAwMC0uMjQ0LS4yNDh6bTE5Ljk5NS0uMDE4YS4yNC4yNCAwIDAwLS4yNDUuMjQ4LjI0LjI0IDAgMDAuMjQ1LjI1LjI0LjI0IDAgMDAuMjQ0LS4yNS4yNTIuMjUyIDAgMDAtLjI0NC0uMjQ4eiIgZmlsbD0iIzM4NTlGRiIgZmlsbC1ydWxlPSJub256ZXJvIj48L3BhdGg+PC9zdmc+" }
+		};
+		var PROVIDERS = [
+			{"id": "siliconflow", "name": "硅基流动", "en": "SiliconFlow", "icon": "siliconcloud", "url": "https://api.siliconflow.cn/v1", "models": ["FunAudioLLM/SenseVoiceSmall", "TeleAI/TeleSpeechASR"], "query": "?sub_type=speech-to-text", "keyUrl": "https://cloud.siliconflow.cn/account/ak"},
+			{"id": "zhipu", "name": "智谱 BigModel", "en": "Zhipu BigModel", "icon": "zhipu", "url": "https://open.bigmodel.cn/api/paas/v4", "models": ["glm-asr-2512", "glm-asr"], "keyUrl": "https://bigmodel.cn/usercenter/proj-mgmt/apikeys"},
+			{"id": "openai", "name": "OpenAI", "en": "OpenAI", "icon": "openai", "url": "https://api.openai.com/v1", "models": ["gpt-4o-mini-transcribe", "gpt-4o-transcribe", "whisper-1"], "keyUrl": "https://platform.openai.com/api-keys"},
+			{"id": "groq", "name": "Groq", "en": "Groq", "icon": "groq", "url": "https://api.groq.com/openai/v1", "models": ["whisper-large-v3-turbo", "whisper-large-v3"], "keyUrl": "https://console.groq.com/keys"},
+			{"id": "mistral", "name": "Mistral", "en": "Mistral", "icon": "mistral", "url": "https://api.mistral.ai/v1", "models": ["voxtral-mini-latest"], "keyUrl": "https://console.mistral.ai/api-keys"}
+		];
+		function normUrl(u) { return String(u || "").trim().replace(/\/+$/, "").toLowerCase(); }
+		function providerOf(url) {
+			var n = normUrl(url);
+			for (var i = 0; i < PROVIDERS.length; i++) if (normUrl(PROVIDERS[i].url) === n) return PROVIDERS[i];
+			return null;
+		}
+		function ProviderIcon(props) {
+			var ic = props.icon ? PROVIDER_ICONS[props.icon] : null;
+			if (!ic) return h("span", { className: "napcatb-pIcon napcatb-pIconText", "aria-hidden": true }, (props.name || "?").slice(0, 1));
+			if (ic.mono) return h("span", { className: "napcatb-pIcon napcatb-pIconMono", "aria-hidden": true, style: { WebkitMaskImage: "url(" + ic.src + ")", maskImage: "url(" + ic.src + ")" } });
+			return h("img", { className: "napcatb-pIcon", src: ic.src, alt: "", "aria-hidden": true });
+		}
+		function providerName(t, p) { return p ? (t("langIsEn") === "1" ? p.en : p.name) : t("providerCustom"); }
+		/** 选服务商：点开后是带搜索的格子，选一家就填好接口地址（模型不在这家的常用列表里时换成第一个） */
+		function ProviderField(props) {
+			var t = props.t;
+			var url = props.state[props.urlField].text;
+			var cur = providerOf(url);
+			var openHook = React.useState(false), open = openHook[0], setOpen = openHook[1];
+			var qHook = React.useState(""), q = qHook[0], setQ = qHook[1];
+			function choose(p) {
+				setOpen(false); setQ("");
+				if (!p) { props.onCustom && props.onCustom(); return; }
+				props.edit(props.urlField, p.url);
+				var model = props.state[props.modelField].text;
+				if (p.models.length > 0 && p.models.indexOf(model) < 0) props.edit(props.modelField, p.models[0]);
+				if (props.onPick) props.onPick(p);
+			}
+			var list = PROVIDERS.filter(function (p) { var s = q.trim().toLowerCase(); return !s || (p.name + " " + p.en + " " + p.id).toLowerCase().indexOf(s) >= 0; });
+			return h("div", { className: "napcatb-field" },
+				h("span", { className: "napcatb-label" }, h(Label, { text: t("provider"), hint: t("providerHint") })),
+				h("div", { className: "napcatb-row" },
+					h("button", { type: "button", className: "napcatb-pCurrent", disabled: props.disabled, "aria-expanded": open, onClick: function () { setOpen(!open); } },
+						h(ProviderIcon, { icon: cur && cur.icon, name: cur ? providerName(t, cur) : "+" }),
+						h("span", { className: "napcatb-pName" }, providerName(t, cur)),
+						h("span", { className: "napcatb-pCaret", "aria-hidden": true }, open ? "▴" : "▾")),
+					cur && cur.keyUrl ? h("a", { className: "napcatb-hint napcatb-link", href: cur.keyUrl, target: "_blank", rel: "noreferrer noopener" }, t("providerGetKey")) : null),
+				open ? h("div", { className: "napcatb-pPanel", role: "dialog", "aria-label": t("provider") },
+					h("input", { className: "napcatb-input napcatb-pSearch", type: "search", placeholder: t("providerSearch"), value: q, autoFocus: true, onChange: function (e) { setQ(e.target.value); } }),
+					h("div", { className: "napcatb-pGrid", role: "listbox" },
+						list.map(function (p) {
+							return h("button", { key: p.id, type: "button", role: "option", "aria-selected": cur === p, className: "napcatb-pCard" + (cur === p ? " napcatb-pOn" : ""), onClick: function () { choose(p); } },
+								h(ProviderIcon, { icon: p.icon, name: p.name }), h("span", { className: "napcatb-pName" }, providerName(t, p)));
+						}),
+						h("button", { type: "button", role: "option", "aria-selected": !cur, className: "napcatb-pCard" + (!cur ? " napcatb-pOn" : ""), onClick: function () { choose(null); } },
+							h(ProviderIcon, { name: "+" }), h("span", { className: "napcatb-pName" }, t("providerCustom"))))) : null);
+		}
+		/** 模型：下拉里是拉到的模型（拉不到就用这家的常用模型），也能手动填 */
+		function ModelField(props) {
+			var t = props.t;
+			var url = props.state[props.urlField].text;
+			var cur = providerOf(url);
+			var model = props.state[props.modelField].text;
+			var listHook = React.useState(null), fetched = listHook[0], setFetched = listHook[1];
+			var msgHook = React.useState(null), msg = msgHook[0], setMsg = msgHook[1];
+			var busyHook = React.useState(false), busy = busyHook[0], setBusy = busyHook[1];
+			var manualHook = React.useState(false), manual = manualHook[0], setManual = manualHook[1];
+			function fetchModels() {
+				var typedKey = props.state[props.keyField] ? props.state[props.keyField].text : "";
+				setBusy(true); setMsg(null);
+				return fetch(new URL(props.apiPath, document.baseURI).href, {
+					method: "POST", credentials: "same-origin", cache: "no-store", headers: { "content-type": "application/json" },
+					body: JSON.stringify({ apiUrl: url, apiKey: typedKey || "", query: (cur && cur.query) || "" })
+				}).then(function (res) { if (!res.ok) throw new Error("HTTP " + res.status); return res.json(); })
+					.then(function (r) {
+						if (r.ok) { setFetched(r.models); setMsg({ tone: "ok", text: t(r.filtered ? "modelFetched" : "modelFetchedAll", { n: r.models.length }) }); }
+						else { setFetched(null); setMsg({ tone: "error", text: t("modelFetchFailed", { error: r.error }) }); }
+					}, function (e) { setMsg({ tone: "error", text: t("modelFetchFailed", { error: e && e.message || String(e) }) }); })
+					.finally(function () { setBusy(false); });
+			}
+			// 换了服务商：清掉上一家拉到的列表；有 Key（保存过的或刚填的）就自动拉一次
+			var lastUrl = React.useRef(url);
+			React.useEffect(function () {
+				if (lastUrl.current === url) return;
+				lastUrl.current = url; setFetched(null); setMsg(null); setManual(false);
+				var hasKey = (props.state.secretSet && props.state.secretSet[props.keyField]) || (props.state[props.keyField] && props.state[props.keyField].text);
+				if (cur && (hasKey || /^http:\/\/127\.0\.0\.1/.test(cur.url))) fetchModels();
+			}, [url]);
+			var options = (fetched || (cur ? cur.models : [])).slice();
+			if (model && options.indexOf(model) < 0) options.unshift(model);
+			var MANUAL = "\u0000manual";
+			var showSelect = !manual && options.length > 0;
+			return h("div", { className: "napcatb-field" },
+				h("span", { className: "napcatb-label" }, h(Label, { text: props.label, hint: t("modelHint") })),
+				h("div", { className: "napcatb-row" },
+					showSelect ? h("select", { className: "napcatb-select napcatb-pModel", disabled: props.disabled, value: model, "aria-label": props.label, onChange: function (e) { if (e.target.value === MANUAL) setManual(true); else props.edit(props.modelField, e.target.value); } },
+						options.map(function (m) { return h("option", { key: m, value: m }, m); }),
+						h("option", { value: MANUAL }, t("modelManual"))) : null,
+					h("button", { type: "button", className: "napcatb-pBtn", disabled: busy || props.disabled || !url, onClick: fetchModels }, busy ? t("modelFetching") : t("modelFetch")),
+					showSelect ? null : (options.length > 0 ? h("button", { type: "button", className: "napcatb-pBtn", onClick: function () { setManual(false); } }, t("modelPickList")) : null)),
+				showSelect ? null : h(Value, Object.assign({}, props.common, { field: props.modelField, label: t("modelManualLabel") })),
+				cur && cur.note ? h("p", { className: "napcatb-hint" }, t(cur.note)) : null,
+				msg ? h("p", { className: "napcatb-pill napcatb-result napcatb-" + msg.tone, role: "status" }, msg.text) : null);
+		}
+		//#endregion
+
 		function SettingsPage(props) {
 			var t = props.t;
 			if (props.view === "summary") return t("summary");
@@ -947,9 +1118,10 @@ window.__ModuleLoader__.load({
 					h(Section, { key: "s", title: t("stt"), hint: t("sttHint") },
 						h(Select, Object.assign({ field: "sttMode", label: t("sttMode"), fallback: "off", options: [{ value: "off", label: t("sttOff") }, { value: "command", label: t("sttCommandMode") }, { value: "openai", label: t("sttOpenai") }] }, common)),
 						sttMode === "command" ? h(Value, Object.assign({ field: "sttCommand", label: t("sttCommand"), hint: t("sttCommandHint") }, common)) : null,
-						sttMode === "openai" ? G(h(Value, Object.assign({ field: "sttApiUrl", label: t("sttApiUrl"), hint: t("sttApiUrlHint") }, common)),
-							h(Value, Object.assign({ field: "sttModel", label: t("sttModel"), hint: t("sttModelHint") }, common))) : null,
+						sttMode === "openai" ? h(ProviderField, Object.assign({ urlField: "sttApiUrl", modelField: "sttModel" }, common)) : null,
 						sttMode === "openai" ? h(Secret, Object.assign({ field: "sttApiKey", label: t("sttApiKey"), hint: t("sttApiKeyHint"), setLabel: t("keySet"), unsetLabel: t("keyUnset") }, common)) : null,
+						sttMode === "openai" ? h(ModelField, Object.assign({ urlField: "sttApiUrl", modelField: "sttModel", keyField: "sttApiKey", apiPath: "api/napcat-bridge/stt/models", label: t("sttModel"), common: common }, common)) : null,
+						sttMode === "openai" ? h(Value, Object.assign({ field: "sttApiUrl", label: t("sttApiUrl"), hint: t("sttApiUrlHint") }, common)) : null,
 						sttMode !== "off" ? h(SttTest, { t: t, dirty: state.dirty }) : null),
 					h(Section, { key: "v", title: t("video"), hint: t("videoHint") },
 						h(Toggle, Object.assign({ field: "videoFrames", label: t("videoFrames"), hint: t("videoFramesHint") }, common)),

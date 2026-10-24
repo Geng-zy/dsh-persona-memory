@@ -7,6 +7,7 @@ import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
 import { AiocqhttpAdapter, AiocqhttpMessageEvent, MessageType, sessionToString, type AstrBotMessage, type MessageSession } from './adapter.js'
 import { Bridge, type PromptPayload, type SentPayload, type SessionChange, type SessionInfo } from './bridge.js'
 import type { MessageChain } from './components.js'
+import { listModels } from './models.js'
 import { findFfmpeg, installFfmpeg, platformTag, type InstallState } from './ffmpeg.js'
 import { Media, type ModelPart } from './media.js'
 import type { Logger } from './onebot/server.js'
@@ -403,6 +404,22 @@ export function apply(ctx: Context, live: LiveConfig): void {
     if (path.endsWith('/napcat-bridge/status')) return json(200, await status())
     if (path.endsWith('/napcat-bridge/ffmpeg') && req.method === 'GET') return json(200, await ffmpegStatus(true))
     // 设置页「测试」语音转文字：POST <dsh>/api/napcat-bridge/stt/test（用保存过的设置，拿一段静音试）
+    // 设置页「获取模型列表」：POST <dsh>/api/napcat-bridge/stt/models { apiUrl?, apiKey?, query? }（没给的用保存过的；Key 只在这次请求里用）
+    if (path.endsWith('/napcat-bridge/stt/models')) {
+      if (req.method !== 'POST') return json(405, { error: 'POST only' })
+      if (!String(req.headers['content-type'] ?? '').includes('application/json')) return json(415, { error: 'application/json only' })
+      let body: { apiUrl?: unknown; apiKey?: unknown; query?: unknown } = {}
+      try {
+        const chunks: Buffer[] = []
+        let size = 0
+        for await (const c of req) { size += (c as Buffer).length; if (size > 64 * 1024) return json(413, { error: 'too large' }); chunks.push(c as Buffer) }
+        body = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')
+      } catch { return json(400, { error: 'bad json' }) }
+      const s = sttSettings()
+      const url = typeof body.apiUrl === 'string' && body.apiUrl.trim() ? body.apiUrl : s.apiUrl
+      const key = typeof body.apiKey === 'string' && body.apiKey.trim() ? body.apiKey : s.apiKey
+      return json(200, await listModels(url, key, 'stt', typeof body.query === 'string' ? body.query : ''))
+    }
     if (path.endsWith('/napcat-bridge/stt/test')) {
       if (req.method !== 'POST') return json(405, { error: 'POST only' })
       return json(200, await testStt(sttSettings()))
