@@ -98,7 +98,7 @@ dsh-companion-core/deploy/deploy.sh ubuntu@<服务器 IP> --admin <你的 QQ 号
 1. 装 Node 24 和 dsh：`npm install -g @deepseek-ai/dsh@0.2.1-rc.2`（国内可以先 `npm config set registry https://registry.npmmirror.com/`）。
 2. 装两个插件：
    ```bash
-   dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.11.2 github:Geng-zy/dsh-companion-core#v0.8.1
+   dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.11.2 github:Geng-zy/dsh-companion-core#v0.8.2
    ```
    服务器连不上 GitHub 时，到两个仓库的 Releases 页面下载 `.tgz`，传上去后 `dsh plugin --profile web add ./xxx.tgz`。
 3. 启动网页：本机用 `dsh web`；服务器上 `dsh web --host <内网 IP> --port 3080`（dsh 不接受 0.0.0.0），并在 `~/.dsh/profiles/web/cordis.patch.yml` 里信任公网地址：

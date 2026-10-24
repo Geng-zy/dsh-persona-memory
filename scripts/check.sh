@@ -26,6 +26,10 @@ echo "== 安装依赖"
 echo "== 编译"
 "${PNPM[@]}" run build >/dev/null
 
+echo "== 设置页脚本语法"
+# 设置页 client.js 是手写、不经编译的，写坏了 dsh 网页整个打不开；单元测试和端到端测试都碰不到它，单独查一遍
+node --check lib/client.js || { echo "lib/client.js 有语法错误，dsh 网页会加载失败" >&2; exit 1; }
+
 echo "== 单元测试"
 "${PNPM[@]}" test 2>&1 | grep -E "^(not ok|ℹ (pass|fail))" || true
 "${PNPM[@]}" test >/dev/null 2>&1 || { echo "单元测试没通过，运行 pnpm test 看详情" >&2; exit 1; }
