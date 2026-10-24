@@ -51,7 +51,7 @@
 ## 安装
 
 ```bash
-dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.10.0
+dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.10.1
 ```
 
 然后在 profile 的 `cordis.patch.yml` 里写配置（行 id 固定是 `napcat-bridge`）：
@@ -128,7 +128,7 @@ NapCat 那边在「网络配置」里新建一个 **WebSocket 客户端**：
 | | `typingCharsPerMinute` / `typingMinSeconds` / `typingMaxSeconds` | `100` / `1` / `10` | 打字速度（0 = 不等）、最少和最多等几秒 |
 | | `groupMinGapSeconds` / `groupMaxPerWindow` / `groupWindowSeconds` | `5` / `5` / `60` | 同一个群她两条之间至少隔几秒、一段时间里最多几条（0 = 不限） |
 | | `sendMaxWaitSeconds` | `120` | 为了守频率最多排队几秒，超过就不发 |
-| 分段发送 | `segmentAdminPrivate` / `segmentPrivate` / `segmentGroup` | `true` / `false` / `false` | 把一次回复按行拆成几条发（代码块不拆），每条各自走打字等待 |
+| 分段发送 | `segmentAdminPrivate` / `segmentPrivate` / `segmentGroup` | `true` / `false` / `false` | 把一次回复按行拆成几条发（代码块不拆）；整条回复的打字时间只算一次、按长度分给各条 |
 | | `segmentMax` | `10` | 一次最多拆成几条，多出来的并进最后一条 |
 | 指令 | `commandsEnabled` / `noPermissionReply` | `true` / `true` | QQ 指令；没有权限时回一句 |
 | 日志 | `logLevel` | `info` | 日志级别 |

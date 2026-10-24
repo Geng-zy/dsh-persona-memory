@@ -21,7 +21,7 @@ import type { Media, ModelPart } from './media.js'
 import { extractForwards, extractQuoted } from './quoted.js'
 import type { SttSettings } from './stt.js'
 import type { SessionStore } from './store.js'
-import { Pacer, type PaceSettings } from './pacer.js'
+import { Pacer, splitTyping, type PaceSettings } from './pacer.js'
 import { segmentEnabled, splitReply, type SegmentSettings } from './segment.js'
 import type { Logger } from './onebot/server.js'
 
@@ -755,15 +755,17 @@ export class Bridge {
       const segments = segmentEnabled(settings.segment, { group: isGroup, adminPrivate: chat.info.adminPrivate })
         ? splitReply(text, settings.segment.maxSegments)
         : [text]
-      for (const segment of segments) {
+      // 拆成几段时，整条回复的打字时间算一次、按长度分给各段（不然每段各等一遍，八行要等一分钟）
+      const typing = segments.length > 1 ? splitTyping(segments, isGroup, settings.pace) : [undefined]
+      segments.forEach((segment, i) => {
         const reply: MessageChain = { chain: [Plain(segment)] }
-        void this.pacer.run(umo, isGroup, segment, () => chat.send(reply)).then(result => {
+        void this.pacer.run(umo, isGroup, segment, () => chat.send(reply), typing[i]).then(result => {
           if (result === 'dropped') return
           this.notifySent({ umo, session: chat.session, text: segment, chain: reply, source: 'reply', time: Date.now() })
         }, e => {
           this.deps.log('error', '发送回复失败（' + umo + '）: ' + (e instanceof Error ? e.message : String(e)))
         })
-      }
+      })
     }
   }
 

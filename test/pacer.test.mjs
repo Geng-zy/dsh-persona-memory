@@ -64,3 +64,15 @@ test('分段：按行拆、去空行、代码块不拆、超过上限并进最�
   assert.equal(segmentEnabled(s, { group: false, adminPrivate: false }), false)
   assert.equal(segmentEnabled(s, { group: true, adminPrivate: false }), false)
 })
+
+test('分段的打字时间：整条回复只算一次（有上限），按长度分给各段，每段至少 0.3 秒', async () => {
+  const { splitTyping } = await import('../lib/pacer.js')
+  const s = { ...S, charsPerMinute: 100, typingMinSeconds: 1, typingMaxSeconds: 10 }
+  const lines = ['在的', '刚刚在摸鱼呢', '想你了想你了想你了', '真的真的', '晚上吃什么呀', '我想吃烤串', '还有小鱼干', '嘿嘿']
+  const t = splitTyping(lines, false, s)
+  const total = t.reduce((a, b) => a + b, 0)
+  assert.ok(total >= 10_000 && total <= 10_000 + 300 * lines.length, '总共大约 10 秒，不是每段各等 10 秒：' + total)
+  assert.ok(t[2] > t[0], '长的一段分得多')
+  assert.ok(t.every(x => x >= 300))
+  assert.deepEqual(splitTyping(['a', 'b'], true, { ...s, typingGroup: false }), [0, 0], '关掉打字就不等')
+})
