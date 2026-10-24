@@ -7,7 +7,7 @@
       "source": "npm @deepseek-ai/dsh 的 latest 标签。要核对：dsh-compaction-basic 的 BasicCompactionEngine（本插件继承它）、system-prompt/assemble、agent/created、dsh-tools 的 defineTool、dsh-web-app/presets/standard.patch.yml（陪伴模式预设照抄它的工具行）"
     },
     "napcat-bridge": {
-      "aligned": "v0.10.5",
+      "aligned": "v0.11.0",
       "source": "GitHub Geng-zy/dsh-napcat-bridge 最新标签（插件一）；本插件用它的 napcat/message、napcat/sent、ctx.napcat.sessionInfo、ctx.napcat.wake（主动聊天）"
     },
     "node": {
