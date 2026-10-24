@@ -22,10 +22,10 @@ export interface PacerDeps {
 /** 按打字速度要等多久（毫秒）。 */
 export declare function typingDelay(text: string, isGroup: boolean, s: PaceSettings): number;
 /**
- * 分段发送时每段的打字时间：整条回复按 typingDelay 算一次（有最短、最长），再按各段字数分下去，
- * 所以拆成多少段，总共等的时间都和不拆时一样（每段至少 0.3 秒，看起来是一条一条打出来的）。
+ * 分段发送时每段的打字时间：每段按自己的字数和打字速度算（有最短），但每段最多等 maxSegmentSeconds，
+ * 免得一行十几个字就等十秒、八行等一分钟。
  */
-export declare function splitTyping(segments: readonly string[], isGroup: boolean, s: PaceSettings): number[];
+export declare function splitTyping(segments: readonly string[], isGroup: boolean, s: PaceSettings, maxSegmentSeconds: number): number[];
 /** 为了守群里的发言频率还要等多久（毫秒）；sent 是这个群最近发出的时间（从早到晚）。 */
 export declare function rateDelay(sent: readonly number[], now: number, s: PaceSettings): number;
 export declare class Pacer {

@@ -86,6 +86,7 @@ export interface Config {
   segmentPrivate: boolean
   segmentGroup: boolean
   segmentMax: number
+  segmentMaxSeconds: number
   logLevel: 'debug' | 'info' | 'warn' | 'error'
 }
 
@@ -167,6 +168,7 @@ export const Config: z<LiveConfig> = z.object({
   segmentPrivate: z.boolean().default(false).volatile().description('分段发送：其他私聊'),
   segmentGroup: z.boolean().default(false).volatile().description('分段发送：群聊'),
   segmentMax: z.natural().min(1).default(10).volatile().description('分段发送：一次回复最多拆成几条（多出来的并进最后一条）'),
+  segmentMaxSeconds: z.natural().min(1).default(3).volatile().description('分段发送：每一条最多等几秒打字'),
   logLevel: z.union(['debug', 'info', 'warn', 'error']).default('info').volatile().description('日志级别'),
 }) as never
 
@@ -303,7 +305,7 @@ export function apply(ctx: Context, live: LiveConfig): void {
         groupMinGapSeconds: get('groupMinGapSeconds'), groupMaxPerWindow: get('groupMaxPerWindow'), groupWindowSeconds: get('groupWindowSeconds'),
         maxWaitSeconds: get('sendMaxWaitSeconds'),
       },
-      segment: { adminPrivate: get('segmentAdminPrivate'), private: get('segmentPrivate'), group: get('segmentGroup'), maxSegments: get('segmentMax') },
+      segment: { adminPrivate: get('segmentAdminPrivate'), private: get('segmentPrivate'), group: get('segmentGroup'), maxSegments: get('segmentMax'), maxSecondsPerSegment: get('segmentMaxSeconds') },
     }),
     log,
   })

@@ -755,8 +755,8 @@ export class Bridge {
       const segments = segmentEnabled(settings.segment, { group: isGroup, adminPrivate: chat.info.adminPrivate })
         ? splitReply(text, settings.segment.maxSegments)
         : [text]
-      // 拆成几段时，整条回复的打字时间算一次、按长度分给各段（不然每段各等一遍，八行要等一分钟）
-      const typing = segments.length > 1 ? splitTyping(segments, isGroup, settings.pace) : [undefined]
+      // 拆成几段时，每段按自己的字数等，但每段有单独的上限（不然一行十几个字就等十秒，八行要等一分钟）
+      const typing = segments.length > 1 ? splitTyping(segments, isGroup, settings.pace, settings.segment.maxSecondsPerSegment) : [undefined]
       segments.forEach((segment, i) => {
         const reply: MessageChain = { chain: [Plain(segment)] }
         void this.pacer.run(umo, isGroup, segment, () => chat.send(reply), typing[i]).then(result => {

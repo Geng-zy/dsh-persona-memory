@@ -33,7 +33,7 @@ function settings(over = {}) {
     stt: { mode: 'off', command: '', apiUrl: '', apiKey: '', model: '' },
     video: { enabled: true, maxFrames: 4, secondsPerFrame: 5, maxEdge: 1024, maxMB: 100, maxMinutes: 10, timeoutSeconds: 30, ffmpegPath: '/nonexistent/ffmpeg' },
     silenceToken: '[不发]',
-    segment: { adminPrivate: false, private: false, group: false, maxSegments: 10 },
+    segment: { adminPrivate: false, private: false, group: false, maxSegments: 10, maxSecondsPerSegment: 3 },
     pace: { typingPrivate: false, typingGroup: false, charsPerMinute: 0, typingMinSeconds: 0, typingMaxSeconds: 0, groupMinGapSeconds: 0, groupMaxPerWindow: 0, groupWindowSeconds: 60, maxWaitSeconds: 120 },
     ...over,
   }
@@ -317,7 +317,7 @@ test('rotateSession：换新的 dsh 会话，发 napcat/session-changed，下一
 })
 
 test('分段发送：主人私聊按行拆成几条、按顺序发，每条都通知；别人私聊不拆', async () => {
-  const h = harness({ segment: { adminPrivate: true, private: false, group: false, maxSegments: 3 } }, memberInfo)
+  const h = harness({ segment: { adminPrivate: true, private: false, group: false, maxSegments: 3, maxSecondsPerSegment: 3 } }, memberInfo)
   await h.privateMsg(Number(ADMIN), [text('在吗')])
   h.turn(String(h.created[0].sessionId), '在的\n\n刚刚在摸鱼\n想你了\n真的')
   await new Promise(r => setTimeout(r, 30))
