@@ -16,6 +16,7 @@ export interface Config {
     ws_reverse_port: number;
     ws_reverse_token: string;
     wake_prefix: string[];
+    wakeKeywords: string[];
     friend_message_needs_wake_prefix: boolean;
     ignore_bot_self_message: boolean;
     workspacePath: string;

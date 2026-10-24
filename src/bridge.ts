@@ -37,6 +37,8 @@ declare module '@deepseek-ai/dsh-llm' {
 export interface WakeConfig {
   /** AstrBot wake_prefix，默认 ["/"] */
   wakePrefix: string[]
+  /** 本插件新增：群消息里出现这些词（不用 @、不用在开头）也唤醒；英文不分大小写 */
+  wakeKeywords?: string[]
   /** AstrBot platform_settings.ignore_bot_self_message，默认 false */
   ignoreBotSelfMessage: boolean
   /** AstrBot platform_settings.friend_message_needs_wake_prefix，默认 false */
@@ -294,6 +296,11 @@ export function wakingCheck(event: AiocqhttpMessageEvent, wake: WakeConfig): { i
     }
     // 检查是否是私聊
     if (event.isPrivateChat() && !wake.friendMessageNeedsWakePrefix) isWake = true
+    // 本插件新增：群里有人提到唤醒词（比如她的名字）也唤醒
+    if (!isWake && !event.isPrivateChat()) {
+      const lower = messageStr.toLowerCase()
+      if ((wake.wakeKeywords ?? []).some(k => k.trim() !== '' && lower.includes(k.trim().toLowerCase()))) isWake = true
+    }
   }
   return { isWake, messageStr, stop: false, prefixUsed }
 }

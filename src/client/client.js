@@ -35,9 +35,11 @@ window.__ModuleLoader__.load({
 			platformId: "平台 ID",
 			platformIdHint: "会话标识的第一段（平台ID:消息类型:会话ID）。改了以后已有的 QQ 会话会对应到新的 dsh 会话。",
 			wake: "唤醒",
-			wakeHint: "私聊默认都交给模型；群里 @ 她、引用她的消息、或以唤醒前缀开头才交给模型。",
+			wakeHint: "私聊默认都交给模型；群里 @ 她、引用她的消息、以唤醒前缀开头、或者提到唤醒词时才交给模型。",
 			wakePrefix: "唤醒前缀",
 			wakePrefixHint: "多个用空格或逗号分开，例如 / #。全部删掉表示不用前缀唤醒。",
+			wakeKeywords: "唤醒词（群里）",
+			wakeKeywordsHint: "群消息里出现这些词，不用 @ 她也会被唤醒来接话（比如她的名字）。多个用空格或逗号分开，英文不分大小写。全部删掉就只有 @、引用、前缀能唤醒。私聊本来每条都会唤醒，不受影响。",
 			friendNeedsPrefix: "私聊也需要唤醒前缀",
 			ignoreSelf: "忽略她自己发出的消息",
 			model: "交给模型的内容",
@@ -244,6 +246,8 @@ window.__ModuleLoader__.load({
 			wake: "Wake",
 			wakeHint: "Private chats always reach the model; in groups only an @, a reply to her, or a wake prefix does.",
 			wakePrefix: "Wake prefixes",
+			wakeKeywords: "Wake words (groups)",
+			wakeKeywordsHint: "A group message containing any of these wakes her without an @. Separate with spaces or commas; case-insensitive.",
 			wakePrefixHint: "Separate with spaces or commas, e.g. / #. Remove all to disable prefixes.",
 			friendNeedsPrefix: "Private chats need a wake prefix too",
 			ignoreSelf: "Ignore messages she sent herself",
@@ -467,6 +471,14 @@ window.__ModuleLoader__.load({
 			".napcatb-detailsBody{display:grid;gap:12px;padding:4px 0 16px}",
 			".napcatb-test{display:grid;gap:6px;margin-top:-4px}",
 			".napcatb-testRow{display:flex;align-items:center;flex-wrap:wrap;gap:10px}",
+			".napcatb-testBtn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 14px;border-radius:10px;border:1px solid var(--dsw-alias-label-primary);background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;font-weight:600;cursor:pointer}",
+			".napcatb-testBtn:hover:not(:disabled){background:var(--dsw-alias-label-primary);color:var(--dsw-alias-bg-layer-1,var(--dsw-alias-bg-base,#fff))}",
+			".napcatb-testBtn:disabled{opacity:.55;cursor:default}",
+			".napcatb-testBtn:focus-visible{outline:2px solid var(--dsw-alias-border-focus,var(--dsw-alias-label-tertiary));outline-offset:2px}",
+			".napcatb-testIcon{font-size:14px;line-height:1}",
+			".napcatb-pill{display:inline-block;margin:0;padding:6px 10px;border-radius:8px;font-size:12px;line-height:1.5;overflow-wrap:anywhere}",
+			".napcatb-pill.napcatb-ok{background:color-mix(in srgb,var(--dsw-alias-state-success-primary,#2f9e44) 14%,transparent)}",
+			".napcatb-pill.napcatb-error{background:color-mix(in srgb,var(--dsw-alias-state-error-primary,#e03131) 14%,transparent)}",
 			".napcatb-confirm{display:grid;gap:8px;padding:10px 12px;border:.5px solid var(--dsw-alias-border-l4);border-radius:var(--dsw-radius-md,6px)}",
 			".napcatb-result,.napcatb-hint{overflow-wrap:anywhere}",
 			".napcatb-result{margin:0;font-size:12px;line-height:1.5}",
@@ -545,7 +557,7 @@ window.__ModuleLoader__.load({
 			["videoMaxMinutes", 1], ["videoTimeoutSeconds", 5],
 			["typingCharsPerMinute", 0], ["typingMinSeconds", 0], ["typingMaxSeconds", 0], ["groupMinGapSeconds", 0], ["groupMaxPerWindow", 0], ["groupWindowSeconds", 1], ["sendMaxWaitSeconds", 0], ["segmentMax", 1], ["segmentMaxSeconds", 1]
 		];
-		var LISTS = ["wake_prefix", "admins", "whitelist"];
+		var LISTS = ["wake_prefix", "wakeKeywords", "admins", "whitelist"];
 		var SECRETS = ["ws_reverse_token", "sttApiKey"];
 		//#endregion
 
@@ -664,6 +676,11 @@ window.__ModuleLoader__.load({
 			return { tone: "warn", text: t("testNoClient", { address: st.address }) };
 		}
 
+		/** 测试按钮：比普通小按钮显眼（描边、加粗、带图标） */
+		function TestButton(props) {
+			return h("button", { type: "button", className: "napcatb-testBtn", disabled: props.busy, onClick: props.onClick },
+				h("span", { className: "napcatb-testIcon", "aria-hidden": true }, props.busy ? "…" : "⇄"), props.label);
+		}
 		function ConnectionTest(props) {
 			var t = props.t;
 			var stateHook = React.useState(null);
@@ -684,9 +701,9 @@ window.__ModuleLoader__.load({
 			}
 			return h("div", { className: "napcatb-test" },
 				h("div", { className: "napcatb-testRow" },
-					h(P.Button, { size: "sm", disabled: busy, onClick: run }, busy ? t("testing") : t("test")),
+					h(TestButton, { busy: busy, onClick: run, label: busy ? t("testing") : t("test") }),
 					props.dirty ? h("span", { className: "napcatb-hint" }, t("testUsesSaved")) : null),
-				result ? h("p", { className: "napcatb-result napcatb-" + result.tone, role: "status" }, result.text) : null);
+				result ? h("div", null, h("p", { className: "napcatb-pill napcatb-result napcatb-" + result.tone, role: "status" }, result.text)) : null);
 		}
 
 		/** 语音转文字的「测试」（POST <dsh>/api/napcat-bridge/stt/test，用保存过的设置拿一段静音试）。 */
@@ -705,9 +722,9 @@ window.__ModuleLoader__.load({
 			}
 			return h("div", { className: "napcatb-test" },
 				h("div", { className: "napcatb-testRow" },
-					h(P.Button, { size: "sm", disabled: busy, onClick: run }, busy ? t("testing") : t("sttTest")),
+					h(TestButton, { busy: busy, onClick: run, label: busy ? t("testing") : t("sttTest") }),
 					props.dirty ? h("span", { className: "napcatb-hint" }, t("testUsesSaved")) : null),
-				result ? h("p", { className: "napcatb-result napcatb-" + result.tone, role: "status" }, result.text) : null);
+				result ? h("div", null, h("p", { className: "napcatb-pill napcatb-result napcatb-" + result.tone, role: "status" }, result.text)) : null);
 		}
 
 		/** ffmpeg 状态和一键安装（GET/POST <dsh>/api/napcat-bridge/ffmpeg[/install]）。 */
@@ -840,7 +857,8 @@ window.__ModuleLoader__.load({
 							h(Value, Object.assign({ field: "rateLimitSeconds", label: t("rateSeconds"), hint: t("rateSecondsHint"), numeric: true, invalidLabel: t("invalidPositive") }, common)),
 							h(Select, Object.assign({ field: "rateLimitStrategy", label: t("rateStrategy"), hint: t("rateStrategyHint"), fallback: "stall", options: [{ value: "stall", label: t("rateStall") }, { value: "discard", label: t("rateDiscard") }] }, common)))),
 					h(Section, { key: "w", title: t("wake"), hint: t("wakeHint") },
-						h(Value, Object.assign({ field: "wake_prefix", label: t("wakePrefix"), hint: t("wakePrefixHint") }, common)),
+						G(h(Value, Object.assign({ field: "wakeKeywords", label: t("wakeKeywords"), hint: t("wakeKeywordsHint") }, common)),
+							h(Value, Object.assign({ field: "wake_prefix", label: t("wakePrefix"), hint: t("wakePrefixHint") }, common))),
 						h(Toggle, Object.assign({ field: "friend_message_needs_wake_prefix", label: t("friendNeedsPrefix"), hint: t("friendNeedsPrefixHint") }, common)),
 						h(Toggle, Object.assign({ field: "ignore_bot_self_message", label: t("ignoreSelf"), hint: t("ignoreSelfHint") }, common)),
 						h(Toggle, Object.assign({ field: "emptyMentionWaiting", label: t("emptyWaiting"), hint: t("emptyWaitingHint") }, common)),

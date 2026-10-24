@@ -239,6 +239,16 @@ test('思考等级：主人私聊 high，其他私聊和群 low；设置改了�
   assert.equal(h.created[4].agentOptions.reasoningEffort, 'off')
 })
 
+test('唤醒词：群里提到「大肥鱼」不用 @ 也唤醒（英文不分大小写）；没提到不唤醒；私聊照常', async () => {
+  const h = harness({ wake: { wakePrefix: ['/'], wakeKeywords: ['大肥鱼', 'Fish'], ignoreBotSelfMessage: false, friendMessageNeedsWakePrefix: false } }, memberInfo)
+  await h.groupMsg(9, 555, [text('今天谁看到大肥鱼了')])
+  await h.groupMsg(9, 555, [text('这条跟她没关系')])
+  await h.groupMsg(9, 555, [text('hello FISH')])
+  assert.equal(h.followups.length, 2)
+  assert.match(h.followups[0].text, /今天谁看到大肥鱼了/)
+  assert.match(h.followups[1].text, /hello FISH/)
+})
+
 test('群里每人单独会话', async () => {
   const h = harness({ uniqueSession: true }, memberInfo)
   await h.groupMsg(9, 555, [at(BOT), text('a')])

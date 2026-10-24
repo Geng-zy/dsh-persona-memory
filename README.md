@@ -51,7 +51,7 @@
 ## 安装
 
 ```bash
-dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.10.5
+dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.11.0
 ```
 
 然后在 profile 的 `cordis.patch.yml` 里写配置（行 id 固定是 `napcat-bridge`）：
@@ -98,7 +98,8 @@ NapCat 那边在「网络配置」里新建一个 **WebSocket 客户端**：
 | | `whitelistIgnoreAdminOnGroup` / `…OnFriend` | `true` | 管理员不受白名单限制 |
 | | `whitelistLog` | `true` | 不在白名单时记日志 |
 | | `rateLimitCount` / `rateLimitSeconds` / `rateLimitStrategy` | `30` / `60` / `stall` | 频率限制，0 = 不限；stall 排队，discard 丢弃 |
-| 唤醒 | `wake_prefix` | `["/"]` | 唤醒前缀 |
+| 唤醒 | `wakeKeywords` | `["大肥鱼", "肥鱼"]` | 群消息里出现这些词也唤醒（不用 @，本插件新增） |
+| | `wake_prefix` | `["/"]` | 唤醒前缀 |
 | | `friend_message_needs_wake_prefix` | `false` | 私聊也要唤醒前缀 |
 | | `ignore_bot_self_message` | `false` | 忽略她自己发出的消息 |
 | | `emptyMentionWaiting` / `emptyMentionNeedReply` | `true` / `true` | 只 @ 不说话时等下一条 / 先问一句 |
