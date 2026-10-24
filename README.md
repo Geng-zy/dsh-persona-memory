@@ -51,7 +51,7 @@
 ## 安装
 
 ```bash
-dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.6.1
+dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.7.0
 ```
 
 装好后：
@@ -68,6 +68,8 @@ dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.6.1
 | dsh 全局设置里的默认人格（"You are a coding agent…"） | 能 |
 | 预设里的 `dsh-persona` 行，普通模式（内置的标准、PTC、创造模式） | 能 |
 | 预设里的 `dsh-persona` 开了 `complete: true`（内置的极简模式） | **不能**：dsh 在组装之后会把它原样恢复。请把这个预设加进「不生效的预设」 |
+
+装上本插件后，dsh 的默认预设就是「陪伴模式」（id `companion`）：新开的 dsh 会话、没单独设预设的 QQ 会话（dsh-napcat-bridge ≥ 0.9.1）都用它；你在 dsh 网页里另选了默认预设时以你选的为准。
 
 人格只在本插件的设置页改；`AGENTS.md` 里别再写人格，否则会叠在一起。写代码用的预设可以加进「不生效的预设」，这些会话保持 dsh 原样。
 

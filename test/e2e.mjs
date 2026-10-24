@@ -171,7 +171,6 @@ writeFileSync(join(profile, 'cordis.patch.yml'), `- id: napcat-bridge
     ws_reverse_token: ${TOKEN}
     workspacePath: ${workspace}
     admins: ['${MASTER}']
-    agentPreset: companion
     datetimeReminder: false
     typingCharsPerMinute: 0
     groupMinGapSeconds: 0
