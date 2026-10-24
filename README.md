@@ -66,6 +66,8 @@
 
 ### 方式一：一键脚本（推荐）
 
+一键脚本只有一份，放在 dsh-companion-core 仓库的 `deploy/` 里，**两个插件（dsh-napcat-bridge 和 dsh-companion-core）都由它一起装**，不用分别去两个仓库下载：脚本会从两个仓库的 Releases 各取最新版。
+
 服务器**连得上 GitHub**，就用 `ubuntu` 在服务器上：
 
 ```bash
