@@ -50,13 +50,23 @@
 
 ## 部署：从零装好整套 QQ 陪伴 AI
 
-本插件和 [dsh-companion-core](https://github.com/Geng-zy/dsh-companion-core) 是一套，互相补充：**dsh-napcat-bridge**（插件一）负责连 NapCat、收发 QQ 消息、发消息节奏；**dsh-companion-core**（插件二）负责人格、核心记忆、长期记忆、日记、主动聊天、备份迁移。只装本插件也能把 QQ 接到 dsh，但没有人格和记忆；一键部署脚本放在 dsh-companion-core 仓库的 `deploy/` 里，会把两个插件一起装好。
+本插件和 [dsh-companion-core](https://github.com/Geng-zy/dsh-companion-core) 是一套，互相补充：**dsh-napcat-bridge** 负责连 NapCat、收发 QQ 消息、发消息节奏；**dsh-companion-core** 负责人格、核心记忆、长期记忆、日记、主动聊天、备份迁移。只装本插件也能把 QQ 接到 dsh，但没有人格和记忆；一键部署脚本放在 dsh-companion-core 仓库的 `deploy/` 里，会把两个插件一起装好。
 
 需要：一台 Ubuntu 22.04 / 24.04 服务器（建议 2 核 4G，NapCat 里的 QQ 要占 1G 左右内存）、一个能 sudo 的普通用户（比如云服务器自带的 `ubuntu`）、一个 QQ 小号、一个 DeepSeek API Key。
 
+### 用户和目录怎么分
+
+| 用户 | 有没有 sudo | 干什么 |
+|---|---|---|
+| `root` | — | 不直接用 |
+| `ubuntu`（能 sudo 的普通用户） | 有 | 装系统软件（ffmpeg、Node、pnpm）、建用户、写开机服务；NapCat 也装在它下面、用它运行 |
+| `dafeiyu`（新建，名字可以换） | **没有** | 专门跑 dsh：dsh 和两个插件都装在她的家目录 `/home/dafeiyu` 里 |
+
+为什么这样分：dsh 会执行模型想执行的命令，官方安全说明要求只给最小权限、最好在专用环境里运行；让它跑在没有 sudo 的用户下，出事最多影响 `/home/dafeiyu`。NapCat 不装在 `dafeiyu` 下，她就读不到 QQ 的登录数据和连接 Token。
+
 ### 方式一：一键脚本（推荐）
 
-服务器**连得上 GitHub**，就在服务器上：
+服务器**连得上 GitHub**，就用 `ubuntu` 在服务器上：
 
 ```bash
 curl -fsSLO https://raw.githubusercontent.com/Geng-zy/dsh-companion-core/main/deploy/install-server.sh
@@ -70,48 +80,184 @@ git clone https://github.com/Geng-zy/dsh-companion-core
 dsh-companion-core/deploy/deploy.sh ubuntu@<服务器 IP> --admin <你的 QQ 号> --bot-qq <小号 QQ 号>
 ```
 
-`deploy.sh` 先在你电脑上下好两个插件的最新版、NapCat 和它的安装脚本（核对 GitHub 给的 SHA-256），传到服务器，再运行同一个 `install-server.sh`。Node 和 dsh 从国内镜像（npmmirror）装，不走 GitHub。
+`deploy.sh` 先在你电脑上下好两个插件的最新版、NapCat 和它的安装脚本（核对 GitHub 给的 SHA-256），传到服务器，再运行同一个 `install-server.sh`。Node 从国内镜像（npmmirror）下载并和 nodejs.org 的校验值核对，不走 GitHub。
 
-脚本做的事（可以重复跑，装过的跳过，已有的配置不覆盖）：
+脚本做的事和下面「方式二」完全一样（可以重复跑，装过的跳过，已有的配置不覆盖），另外会**随机生成两边的连接 Token、同时写进插件和 NapCat，不打印**。
 
-1. 装 ffmpeg 等系统软件；建一个没有 sudo 的用户 `dafeiyu` 专门跑 dsh（她能在自己目录里执行命令，碰不到系统）。
-2. 在这个用户下装 Node 24、dsh 0.2.1-rc.2 和两个插件。
-3. 写好 dsh 的配置：登录记住 365 天、信任公网地址、主人 QQ；**随机生成插件一和 NapCat 之间的连接 Token，两边同时写好，不打印**。
-4. 装 NapCat（官方安装脚本），把「WebSocket 客户端」连接配置写好。
-5. 把 dsh 和 NapCat 做成开机自启、挂了自动重启的服务。
+### 方式二：手动安装
 
-跑完还剩几步，脚本最后会逐条提示：
+#### 总表
 
-1. 云服务器安全组放行 dsh 网页端口 3080（建议只放行自己的 IP），用脚本最后打印的带 token 的链接打开网页（浏览器记住 365 天）。不想开端口就走 SSH 隧道。
-2. 网页里「设置 → 模型」填 DeepSeek API Key。想用 **DeepSeek 账号登录**的话，dsh 只允许在 `localhost` 地址上登录账号：先 `ssh -L 3080:<内网 IP>:3080 ubuntu@<服务器>`，再在本机打开 `http://localhost:3080/?token=…` 登录。
-3. 扫码登录 QQ 小号（二维码路径和 NapCat 网页地址脚本会告诉你）。
-4. 在侧栏「插件」里两个插件的设置页调白名单、唤醒词、人格、核心记忆等。
+| # | 装什么 | 用哪个用户 | 在哪个目录运行 | 要不要 sudo | 装到哪 |
+|---|---|---|---|---|---|
+| 1 | 系统软件：ffmpeg、curl、xz-utils | `ubuntu` | 任意 | **要** | `/usr/bin` 等系统目录 |
+| 2 | Node 24（系统软件） | `ubuntu` | 任意 | **要** | `/usr/local/bin/node`，所有用户共用 |
+| 3 | pnpm（系统软件，dsh 装插件要用） | `ubuntu` | 任意 | **要** | `/usr/local/bin/pnpm` |
+| 4 | 建用户 dafeiyu 和她的家目录 | `ubuntu` | 任意 | **要** | `/home/dafeiyu` |
+| 5 | dsh | `dafeiyu` | **必须在** `~/.local/dsh` | 不要 | `/home/dafeiyu/.local/dsh` |
+| 6 | 两个插件 | `dafeiyu` | **在** `~` | 不要 | `/home/dafeiyu/.dsh/profiles/web/` |
+| 7 | dsh 配置 | `dafeiyu` | `~/.dsh/profiles/web/` | 不要 | `cordis.patch.yml` |
+| 8 | dsh 开机服务 | `ubuntu` | 任意 | **要** | `/etc/systemd/system/dsh.service` |
+| 9 | NapCat | `ubuntu` | `~/napcat-install` | **命令前不加**（脚本装依赖时自己要） | `/home/ubuntu/Napcat` |
+| 10 | NapCat 连接配置 | `ubuntu` | NapCat 的 config 目录 | 不要 | `onebot11.json` |
+| 11 | NapCat 开机服务 | `ubuntu` | 任意 | **要** | `/etc/systemd/system/napcat.service` |
+
+第 5、6 步的目录有讲究：第 5 步不是全局安装，dsh 会装进**当前目录**的 `node_modules`；第 6 步命令里的 `./pkgs/…` 按当前目录算。其他步骤在哪个目录运行都一样。
+
+#### 第 1～4 步：用 `ubuntu`，要 sudo
+
+```bash
+# 1. 系统软件
+sudo apt update && sudo apt install -y ffmpeg curl xz-utils ca-certificates
+
+# 2. Node 24：官方二进制包解压到 /usr/local（国内用 npmmirror 镜像；能连 nodejs.org 的话换成 https://nodejs.org/dist）
+#    arm64 服务器把 x64 换成 arm64
+cd /tmp
+curl -fLO https://npmmirror.com/mirrors/node/v24.22.1/node-v24.22.1-linux-x64.tar.xz
+curl -fLO https://npmmirror.com/mirrors/node/v24.22.1/SHASUMS256.txt
+grep " node-v24.22.1-linux-x64.tar.xz\$" SHASUMS256.txt | sha256sum -c
+sudo tar -xJf node-v24.22.1-linux-x64.tar.xz -C /usr/local --strip-components=1 --no-same-owner \
+  --exclude='*/CHANGELOG.md' --exclude='*/LICENSE' --exclude='*/README.md'
+node --version                       # v24.22.1
+sudo npm config set registry https://registry.npmmirror.com/ --location=global   # 国内源，所有用户都用
+
+# 3. pnpm
+sudo npm install -g pnpm@11.28.5     # 装到 /usr/local/bin/pnpm
+
+# 4. dafeiyu 和她专属的家目录
+sudo useradd -m -s /bin/bash dafeiyu # -m 建家目录 /home/dafeiyu
+sudo passwd -l dafeiyu               # 锁密码，只能从 ubuntu 用 sudo 切进去
+sudo chmod 750 /home/dafeiyu         # 别的用户看不到她家目录里的东西
+```
+
+Node 也可以用 NodeSource 的 apt 源装（同样装进系统、所有用户共用），服务器连得上 `deb.nodesource.com` 就行。Ubuntu 自带的 `apt install nodejs` 版本太老（24.04 是 Node 18），dsh 用不了。
+
+#### 第 5～7 步：切成 dafeiyu，不用 sudo
+
+```bash
+sudo -iu dafeiyu                     # 一定要带 -i：HOME、PATH 换成她的，当前目录变成 /home/dafeiyu
+
+# 5. dsh（固定版本，装在她自己的目录；必须先进 ~/.local/dsh）
+mkdir -p ~/.local/dsh && cd ~/.local/dsh
+echo '{"private":true}' > package.json
+pnpm add @deepseek-ai/dsh@0.2.1-rc.2 --dangerously-allow-all-builds
+echo 'export PATH="$HOME/.local/dsh/node_modules/.bin:$PATH"' >> ~/.profile && . ~/.profile
+dsh --version                        # 0.2.1-rc.2
+
+# 6. 两个插件（回到家目录）
+cd ~
+dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.11.2 github:Geng-zy/dsh-companion-core#v0.10.1
+#    连不上 GitHub：到两个仓库的 Releases 下载 .tgz，传到 ~/pkgs/ 后
+#    dsh plugin --profile web add ./pkgs/dsh-napcat-bridge-0.11.2.tgz ./pkgs/dsh-companion-core-0.10.1.tgz
+#    （~/pkgs 以后不能删：dsh 的 profile 里记着它）
+
+# 7. 配置
+mkdir -p ~/workspace                 # QQ 会话的工作目录
+nano ~/.dsh/profiles/web/cordis.patch.yml
+chmod 600 ~/.dsh/profiles/web/cordis.patch.yml   # 里面有连接 Token，只给她自己读
+exit                                 # 回到 ubuntu
+```
+
+`cordis.patch.yml` 的内容（Token 用 `openssl rand -hex 32` 生成一个，或者装好后在插件设置页点「随机生成 Token」）：
+
+```yaml
+- id: connection
+  name: '@deepseek-ai/dsh-client-connection'
+  config:
+    cookieMaxAgeDays: 365                  # 浏览器登录记住 365 天
+    trustedHosts: [ '<公网 IP>:3080' ]     # 用公网 IP 打开网页时要信任它
+- id: napcat-bridge
+  config:
+    ws_reverse_port: 6199
+    ws_reverse_token: <随机 Token>
+    admins: [ '<你的 QQ 号>' ]
+    workspacePath: /home/dafeiyu/workspace
+```
+
+#### 第 8 步：dsh 开机服务（`ubuntu`，要 sudo）
+
+`sudo nano /etc/systemd/system/dsh.service`：
+
+```ini
+[Unit]
+Description=DeepSeek Harness（dafeiyu）
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=dafeiyu
+Group=dafeiyu
+WorkingDirectory=/home/dafeiyu
+# 开机服务不读 ~/.profile，PATH 要写在这里
+Environment=PATH=/home/dafeiyu/.local/dsh/node_modules/.bin:/usr/local/bin:/usr/bin:/bin
+# dsh 默认只听 127.0.0.1，也不接受 0.0.0.0；要从公网打开就绑服务器的内网 IP（ip -4 route get 1.1.1.1 能看到）
+ExecStart=/home/dafeiyu/.local/dsh/node_modules/.bin/dsh web --host <内网 IP> --port 3080 --no-open
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload && sudo systemctl enable --now dsh
+```
+
+#### 第 9～11 步：NapCat（`ubuntu`）
+
+```bash
+# 9. 用 NapCat 官方安装脚本（NapNeko/NapCat-Installer 的 script/install.sh）装到 ~/Napcat。命令前不加 sudo
+mkdir -p ~/napcat-install && cd ~/napcat-install
+curl -fsSLO https://raw.githubusercontent.com/NapNeko/NapCat-Installer/main/script/install.sh
+bash install.sh --docker n --cli n --github-proxy 0
+#    连不上 GitHub：在自己电脑上下好 install.sh 和 NapCat Release 里的 NapCat.Shell.zip，一起传到 ~/napcat-install 再运行（脚本看到 zip 就不下载了）
+```
+
+10. 编辑 `~/Napcat/opt/QQ/resources/app/app_launcher/napcat/config/onebot11.json`（新登录的账号默认用这份），在 `network.websocketClients` 里加一条：`url` 填 `ws://127.0.0.1:6199/ws`、`token` 和第 7 步一样、`messagePostFormat` 填 `array`；改完 `chmod 600`。也可以等扫码登录后在 NapCat 网页（端口 6099）的「网络配置」里新建「WebSocket 客户端」。
+
+11. `sudo nano /etc/systemd/system/napcat.service`：
+
+```ini
+[Unit]
+Description=NapCat（ubuntu）
+After=network-online.target
+
+[Service]
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu
+ExecStart=/usr/bin/xvfb-run -a /home/ubuntu/Napcat/opt/QQ/qq --no-sandbox -q <小号 QQ 号>
+Restart=always
+RestartSec=10
+MemoryMax=1500M
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload && sudo systemctl enable --now napcat
+```
+
+### 装完以后
+
+1. 云服务器安全组放行 3080（建议只放行自己的 IP）。取登录链接：`sudo journalctl -u dsh -b -o cat | grep token=`，把里面的地址换成公网 IP 打开（浏览器记住 365 天）。不想开端口就走 SSH 隧道：`ssh -L 3080:<内网 IP>:3080 ubuntu@<服务器>`，再打开 `http://localhost:3080/?token=…`。
+2. 网页里「设置 → 模型」填 DeepSeek API Key。想用 **DeepSeek 账号登录**的话，dsh 只允许在 `localhost` 地址上登录账号，要按上面的 SSH 隧道方式打开网页再登录。
+3. 扫码登录 QQ 小号：二维码在 `~/Napcat/opt/QQ/resources/app/app_launcher/napcat/cache/qrcode.png`，或者打开 NapCat 网页 `http://<服务器>:6099/webui/`（Token 在同目录 `config/webui.json`，登录后记得改掉）。
+4. 换服务器搬家：旧机器在 dsh-companion-core 设置页「现在备份并下载」，新机器装好后「导入备份包」，人格、记忆、日记和两个插件的设置都会恢复（Key 和 Token 不在包里，要重新填）。
+5. 其余设置（白名单、唤醒词、人格、核心记忆、向量 Key……）都在 dsh 网页侧栏「插件」里两个插件的设置页。
+
+#### 几个容易踩的坑
+
+- 管 dsh 的命令一律先 `sudo -iu dafeiyu`。用 `ubuntu` 直接运行 `dsh`，读的是 `/home/ubuntu/.dsh`，一份空的配置，看起来像插件全没了。
+- 不带 `-i`（`sudo -u dafeiyu`）时 HOME、PATH、当前目录还是原来用户的，常见「找不到 dsh」或进不了目录。
+- NapCat 安装脚本别用 root 运行：会装到 `/root/Napcat`，脚本自己也提示不推荐。
 
 | 端口 | 谁 | 要不要在安全组放行 |
 |---|---|---|
 | 3080 | dsh 网页（含两个插件的设置页） | 想从公网直接打开就放行；否则用 SSH 隧道 |
-| 6199 | 插件一，NapCat 连进来 | 不用（同一台机器走本机） |
+| 6199 | dsh-napcat-bridge，NapCat 连进来 | 不用（同一台机器走本机） |
 | 6099 | NapCat 网页（扫码、改设置） | 自己定；用完可以关 |
-
-### 方式二：手动
-
-1. 装 Node 24 和 dsh：`npm install -g @deepseek-ai/dsh@0.2.1-rc.2`（国内可以先 `npm config set registry https://registry.npmmirror.com/`）。
-2. 装两个插件：
-   ```bash
-   dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.11.2 github:Geng-zy/dsh-companion-core#v0.10.1
-   ```
-   服务器连不上 GitHub 时，到两个仓库的 Releases 页面下载 `.tgz`，传上去后 `dsh plugin --profile web add ./xxx.tgz`。
-3. 启动网页：本机用 `dsh web`；服务器上 `dsh web --host <内网 IP> --port 3080`（dsh 不接受 0.0.0.0），并在 `~/.dsh/profiles/web/cordis.patch.yml` 里信任公网地址：
-   ```yaml
-   - id: connection
-     name: '@deepseek-ai/dsh-client-connection'
-     config:
-       cookieMaxAgeDays: 365
-       trustedHosts: [ '<公网 IP>:3080' ]
-   ```
-4. 打开插件一的设置页：「连接」里点「随机生成 Token」→ 保存；「权限」里填主人 QQ。
-5. 装 [NapCat](https://github.com/NapNeko/NapCatQQ)，扫码登录小号，在「网络配置」里新建 **WebSocket 客户端**：URL `ws://127.0.0.1:6199/ws`、消息格式 `array`、Token 和插件一一样。插件一设置页「测试连接」显示已连上就好了。
-6. 插件二不用额外配置：装上后「陪伴模式」预设自动成为默认预设，QQ 会话和新开的 dsh 任务都用它。在它的设置页写人格和核心记忆。
 
 ## 安装
 
