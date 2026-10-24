@@ -41,6 +41,20 @@ export async function embed(texts: readonly string[], s: EmbedSettings, doFetch:
   })
 }
 
+/** 设置页「测试」：用当前设置算一句话的向量，看接口通不通、Key 对不对、模型名对不对。 */
+export async function testEmbed(s: EmbedSettings, doFetch: typeof fetch = fetch): Promise<{ ok: true; model: string; dim: number; ms: number } | { ok: false; error: string }> {
+  if (s.apiUrl.trim() === '') return { ok: false, error: '还没填接口地址' }
+  if (s.apiKey.trim() === '') return { ok: false, error: '还没填 Key' }
+  if (s.model.trim() === '') return { ok: false, error: '还没填模型' }
+  const start = Date.now()
+  try {
+    const [v] = await embed(['连通性测试'], s, doFetch)
+    return { ok: true, model: s.model.trim(), dim: v.length, ms: Date.now() - start }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) }
+  }
+}
+
 export interface IndexState {
   state: 'idle' | 'running' | 'paused' | 'done' | 'failed' | 'cancelled' | 'disabled'
   model: string

@@ -212,3 +212,18 @@ test('整理：只整理没整理过的部分；记到会话自己的归属；�
   assert.equal(org.pending().dshSessions, 0)
   assert.equal(await org.flushDsh('s1', '没有新内容'), 0)
 })
+
+test('向量接口的测试按钮：通了报模型和维度；Key 不对、没填时说原因，错误里不带 Key', async () => {
+  const { testEmbed } = await import('../lib/embed.js')
+  const s = { apiUrl: 'https://x.example/v1', apiKey: 'good', model: 'BAAI/bge-m3', batch: 16 }
+  const fake = async (url, init) => {
+    const auth = init.headers.authorization
+    if (auth !== 'Bearer good') return new Response('{"message":"Invalid token"}', { status: 401 })
+    return new Response(JSON.stringify({ data: [{ index: 0, embedding: new Array(1024).fill(0.1) }] }), { status: 200 })
+  }
+  const ok = await testEmbed(s, fake)
+  assert.equal(ok.ok, true); assert.equal(ok.dim, 1024); assert.equal(ok.model, 'BAAI/bge-m3')
+  const bad = await testEmbed({ ...s, apiKey: 'wrong-key-123' }, fake)
+  assert.equal(bad.ok, false); assert.match(bad.error, /HTTP 401/); assert.doesNotMatch(bad.error, /wrong-key-123/)
+  assert.deepEqual(await testEmbed({ ...s, apiKey: '' }, fake), { ok: false, error: '还没填 Key' })
+})

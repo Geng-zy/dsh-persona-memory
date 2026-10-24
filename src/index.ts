@@ -18,7 +18,7 @@ import { archiveRule, contextRule, forgetMode, matchRule, scopeOf, type Category
 import type { BeforeCompactPayload, CompanionService, ContextPolicy } from './service.js'
 import { coreTool, personaTool, type ToolDeps } from './tools.js'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
-import { embed, embedEnabled, Indexer, type EmbedSettings } from './embed.js'
+import { embed, embedEnabled, Indexer, testEmbed, type EmbedSettings } from './embed.js'
 import { DEFAULT_ALLOWED, DEFAULT_FORBIDDEN, guardPersonaEdit } from './persona-guard.js'
 import { GraphBuilder, graphScores, GraphStore, type GraphSettings } from './graph.js'
 import { cleanupPrompt, complete, parseCleanup, type LlmLike, type ModelTarget } from './extract.js'
@@ -1089,6 +1089,12 @@ export function apply(ctx: Context, live: LiveConfig): void {
         else diary.writeMonth(key, body.text)
         log('info', '设置页修改了 ' + key + ' 的日记')
         return json(200, { ok: true })
+      }
+      // 设置页「测试」向量接口：POST /embed/test（用保存过的设置）
+      if (parts[0] === 'embed' && parts[1] === 'test') {
+        if (req.method !== 'POST') return json(405, { error: '只支持 POST' })
+        if (!String(req.headers['content-type'] ?? '').includes('application/json')) return json(415, { error: '需要 application/json' })
+        return json(200, await testEmbed(embedSettings()))
       }
       if (['memory', 'index', 'graph', 'organize', 'cleanup'].includes(parts[0] ?? '')) {
         if (req.method !== 'POST') return json(405, { error: '只支持 POST' })

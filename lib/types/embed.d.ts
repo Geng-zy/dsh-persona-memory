@@ -8,6 +8,16 @@ export interface EmbedSettings {
 export declare function embedEnabled(s: EmbedSettings): boolean;
 /** 把一批文字变成向量。失败抛错。 */
 export declare function embed(texts: readonly string[], s: EmbedSettings, doFetch?: typeof fetch): Promise<Float32Array[]>;
+/** 设置页「测试」：用当前设置算一句话的向量，看接口通不通、Key 对不对、模型名对不对。 */
+export declare function testEmbed(s: EmbedSettings, doFetch?: typeof fetch): Promise<{
+    ok: true;
+    model: string;
+    dim: number;
+    ms: number;
+} | {
+    ok: false;
+    error: string;
+}>;
 export interface IndexState {
     state: 'idle' | 'running' | 'paused' | 'done' | 'failed' | 'cancelled' | 'disabled';
     model: string;

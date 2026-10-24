@@ -51,7 +51,7 @@
 ## 安装
 
 ```bash
-dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.7.3
+dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.7.4
 ```
 
 装好后：

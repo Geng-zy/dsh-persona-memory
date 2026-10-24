@@ -398,6 +398,9 @@ if (idx?.state !== 'done' || idx.embedded !== idx.total || idx.dim !== 4 || embe
 const rebuilt = await api('POST', 'index/rebuild', {})
 if (rebuilt.status !== 200) await fail('手动重建失败：' + JSON.stringify(rebuilt))
 log('向量索引 OK（' + idx.embedded + ' 条，' + idx.dim + ' 维）')
+const et = await api('POST', 'embed/test', {})
+if (!et.json?.ok || et.json.model !== 'fake-embed' || !(et.json.dim > 0)) await fail('测试向量接口不对：' + JSON.stringify(et.json))
+log('测试向量接口按钮 OK（' + et.json.dim + ' 维）')
 
 // 7d. 接口里遗忘：主人记忆普通遗忘后能恢复；彻底遗忘后不能再加回来
 const mem1 = (listed.json?.items ?? []).find(m => m.content.includes('MEM-1'))
