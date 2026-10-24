@@ -1,5 +1,11 @@
 # 更新记录
 
+## 0.9.0
+
+- 给其他插件的接口（`ctx.companion`）：`identity()` 她的人格和核心记忆（带一段能直接当系统提示词的 `prompt`）、`recall(query)` 相关长期记忆、`prompt({ query })` 人格 + 核心记忆 + 相关记忆一整段、`remember(content, { by })` 替她记一件事。按 `audience`（`public` 默认 / `master`）或 `sessionId` 决定给哪些。让在后台自己调模型的插件（比如刷 B 站、写评论）也用她的人格和记忆。
+- 新设置「给其他插件用」`pluginAccess`：全部（默认）/ 只给公开的 / 不给。
+- README「给其他插件用」写清楚三种插件分别怎么带上她的人格。
+
 ## 0.8.2
 
 - 修 0.8.1 设置页脚本的语法错误（一句英文说明替换坏了），它会让 dsh 网页整个打不开（Failed to load plugins）。检查脚本加了「设置页脚本语法」一步。

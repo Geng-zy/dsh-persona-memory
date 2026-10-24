@@ -1,4 +1,7 @@
-// 插件二对内的服务（ctx.companion）：预设里的「上下文管理」行通过它拿到常驻部分的设置。
+// 插件二的服务（ctx.companion）：
+//   - 对内：预设里的「上下文管理」行通过它拿到常驻部分的设置；
+//   - 对外：别的插件（比如让她刷 B 站、写东西的插件）自己调模型时，用 identity / recall / prompt 拿到她的人格、核心记忆和相关记忆，
+//     用 remember 往她的记忆里记一笔。权限由设置「给其他插件用」决定（默认全部开放；可以只给公开的，或关掉）。
 
 import type { ContextRule, Scope } from './rules.js'
 
@@ -21,6 +24,37 @@ export interface BeforeCompactPayload {
   transcript: string[]
 }
 
+/**
+ * 别的插件说「这是给谁的」：
+ *   - sessionId：在某个 dsh 会话里（按插件二的规则判断是主人、别人私聊还是群聊）；
+ *   - audience：不在会话里时直接说——'master' 能用主人的核心记忆和私密记忆，'public' 只用公开的（默认）。
+ */
+export interface CompanionTarget {
+  sessionId?: string
+  audience?: 'master' | 'public'
+}
+
+export interface CompanionIdentity {
+  /** 人格稿（设置页「人格」） */
+  persona: string
+  /** 核心记忆（public 只有公开的那份；master 是公开 + 主人的） */
+  core: string
+  /** 直接放进系统提示词的一段：人格 + 核心记忆（和她自己会话里的写法一样） */
+  prompt: string
+  /** 实际用的是哪一档（权限不够时 master 会降成 public） */
+  audience: 'master' | 'public'
+}
+
+export interface CompanionMemory {
+  id: number
+  content: string
+  kind: string
+  importance: number
+  /** 和问题的相关程度 0–1 */
+  relevance: number
+  createdAt: number
+}
+
 export interface CompanionService {
   /** 这个会话该怎么管上下文；返回 undefined 表示这个会话不归插件二管（不生效的预设），按 dsh 自带的方式压缩 */
   contextPolicy(sessionId: string, presetId?: string): ContextPolicy | undefined
@@ -28,6 +62,14 @@ export interface CompanionService {
   beforeCompact(payload: BeforeCompactPayload): Promise<void>
   /** 记一条日志（设置页能看到最近的） */
   log(level: 'debug' | 'info' | 'warn' | 'error', message: string): void
+  /** 给其他插件：她的人格和核心记忆。设置里关掉时抛错。 */
+  identity(target?: CompanionTarget): CompanionIdentity
+  /** 给其他插件：和 query 相关的长期记忆（和她自己聊天时的召回一样：关键词 + 向量 + 关系网）。 */
+  recall(query: string, options?: CompanionTarget & { topK?: number }): Promise<CompanionMemory[]>
+  /** 给其他插件：一整段可以直接当系统提示词用的文字：人格 + 核心记忆 + （给了 query 时）相关记忆。 */
+  prompt(options?: CompanionTarget & { query?: string; topK?: number }): Promise<string>
+  /** 给其他插件：替她记一件事（比如「看了某个视频」）。写进 public 或 master 的记忆，可信度比她自己记的低一档。 */
+  remember(content: string, options: { by: string; audience?: 'master' | 'public'; kind?: string; importance?: number }): Promise<{ ok: boolean; id?: number; message: string }>
 }
 
 declare module '@deepseek-ai/cordis' {

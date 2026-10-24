@@ -13,7 +13,7 @@ import type { Context as CordisContext } from '@deepseek-ai/cordis'
 import { join } from 'node:path'
 import { Archive, type ArchivedMessage } from './archive.js'
 import { TextDoc, defaultDataDir, writeAtomic } from './docs.js'
-import { applyPrompt, type AssemblyLike } from './prompt.js'
+import { applyPrompt, coreBlock, type AssemblyLike } from './prompt.js'
 import { archiveRule, contextRule, forgetMode, matchRule, scopeOf, type Category, type ContextMode, type ForgetMode, type NapcatLike, type RuleDefaults, type RuleRow, type Scope } from './rules.js'
 import type { BeforeCompactPayload, CompanionService, ContextPolicy } from './service.js'
 import { coreTool, personaTool, type ToolDeps } from './tools.js'
@@ -52,6 +52,7 @@ export type { RuleRow, Scope } from './rules.js'
 export interface Config {
   excludedPresets: string[]
   personaPresets: string[]
+  pluginAccess: 'all' | 'public' | 'off'
   personaOnly: boolean
   selfEdit: boolean
   historyKeep: number
@@ -157,6 +158,7 @@ const mode = (def: ContextMode) => z.union(['truncate', 'llm']).default(def).vol
 export const Config: z<LiveConfig> = z.object({
   personaPresets: z.array(z.string()).default(['companion']).volatile().description('生效的预设 id（默认只有陪伴模式；* = 所有预设）。别的插件带来的预设不会被套上人格和记忆'),
   excludedPresets: z.array(z.string()).default([]).volatile().description('不生效的预设 id（例如写代码用的预设）'),
+  pluginAccess: z.union(['all', 'public', 'off']).default('all').volatile().description('给其他插件用：all = 人格、核心记忆和记忆都能取（含主人的）；public = 只给公开的；off = 不给'),
   personaOnly: z.boolean().default(true).volatile().description('只用人格：去掉 dsh 的编程助手身份句'),
   selfEdit: z.boolean().default(true).volatile().description('让她能自己改人格和核心记忆（只在主人的会话里）'),
   historyKeep: z.natural().default(5).volatile().description('人格、核心记忆各保留几份历史版本'),
@@ -301,6 +303,7 @@ export function apply(ctx: Context, live: LiveConfig): void {
   const dir = defaultDataDir()
   const keep = (): number => get('historyKeep')
   const persona = new TextDoc(join(dir, 'persona', 'persona.md'), join(dir, 'persona', 'history'), keep)
+  const personaDoc = persona
   const coreMaster = new TextDoc(join(dir, 'core', 'master.md'), join(dir, 'core', 'history-master'), keep)
   const corePublic = new TextDoc(join(dir, 'core', 'public.md'), join(dir, 'core', 'history-public'), keep)
   const docs: Record<string, TextDoc> = { persona, 'core-master': coreMaster, 'core-public': corePublic }
@@ -353,6 +356,15 @@ export function apply(ctx: Context, live: LiveConfig): void {
     return [pub, own].filter(s => s !== '').join('\n\n')
   }
 
+  /** 别的插件要的「给谁」→ 插件二的范围；受「给其他插件用」限制 */
+  const pluginTarget = (target?: { sessionId?: string; audience?: 'master' | 'public' }): { scope: Scope; audience: 'master' | 'public' } => {
+    const access = get('pluginAccess')
+    if (access === 'off') throw new Error('dsh-companion-core：设置里关掉了「给其他插件用」')
+    let s: Scope = target?.sessionId ? scope(String(target.sessionId)) : target?.audience === 'master' ? { category: 'master', qq: false } : { category: 'private', qq: true }
+    if (access === 'public' && s.category === 'master') s = { category: 'private', qq: true }
+    return { scope: s, audience: s.category === 'master' ? 'master' : 'public' }
+  }
+
   //#region 给预设里「上下文管理」行的服务
   const service: CompanionService = {
     contextPolicy(sessionId: string, presetId?: string): ContextPolicy | undefined {
@@ -362,6 +374,38 @@ export function apply(ctx: Context, live: LiveConfig): void {
       const slash = text.indexOf('/')
       const summaryModel = slash > 0 && slash < text.length - 1 ? { provider: text.slice(0, slash), model: text.slice(slash + 1) } : undefined
       return { scope: s, rule: contextRule(s, defaults(), rules()), thresholdPercent: get('thresholdPercent'), ...(summaryModel ? { summaryModel } : {}) }
+    },
+    identity(target) {
+      const t = pluginTarget(target)
+      const persona = personaDoc.read().trim()
+      const core = coreFor(t.scope.category).trim()
+      return { persona, core, audience: t.audience, prompt: [persona, core ? coreBlock(core) : ''].filter(Boolean).join('\n\n') }
+    },
+    async recall(query, options) {
+      const t = pluginTarget(options)
+      const found = await search(t.scope, String(query ?? ''), Math.max(1, Math.min(20, options?.topK ?? 5)))
+      return found.map(f => ({ id: f.memory.id, content: f.memory.content, kind: f.memory.kind, importance: f.memory.importance, relevance: Math.round(f.relevance * 100) / 100, createdAt: f.memory.createdAt }))
+    },
+    async prompt(options) {
+      const t = pluginTarget(options)
+      const persona = personaDoc.read().trim()
+      const core = coreFor(t.scope.category).trim()
+      const query = String(options?.query ?? '').trim()
+      const found = query === '' ? [] : await search(t.scope, query, Math.max(1, Math.min(20, options?.topK ?? 5)))
+      return [persona, core ? coreBlock(core) : '', found.length > 0 ? formatRecall(found) : ''].filter(Boolean).join('\n\n')
+    },
+    async remember(content, options) {
+      if (memories === undefined) return { ok: false, message: '数据库没打开' }
+      const by = String(options?.by ?? '').trim()
+      if (by === '') return { ok: false, message: '要用 by 写明是哪个插件' }
+      const t = pluginTarget({ audience: options.audience ?? 'public' })
+      const kind = (KINDS as readonly string[]).includes(String(options.kind)) ? options.kind as MemoryKind : 'other'
+      const r = memories.add({ scope: t.audience === 'master' ? 'master' : 'public', kind, content: String(content ?? ''), importance: typeof options.importance === 'number' ? options.importance : 0.4, trust: t.audience === 'master' ? 0.7 : 0.4, writer: 'plugin:' + by.slice(0, 40) })
+      if (r.action === 'empty') return { ok: false, message: '内容是空的' }
+      if (r.action === 'blocked') return { ok: false, message: '这件事被彻底遗忘过，不再记' }
+      afterWrite()
+      log('info', '插件 ' + by + ' 替她记了一条（' + t.audience + '）')
+      return { ok: true, id: r.id, message: r.action === 'merged' ? '已经记得，加深了印象' : '记住了' }
     },
     async beforeCompact(payload: BeforeCompactPayload): Promise<void> {
       await ctx.serial('companion/before-compact', payload)
@@ -1051,6 +1095,17 @@ export function apply(ctx: Context, live: LiveConfig): void {
         if (proactive === undefined || target === undefined) return json(404, { error: '没有这个会话' })
         const ok = await proactive.fire(String(body.umo), target)
         return ok ? json(200, state()) : json(500, { error: '唤醒失败，看日志' })
+      }
+      // 测试用：端到端测试调给其他插件的接口（只在测试环境开）
+      if (parts[0] === 'test' && parts[1] === 'service' && process.env.COMPANION_TEST_CLOCK === '1') {
+        const body = await readBody(req)
+        try {
+          if (body?.op === 'identity') return json(200, service.identity(body.target))
+          if (body?.op === 'recall') return json(200, await service.recall(String(body.query ?? ''), body.target))
+          if (body?.op === 'prompt') return json(200, { text: await service.prompt(body.target) })
+          if (body?.op === 'remember') return json(200, await service.remember(String(body.content ?? ''), body.options))
+        } catch (e) { return json(400, { error: errText(e) }) }
+        return json(404, { error: 'op?' })
       }
       if (parts[0] === 'proactive' && parts[1] === 'tick' && process.env.COMPANION_TEST_CLOCK === '1') {
         const body = await readBody(req)

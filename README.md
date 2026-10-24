@@ -98,7 +98,7 @@ dsh-companion-core/deploy/deploy.sh ubuntu@<服务器 IP> --admin <你的 QQ 号
 1. 装 Node 24 和 dsh：`npm install -g @deepseek-ai/dsh@0.2.1-rc.2`（国内可以先 `npm config set registry https://registry.npmmirror.com/`）。
 2. 装两个插件：
    ```bash
-   dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.11.2 github:Geng-zy/dsh-companion-core#v0.8.2
+   dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.11.2 github:Geng-zy/dsh-companion-core#v0.9.0
    ```
    服务器连不上 GitHub 时，到两个仓库的 Releases 页面下载 `.tgz`，传上去后 `dsh plugin --profile web add ./xxx.tgz`。
 3. 启动网页：本机用 `dsh web`；服务器上 `dsh web --host <内网 IP> --port 3080`（dsh 不接受 0.0.0.0），并在 `~/.dsh/profiles/web/cordis.patch.yml` 里信任公网地址：
@@ -116,7 +116,7 @@ dsh-companion-core/deploy/deploy.sh ubuntu@<服务器 IP> --admin <你的 QQ 号
 ## 安装
 
 ```bash
-dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.8.2
+dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.9.0
 ```
 
 装好后：
@@ -173,6 +173,7 @@ dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.8.2
 
 | 配置 | 默认值 | 说明 |
 |---|---|---|
+| `pluginAccess` | `all` | 给其他插件用：`all` 人格、核心记忆和记忆都能取（含主人的）；`public` 只给公开的；`off` 接口报错 |
 | `personaPresets` | `["companion"]` | 生效的预设 id：只有这些预设的会话才套人格、核心记忆、召回和上下文管理；`*` = 所有预设。别的插件带来的预设保持原样 |
 | `excludedPresets` | `[]` | 不生效的预设 id |
 | `personaOnly` | `true` | 去掉 dsh 的编程助手身份句 |
@@ -232,8 +233,38 @@ dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.8.2
 
 ## 给其他插件用
 
+别的插件怎么「变成她」，分三种：
+
+| 别的插件是怎么工作的 | 会不会带上她的人格和记忆 |
+|---|---|
+| 给她加工具（比如「搜 B 站视频」「发弹幕」），在她自己的会话里由她调用 | **自动会**：调用工具、看结果、说话的都是她 |
+| 自带预设、自己开会话 | 把那个预设的 id 加进设置「生效的预设」（或填 `*`）就会 |
+| 在后台自己调模型（定时任务、自己拼提示词） | 用下面的接口取她的人格和记忆，自己放进提示词 |
+
+接口挂在 `ctx.companion` 上（可选依赖，没装本插件时拿不到就跳过）。默认对其他插件全部开放，设置「给其他插件用」可以改成只给公开的，或者关掉。
+
 ```ts
-// 截断或压缩上下文之前（serial，最多等 60 秒）：阶段 2 的记忆在这里先把要紧内容写进记忆
+ctx.inject(['companion'], async (ctx) => {
+  // 她是谁：人格 + 核心记忆，prompt 可以直接当系统提示词
+  const me = ctx.companion.identity()                       // 默认只给公开的（公开核心记忆）
+  const forMaster = ctx.companion.identity({ audience: 'master' })   // 主人的核心记忆也带上
+  const inSession = ctx.companion.identity({ sessionId })   // 按某个 dsh 会话判断是主人、私聊还是群聊
+
+  // 和某件事相关的长期记忆（和她聊天时的召回一样：关键词 + 向量 + 关系网）
+  const memories = await ctx.companion.recall('最近看的视频', { topK: 5 })   // [{ id, content, kind, importance, relevance, createdAt }]
+
+  // 一整段：人格 + 核心记忆 + 相关记忆
+  const system = await ctx.companion.prompt({ query: '要评论的视频标题', audience: 'public' })
+
+  // 替她记一件事（by 必填，写明是哪个插件；默认记成公开记忆，可信度比她自己记的低）
+  await ctx.companion.remember('看了一个讲深海鱼的视频，觉得很有意思', { by: 'bilibili', kind: 'event', importance: 0.4 })
+})
+```
+
+截断或压缩上下文之前的通知：
+
+```ts
+// serial，最多等 60 秒：可以在这里先把要紧内容写进别处
 ctx.on('companion/before-compact', async ({ sessionId, scope, mode, reason, transcript }) => {})
 ```
 

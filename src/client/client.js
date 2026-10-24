@@ -30,6 +30,11 @@ window.__ModuleLoader__.load({
 			loadFailed: "读取失败：{error}",
 			scope: "生效范围",
 			scopeHint: "插件二只管用「生效的预设」的会话（默认是陪伴模式 companion）：QQ 会话和 dsh 里新开的任务默认都用它。dsh 里直接开的会话算「主人」，和你的 QQ 私聊共用同一份核心记忆。插件二装好后会把陪伴模式设成部署默认预设，插件一没指定预设的 QQ 会话也跟着用它。",
+			pluginAccess: "给其他插件用",
+			pluginAccessHint: "别的插件（比如让她刷 B 站的）自己调模型时，可以通过插件二的接口拿到她的人格、核心记忆和相关记忆，也能替她记一件事。全部：主人的核心记忆和私密记忆也给；只给公开的：只给人格、公开核心记忆和公开记忆；不给：接口直接报错。在她自己会话里用的工具类插件不受这个影响（本来就是她在用）。",
+			pluginAccessAll: "全部（含主人的）",
+			pluginAccessPublic: "只给公开的",
+			pluginAccessOff: "不给",
 			personaPresets: "生效的预设",
 			personaPresetsHint: "只有用这些预设的会话才会被套上人格、核心记忆、召回和上下文管理。默认只有陪伴模式（companion），QQ 会话和 dsh 里新开的任务默认都用它。别的插件带来的预设（比如写代码的、翻译的）保持它们自己的样子，不会变成大肥鱼。填 * 表示所有预设都套。",
 			excludedPresets: "不生效的预设",
@@ -455,6 +460,11 @@ window.__ModuleLoader__.load({
 			loadFailed: "Failed to load: {error}",
 			scope: "Scope",
 			scopeHint: "Only sessions using the presets below are managed (default: companion, used by QQ sessions and new dsh tasks). Sessions opened in dsh count as the master's and share the master core memory. Installing this plugin makes companion the deployment default preset.",
+			pluginAccess: "Share with other plugins",
+			pluginAccessHint: "Other plugins that call the model themselves can fetch her persona, core memory and related memories through this plugin's API, and record a memory for her. All: master's private memory too; Public only: persona, public core memory and public memories; Off: the API refuses. Tool plugins used inside her own sessions are not affected.",
+			pluginAccessAll: "All (incl. master's)",
+			pluginAccessPublic: "Public only",
+			pluginAccessOff: "Off",
 			personaPresets: "Presets it applies to",
 			personaPresetsHint: "Only sessions using these presets get the persona, core memory, recall and context management. Default: companion, which QQ sessions and new dsh tasks use. Presets from other plugins keep their own identity. Use * for every preset.",
 			excludedPresets: "Excluded presets",
@@ -1040,7 +1050,7 @@ window.__ModuleLoader__.load({
 			["proactiveMinMinutes", 10], ["proactiveMaxMinutes", 10], ["proactiveOthersMinMinutes", 10], ["proactiveOthersMaxMinutes", 10], ["proactiveRecentMinutes", 0], ["proactiveGroupContext", 0], ["proactiveActiveDays", 1],
 			["autoCleanupDays", 1], ["purgeForgottenDays", 1], ["consolidateGroups", 1], ["careIntervalDays", 1], ["backupKeep", 1]
 		];
-		var ENUMS = [["masterMode", MODES], ["privateMode", MODES], ["groupMode", MODES], ["logLevel", LOG_LEVELS], ["masterForget", FORGET], ["privateForget", FORGET], ["groupForget", FORGET]];
+		var ENUMS = [["pluginAccess", ["all", "public", "off"]], ["masterMode", MODES], ["privateMode", MODES], ["groupMode", MODES], ["logLevel", LOG_LEVELS], ["masterForget", FORGET], ["privateForget", FORGET], ["groupForget", FORGET]];
 		function floatField(field) {
 			return {
 				field: field,
@@ -1964,7 +1974,8 @@ window.__ModuleLoader__.load({
 				h(Section, { tab: "persona", cur: tab, title: t("scope"), hint: t("scopeHint") },
 					h("div", { className: "compc-grid" },
 						h(Value, Object.assign({ field: "personaPresets", label: t("personaPresets"), hint: t("personaPresetsHint") }, common)),
-						h(Value, Object.assign({ field: "excludedPresets", label: t("excludedPresets"), hint: t("excludedPresetsHint") }, common))),
+						h(Value, Object.assign({ field: "excludedPresets", label: t("excludedPresets"), hint: t("excludedPresetsHint") }, common)),
+						h(Select, Object.assign({ field: "pluginAccess", label: t("pluginAccess"), hint: t("pluginAccessHint"), fallback: "all", options: [{ value: "all", label: t("pluginAccessAll") }, { value: "public", label: t("pluginAccessPublic") }, { value: "off", label: t("pluginAccessOff") }] }, common))),
 					h(Toggle, Object.assign({ field: "personaOnly", label: t("personaOnly"), hint: t("personaOnlyHint") }, common))),
 				h(Section, { tab: "persona", cur: tab, title: t("persona"), hint: t("personaHint") },
 					data ? h(DocEditor, { t: t, name: "persona", doc: docs.persona, ariaLabel: t("persona"), saveLabel: t("savePersona"), onState: setData }) : null,

@@ -14,6 +14,7 @@ export type { RuleRow, Scope } from './rules.js';
 export interface Config {
     excludedPresets: string[];
     personaPresets: string[];
+    pluginAccess: 'all' | 'public' | 'off';
     personaOnly: boolean;
     selfEdit: boolean;
     historyKeep: number;

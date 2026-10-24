@@ -582,6 +582,24 @@ if (graphRebuild.status !== 200 || !graphRebuild.json?.graph) await fail('关系
 log('图记忆：补抽关系网、顺着关系召回、手动重建 OK')
 log('备份、下载、还原（插件重新加载）、自检 OK')
 
+// 19. 给其他插件的接口：公开的拿不到主人的核心记忆；主人的能拿到；带问题时附上相关记忆；能替她记一件事
+{
+  const svc = (op, extra) => api('POST', 'test/service', { op, ...extra })
+  const pub = (await svc('identity', {})).json
+  const mas = (await svc('identity', { target: { audience: 'master' } })).json
+  if (!pub?.prompt?.includes('CORE-PUBLIC') || pub.prompt.includes('CORE-MASTER') || pub.audience !== 'public') await fail('公开的身份不对：' + JSON.stringify(pub).slice(0, 300))
+  if (!mas?.prompt?.includes('CORE-MASTER') || !mas.persona) await fail('主人的身份不对：' + JSON.stringify(mas).slice(0, 300))
+  const rem = (await svc('remember', { content: '看了一个讲深海鱼的视频 PLUGIN-MEM', options: { by: 'e2e-bilibili' } })).json
+  if (!rem?.ok) await fail('替她记一件事失败：' + JSON.stringify(rem))
+  const hits = (await svc('recall', { query: '深海鱼 视频 PLUGIN-MEM' })).json
+  if (!Array.isArray(hits) || !hits.some(m => m.content.includes('PLUGIN-MEM'))) await fail('接口召回不到：' + JSON.stringify(hits).slice(0, 300))
+  const full = (await svc('prompt', { target: { query: '深海鱼 视频 PLUGIN-MEM' } })).json
+  if (!full?.text?.includes('PLUGIN-MEM') || !full.text.includes('CORE-PUBLIC')) await fail('接口整段提示词不对：' + String(full?.text).slice(0, 300))
+  const noBy = (await svc('remember', { content: 'x', options: {} })).json
+  if (noBy?.ok) await fail('没写 by 也记上了')
+  log('给其他插件的接口（身份、召回、整段提示词、替她记）OK')
+}
+
 // 14. 删过会话以后重启 dsh：能正常起来、不报错、设置页接口照常
 if (!process.env.E2E_HOLD) {
   finished = true
