@@ -75,6 +75,7 @@ export interface Config {
   groupMaxRounds: number
   groupDropRounds: number
   groupMode: ContextMode
+  diaryEffort: string
   summaryModel: string
   summarySource: 'follow' | 'dsh' | 'api'
   summaryEffort: string
@@ -197,6 +198,7 @@ export const Config: z<LiveConfig> = z.object({
   groupMaxRounds: z.natural().default(60).volatile().description('群聊：最多保留轮数'),
   groupDropRounds: z.natural().min(1).default(20).volatile().description('群聊：一次处理几轮'),
   groupMode: mode('truncate').description('群聊：处理方式'),
+  diaryEffort: z.string().default('high').volatile().description('写日记和月度总览的思考等级（模型用的是和主人私聊用的那个）'),
   summaryModel: z.string().default('').volatile().description('压缩用的 dsh 模型（提供方/模型）'),
   summarySource: z.union(['follow', 'dsh', 'api']).default('follow').volatile().description('follow = 跟随 dsh 配置（用这个会话自己的模型）；dsh = 选 dsh 里配置的模型（summaryModel）；api = 用自己的 Key 调别家（summaryApi*）'),
   summaryEffort: z.string().default('low').volatile().description('思考等级（模型支持时才生效；off / low / medium / high / max，按模型实际支持的来）'),
@@ -234,7 +236,7 @@ export const Config: z<LiveConfig> = z.object({
   activeMemory: z.boolean().default(true).volatile().description('主动记忆：给她回忆、记住、遗忘三个工具'),
   organizeEveryRounds: z.natural().default(20).volatile().description('每多少轮整理一次（0 = 不按轮数）'),
   organizeBeforeCompact: z.boolean().default(true).volatile().description('截断/压缩前先整理'),
-  memoryModel: z.string().default('').volatile().description('整理记忆（也写日记、清理、整合、审核人格）用的 dsh 模型（提供方/模型）'),
+  memoryModel: z.string().default('').volatile().description('整理记忆（也清理、整合、审核人格）用的 dsh 模型（提供方/模型）'),
   memorySource: z.union(['follow', 'dsh', 'api']).default('follow').volatile().description('follow = 跟随 dsh 配置（dsh 的默认模型）；dsh = 选 dsh 里配置的模型（memoryModel）；api = 用自己的 Key 调别家（memoryApi*）'),
   memoryEffort: z.string().default('low').volatile().description('思考等级（模型支持时才生效；off / low / medium / high / max，按模型实际支持的来）'),
   memoryApiUrl: z.string().default('').volatile().description('别家的接口地址（OpenAI 兼容，到 /v1）'),
@@ -504,6 +506,25 @@ export function apply(ctx: Context, live: LiveConfig): void {
     return withEffort(dshDefault())
   }
   const modelTarget = (): ModelTarget | undefined => taskTarget('memory')
+  /**
+   * 写日记只写关于主人的事，所以用和主人私聊用的模型：dsh-napcat-bridge 里「管理员私聊用的模型」→「私聊用的模型」→ dsh 默认模型
+   * （和 dsh-napcat-bridge 自己选模型的顺序一样）。思考等级单独设（diaryEffort，默认 high）。
+   */
+  const masterChatModel = (): { target?: ModelTarget; from: 'admin' | 'private' | 'default' | 'none' } => {
+    let nb: Record<string, unknown> | undefined
+    try { nb = settingsService()?.describe({ redactSecrets: true }).find(f => formKind(f) === 'napcat-bridge')?.value } catch { nb = undefined }
+    for (const [key, from] of [['adminPrivateModel', 'admin'], ['privateModel', 'private']] as const) {
+      const t = parseTarget(String(nb?.[key] ?? ''))
+      if (t !== undefined) return { target: t, from }
+    }
+    const d = dshDefault()
+    return d !== undefined ? { target: d, from: 'default' } : { from: 'none' }
+  }
+  const diaryTarget = (): ModelTarget | undefined => {
+    const m = masterChatModel().target
+    const effort = String(get('diaryEffort') ?? '').trim()
+    return m === undefined ? undefined : { ...m, ...(effort ? { effort } : {}) }
+  }
   const graphStore = archive !== undefined ? new GraphStore(archive.db) : undefined
   const graphSettings = (): GraphSettings => ({ enabled: get('graphEnabled'), batch: get('graphBatch'), hops: get('graphHops') })
   const graphBuilder = graphStore !== undefined
@@ -525,7 +546,7 @@ export function apply(ctx: Context, live: LiveConfig): void {
   const agentsService = (): { get?(id: string): unknown; list?(): any[] } | undefined => ctx.get('agents' as never) as never
   const maintenance = archive !== undefined && memories !== undefined && organizer !== undefined
     ? new Maintenance({
-      archive, store: memories, diary, organizer, llm, target: modelTarget,
+      archive, store: memories, diary, organizer, llm, target: diaryTarget,
       settings: () => ({
         diaryEnabled: get('diaryEnabled'), monthlyEnabled: get('monthlyEnabled'), boundaryHour: get('dayBoundaryHour'), timeZone: get('timezone'),
         rotateSessions: get('rotateSessions'), deleteOldSessions: get('deleteOldSessions'), carryMessages: get('carryMessages'),
@@ -1281,23 +1302,23 @@ export function apply(ctx: Context, live: LiveConfig): void {
         if (req.method !== 'POST') return json(405, { error: '只支持 POST' })
         if (!String(req.headers['content-type'] ?? '').includes('application/json')) return json(415, { error: '需要 application/json' })
         const body = await readBody(req)
-        const task = ['summary', 'memory', 'graph'].includes(String(body?.task)) ? String(body.task) as 'summary' | 'memory' | 'graph' : 'memory'
+        const task = ['summary', 'memory', 'graph', 'diary'].includes(String(body?.task)) ? String(body.task) as 'summary' | 'memory' | 'graph' | 'diary' : 'memory'
         if (parts[1] === 'efforts') {
           // 给了 provider/model 就查它；没给就查这个任务「跟随 dsh 配置」时会用的模型
-          const t = typeof body?.provider === 'string' && typeof body?.model === 'string' && body.provider && body.model ? { provider: body.provider, model: body.model } : (task === 'summary' ? dshDefault() : taskTarget(task === 'graph' ? 'memory' : task))
+          const t = typeof body?.provider === 'string' && typeof body?.model === 'string' && body.provider && body.model ? { provider: body.provider, model: body.model } : (task === 'diary' ? masterChatModel().target : task === 'summary' ? dshDefault() : taskTarget(task === 'graph' ? 'memory' : task))
           if (l === undefined || t === undefined || (t as ModelTarget).api !== undefined) return json(200, { efforts: [], model: t ?? null })
           try {
             const info = await l.resolveModelInfo(t.provider, t.model)
-            return json(200, { efforts: (info?.reasoning?.efforts ?? []).map((e: any) => ({ id: String(e.id), name: String(e.name ?? e.id) })), defaultEffort: info?.reasoning?.defaultEffort ?? null, model: { provider: t.provider, model: t.model } })
+            return json(200, { efforts: (info?.reasoning?.efforts ?? []).map((e: any) => ({ id: String(e.id), name: String(e.name ?? e.id) })), defaultEffort: info?.reasoning?.defaultEffort ?? null, model: { provider: t.provider, model: t.model }, ...(task === 'diary' ? { from: masterChatModel().from } : {}) })
           } catch (e) { return json(200, { efforts: [], error: errText(e), model: { provider: t.provider, model: t.model } }) }
         }
-        if (parts[1] === 'models') {
+        if (parts[1] === 'models' && task !== 'diary') {
           const url = typeof body?.apiUrl === 'string' && body.apiUrl.trim() ? body.apiUrl : String(get((task + 'ApiUrl') as keyof Config) ?? '')
           const key = typeof body?.apiKey === 'string' && body.apiKey.trim() ? body.apiKey : String(get((task + 'ApiKey') as keyof Config) ?? '')
           return json(200, await listModels(url, key, 'chat', ''))
         }
         if (parts[1] === 'test') {
-          const t = task === 'summary' ? (taskTarget('summary') ?? dshDefault()) : taskTarget(task)
+          const t = task === 'diary' ? diaryTarget() : task === 'summary' ? (taskTarget('summary') ?? dshDefault()) : taskTarget(task)
           if (t === undefined) return json(200, { ok: false, error: '没有可用的模型' })
           const l2 = llm()
           if (t.api === undefined && l2 === undefined) return json(200, { ok: false, error: 'dsh 的模型服务没准备好' })

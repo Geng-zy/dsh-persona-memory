@@ -19,6 +19,12 @@ window.__ModuleLoader__.load({
 		var SECTION = "companion-core";
 
 		var zh = {
+			diaryModel: "写日记用的模型",
+			diaryModelHint: "日记和月度总览只写关于你的事，所以用和你私聊用的模型（在 dsh-napcat-bridge 设置页「会话和模型」里改）。这里只单独选思考等级，默认「高」。",
+			diaryModelFrom_admin: "来自 dsh-napcat-bridge「管理员私聊用的模型」。",
+			diaryModelFrom_private: "dsh-napcat-bridge 没单独设管理员私聊的模型，用的是「私聊用的模型」。",
+			diaryModelFrom_default: "没装 dsh-napcat-bridge 或它没设模型，用的是 dsh 的默认模型。",
+			diaryModelFrom_none: "dsh 还没有可用的模型。",
 			apiKeySet: "已设置 Key。",
 			apiKeyUnset: "还没设置 Key。",
 			embedFoldClose: "收起向量模型设置",
@@ -216,7 +222,7 @@ window.__ModuleLoader__.load({
 			organizeBeforeCompact: "截断/压缩前先整理",
 			organizeBeforeCompactHint: "处理掉最早几轮之前，先把那部分里要紧的事写进记忆。",
 			memoryModel: "整理用的模型",
-			memoryModelHint: "整理记忆、写日记和月度总览、清理和整合记忆、审核她改人格，都用这个模型。",
+			memoryModelHint: "整理记忆、清理和整合记忆、审核她改人格，都用这个模型（写日记用的是和你私聊的模型，在「日记」标签里）。",
 			currentModel: "现在用的模型：{model}",
 			noModel: "没找到可用的模型，请填「整理用的模型」或在 dsh 里设置默认模型。",
 			pending: "还没整理：QQ 会话 {qs} 个（{qm} 条消息），dsh 会话 {ds} 个",
@@ -504,6 +510,12 @@ window.__ModuleLoader__.load({
 			selfCheckNone: "（没想起来）"
 		};
 		var en = {
+			diaryModel: "Diary model",
+			diaryModelHint: "Diaries are only about you, so they use the model of your private chat (set in dsh-napcat-bridge → Sessions & models). Only the reasoning effort is chosen here; default High.",
+			diaryModelFrom_admin: "From dsh-napcat-bridge's admin private chat model.",
+			diaryModelFrom_private: "dsh-napcat-bridge's private chat model (no separate admin model).",
+			diaryModelFrom_default: "dsh's default model (dsh-napcat-bridge not installed or no model set).",
+			diaryModelFrom_none: "dsh has no usable model yet.",
 			apiKeySet: "Key is set.",
 			apiKeyUnset: "No key yet.",
 			embedFoldClose: "Hide embedding settings",
@@ -701,7 +713,7 @@ window.__ModuleLoader__.load({
 			organizeBeforeCompact: "Organize before truncating/summarizing",
 			organizeBeforeCompactHint: "Save what matters from the rounds about to be dropped.",
 			memoryModel: "Organizing model",
-			memoryModelHint: "Used for organizing memories, diaries, cleanup, consolidation and persona review.",
+			memoryModelHint: "Used for organizing memories, cleanup, consolidation and persona review (diaries use your private chat model, see the Diary tab).",
 			currentModel: "Using: {model}",
 			noModel: "No usable model; set one here or a dsh default model.",
 			pending: "Not organized yet: {qs} QQ chats ({qm} messages), {ds} dsh sessions",
@@ -1165,7 +1177,7 @@ window.__ModuleLoader__.load({
 		var BOOLS = ["personaOnly", "selfEdit", "archiveEnabled", "archiveUnwoken", "recallEnabled", "activeMemory", "organizeBeforeCompact", "cleanupEnabled", "cleanupAutoPurge",
 			"diaryEnabled", "monthlyEnabled", "diaryOnNewSession", "rotateSessions", "deleteOldSessions", "archiveImages",
 			"proactiveEnabled", "proactivePrivate", "proactiveGroup", "graphEnabled", "personaGuard", "personaReview", "autoCleanup", "purgeForgotten", "consolidateEnabled", "backupEnabled"];
-		var TEXTS = ["summaryModel", "memoryModel", "graphModel", "summaryEffort", "summaryApiUrl", "summaryApiModel", "memoryEffort", "memoryApiUrl", "memoryApiModel", "graphEffort", "graphApiUrl", "graphApiModel", "embedApiUrl", "embedModel", "diaryTime", "timezone", "quietStart", "quietEnd", "silenceToken", "backupTime"];
+		var TEXTS = ["diaryEffort", "summaryModel", "memoryModel", "graphModel", "summaryEffort", "summaryApiUrl", "summaryApiModel", "memoryEffort", "memoryApiUrl", "memoryApiModel", "graphEffort", "graphApiUrl", "graphApiModel", "embedApiUrl", "embedModel", "diaryTime", "timezone", "quietStart", "quietEnd", "silenceToken", "backupTime"];
 		var SECRETS = ["embedApiKey", "summaryApiKey", "memoryApiKey", "graphApiKey"];
 		var FLOATS = ["keywordThreshold", "vectorThreshold", "keywordWeight", "importanceWeight", "recencyWeight", "groupDiscount", "autoCleanupImportance", "consolidateOverlap"];
 		var FORGET = ["normal", "purge"];
@@ -2290,6 +2302,29 @@ window.__ModuleLoader__.load({
 						}))),
 				h(EffortSelect, Object.assign({ field: effortField, options: eff ? eff.efforts : [], emptyText: model ? t("effortNone") : t("effortPickModel") }, props.common)));
 		}
+		/** 写日记用的模型：就是和主人私聊用的那个（只显示，不在这里改），思考等级单独选 */
+		function DiaryModel(props) {
+			var t = props.t;
+			var act = useAction();
+			var fromHook = React.useState(null), from = fromHook[0], setFrom = fromHook[1];
+			React.useEffect(function () { api("POST", "llm/efforts", { task: "diary" }).then(function (r) { setFrom(r.from || null); }, function () {}); }, []);
+			function test() {
+				act.run(function () {
+					return api("POST", "llm/test", { task: "diary" }).then(function (r) {
+						act.setMsg(r.ok ? { tone: "ok", text: t("llmTestOk", { model: r.model, ms: r.ms, effort: r.effort ? effortLabel(t, r.effort) : t("effortDefault"), text: r.text }) } : { tone: "error", text: t("llmTestFailed", { error: r.error }) });
+					});
+				});
+			}
+			return h("div", { className: "compc-field compc-llm" },
+				h("span", { className: "compc-label" }, h(Label, { text: t("diaryModel"), hint: t("diaryModelHint") })),
+				h(DshModelPick, { t: t, state: props.state, common: props.common, disabled: props.disabled, task: "diary", modelField: "diaryEffort", follow: true }),
+				from ? h("p", { className: "compc-hint" }, t("diaryModelFrom_" + from)) : null,
+				h("div", { className: "compc-row" },
+					h("button", { type: "button", className: "compc-testBtn", disabled: act.busy, onClick: test },
+						h("span", { className: "compc-testIcon", "aria-hidden": true }, act.busy ? "…" : "⇄"), act.busy ? t("testing") : t("llmTest")),
+					props.state.dirty ? h("span", { className: "compc-hint" }, t("testUsesSaved")) : null),
+				act.msg ? h("p", { className: "compc-pill compc-result compc-" + act.msg.tone, role: "status" }, act.msg.text) : null);
+		}
 		/** 一个任务（压缩 / 整理 / 抽关系）用哪个模型 */
 		function LlmField(props) {
 			var t = props.t, task = props.task, common = props.common, state = props.state;
@@ -2451,6 +2486,7 @@ window.__ModuleLoader__.load({
 					h(CleanupPanel, { t: t, data: data, enabled: state.cleanupEnabled.text === "true" && !state.dirty, onState: setData })),
 				h(Section, { tab: "diary", cur: tab, title: t("diarySec"), hint: t("diarySecHint") },
 					h(Toggle, Object.assign({ field: "diaryEnabled", label: t("diaryEnabled") }, common)),
+					h(DiaryModel, { t: t, state: state, common: common, disabled: disabled }),
 					h(Toggle, Object.assign({ field: "monthlyEnabled", label: t("monthlyEnabled") }, common)),
 					h("div", { className: "compc-grid" },
 						h(Value, Object.assign({ field: "diaryTime", label: t("diaryTime"), hint: t("diaryTimeHint") }, common)),

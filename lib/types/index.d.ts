@@ -36,6 +36,7 @@ export interface Config {
     groupMaxRounds: number;
     groupDropRounds: number;
     groupMode: ContextMode;
+    diaryEffort: string;
     summaryModel: string;
     summarySource: 'follow' | 'dsh' | 'api';
     summaryEffort: string;

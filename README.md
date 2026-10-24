@@ -148,9 +148,9 @@ dsh --version                        # 0.2.1-rc.2
 
 # 6. 两个插件（回到家目录）
 cd ~
-dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.13.0 github:Geng-zy/dsh-companion-core#v0.12.0
+dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.13.0 github:Geng-zy/dsh-companion-core#v0.12.1
 #    连不上 GitHub：到两个仓库的 Releases 下载 .tgz，传到 ~/pkgs/ 后
-#    dsh plugin --profile web add ./pkgs/dsh-napcat-bridge-0.13.0.tgz ./pkgs/dsh-companion-core-0.12.0.tgz
+#    dsh plugin --profile web add ./pkgs/dsh-napcat-bridge-0.13.0.tgz ./pkgs/dsh-companion-core-0.12.1.tgz
 #    （~/pkgs 以后不能删：dsh 的 profile 里记着它）
 
 # 7. 配置
@@ -264,7 +264,7 @@ sudo systemctl daemon-reload && sudo systemctl enable --now napcat
 ## 安装
 
 ```bash
-dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.12.0
+dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.12.1
 ```
 
 装好后：
@@ -344,11 +344,12 @@ dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.12.0
 | `importanceWeight` / `recencyWeight` / `groupDiscount` / `halfLifeDays` | `0.2` / `0.1` / `0.7` / `30` | 排名权重、群记忆折扣、半衰期 |
 | `activeMemory` | `true` | 回忆/记住/遗忘工具 |
 | `organizeEveryRounds` / `organizeBeforeCompact` | `20` / `true` | 整理 |
-| `memorySource` / `memoryModel` / `memoryEffort` / `memoryApi*` | `follow` / 空 / `low` | 整理用的模型（也写日记、清理、整合、审核人格）：`follow` 跟随 dsh 的默认模型，其余同上 |
+| `memorySource` / `memoryModel` / `memoryEffort` / `memoryApi*` | `follow` / 空 / `low` | 整理用的模型（也清理、整合、审核人格）：`follow` 跟随 dsh 的默认模型，其余同上 |
 | `masterForget` / `privateForget` / `groupForget` | `normal` / `purge` / `purge` | 遗忘方式 |
 | `cleanupEnabled` / `cleanupAutoPurge` | `false` / `false` | 主人记忆的模型清理 |
 | `embedApiUrl` / `embedApiKey` / `embedModel` / `embedBatch` | 硅基流动 / 不设 / `BAAI/bge-m3` / `16` | 向量检索 |
 | `graphEnabled` / `graphBatch` / `graphHops` | `false` / `8` / `1` | 图记忆 |
+| `diaryEffort` | `high` | 写日记和月度总览的思考等级；模型固定用和主人私聊的那个（dsh-napcat-bridge 的「管理员私聊用的模型」→「私聊用的模型」→ dsh 默认模型） |
 | `graphSource` / `graphModel` / `graphEffort` / `graphApi*` | `follow` / 空 / `low` | 抽关系用的模型：`follow` 和整理用的模型一样，其余同上 |
 | `groupContextCount` | `10` | 群聊上下文：附上最近几条（图片不限） |
 | `diaryEnabled` / `diaryTime` / `dayBoundaryHour` / `timezone` / `monthlyEnabled` | `true` / `01:30` / `4` / `Asia/Shanghai` / `true` | 日记 |

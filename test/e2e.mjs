@@ -610,7 +610,12 @@ log('备份、下载、还原（插件重新加载）、自检 OK')
   if (!tested?.ok) await fail('测试整理用的模型失败：' + JSON.stringify(tested).slice(0, 300))
   const noApi = (await api('POST', 'llm/models', { task: 'memory', apiUrl: 'not-a-url' })).json
   if (noApi?.ok !== false) await fail('别家地址不对时应该说清楚：' + JSON.stringify(noApi))
-  log('设置页选模型：dsh 模型列表、思考等级、测试模型 OK')
+  // 写日记：用和主人私聊用的模型（测试环境里 dsh-napcat-bridge 的默认是 deepseek-official/deepseek-flash），思考等级默认 high
+  const diaryEff = (await api('POST', 'llm/efforts', { task: 'diary' })).json
+  if (diaryEff?.from !== 'admin' || diaryEff?.model?.model !== 'deepseek-flash') await fail('写日记用的模型不对：' + JSON.stringify(diaryEff).slice(0, 300))
+  const diaryTest = (await api('POST', 'llm/test', { task: 'diary' })).json
+  if (!diaryTest?.ok || diaryTest.effort !== 'high') await fail('测试写日记的模型不对：' + JSON.stringify(diaryTest).slice(0, 300))
+  log('设置页选模型：dsh 模型列表、思考等级、测试模型、写日记的模型 OK')
 }
 
 // 14. 删过会话以后重启 dsh：能正常起来、不报错、设置页接口照常
