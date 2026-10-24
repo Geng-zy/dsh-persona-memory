@@ -61,6 +61,7 @@ function harness(over = {}, api = {}, hooks = {}) {
       }
     },
     resume: async () => { throw new Error('不该恢复') },
+    get: id => hooks.live?.[String(id)],
   }
   let bridge
   const adapter = new AiocqhttpAdapter({ id: 'napcat', ws_reverse_host: '127.0.0.1', ws_reverse_port: 0, log: () => {}, onMessage: (abm, ev) => bridge.handle(abm, ev) })
@@ -327,6 +328,20 @@ test('分段发送：主人私聊按行拆成几条、按顺序发，每条都�
   h.turn(String(h.created[1].sessionId), '你好呀\n我是大肥鱼')
   await new Promise(r => setTimeout(r, 30))
   assert.equal(h.sent.at(-1).text, '你好呀\n我是大肥鱼')
+})
+
+test('会话已经在 dsh 里开着（比如网页先接上了）：直接用它，不新建也不恢复', async () => {
+  const live = []
+  const sessionId = 'napcat-napcat-FriendMessage-' + ADMIN
+  const agent = { session: { id: sessionId }, followup: m => live.push(m.content.map(c => c.text ?? '').join('')), cancel: () => {} }
+  const h = harness({}, memberInfo, { live: { [sessionId]: agent } })
+  await h.privateMsg(Number(ADMIN), [text('在吗')])
+  assert.equal(h.created.length, 0)
+  assert.equal(live.length, 1)
+  assert.match(live[0], /在吗/)
+  h.turn(sessionId, '在的')
+  await new Promise(r => setTimeout(r, 30))
+  assert.equal(h.sent.at(-1).text, '在的', '她的回复照常发回 QQ')
 })
 
 test('napcat/sent：她一轮说完、回复发出去以后通知其他插件', async () => {
