@@ -7,7 +7,7 @@ import { dirname } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 
 /** 数据结构版本；以后改表结构时加升级步骤，不丢旧数据。 */
-export const SCHEMA_VERSION = 4
+export const SCHEMA_VERSION = 5
 
 export interface ArchivedMessage {
   /** unified_msg_origin */
@@ -150,6 +150,35 @@ export class Archive {
         );
       `)
     }
+    if (current < 5) {
+      // 版本 5：图记忆（关系网）。实体按记忆的归属分开；关系和「提到」都记着来自哪条记忆；graph_done 记哪条抽过（内容指纹变了就重抽）
+      this.db.exec(`
+        CREATE TABLE IF NOT EXISTS graph_entities (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          scope TEXT NOT NULL,
+          name TEXT NOT NULL,
+          norm TEXT NOT NULL,
+          kind TEXT NOT NULL DEFAULT '',
+          embedding BLOB,
+          embed_model TEXT
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS graph_entities_name ON graph_entities (scope, norm);
+        CREATE TABLE IF NOT EXISTS graph_edges (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          scope TEXT NOT NULL,
+          src INTEGER NOT NULL,
+          rel TEXT NOT NULL,
+          dst INTEGER NOT NULL,
+          memory_id INTEGER NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS graph_edges_src ON graph_edges (src);
+        CREATE INDEX IF NOT EXISTS graph_edges_dst ON graph_edges (dst);
+        CREATE INDEX IF NOT EXISTS graph_edges_memory ON graph_edges (memory_id);
+        CREATE TABLE IF NOT EXISTS graph_mentions (entity_id INTEGER NOT NULL, memory_id INTEGER NOT NULL, PRIMARY KEY (entity_id, memory_id));
+        CREATE INDEX IF NOT EXISTS graph_mentions_memory ON graph_mentions (memory_id);
+        CREATE TABLE IF NOT EXISTS graph_done (memory_id INTEGER PRIMARY KEY, hash TEXT NOT NULL, at INTEGER NOT NULL);
+      `)
+    }
     this.db.prepare("INSERT INTO meta (key, value) VALUES ('schema', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(String(SCHEMA_VERSION))
   }
 
@@ -184,21 +213,22 @@ export class Archive {
       .map(r => ({ umo: r.umo, maxId: Number(r.maxId), kind: r.kind }))
   }
 
-  /**
-   * 群里她没看到的消息：她上一次发言之后、没唤醒她的那些（唤醒她的已经在会话里了），
-   * 不含 excludeMessageId（正在处理的这条），最多 limit 条，按时间顺序。
-   */
-  unseen(umo: string, limit: number, excludeMessageId?: string): ArchivedMessage[] {
+  /** 这条消息之前，会话里最近的 limit 条（收到的和她发出的都算，按存进来的先后，不按时间：QQ 消息时间只精确到秒）。 */
+  lastMessages(umo: string, limit: number, excludeMessageId?: string): ArchivedMessage[] {
     if (limit <= 0) return []
-    // 按存进来的先后（id）判断，不按时间：QQ 的消息时间只精确到秒，她发出的记的是毫秒，同一秒里会排错
-    const last = this.db.prepare("SELECT MAX(id) AS i FROM messages WHERE umo = ? AND direction = 'out'").get(umo) as { i: number | null }
-    const rows = this.db.prepare(`SELECT * FROM messages WHERE umo = ? AND direction = 'in' AND woke = 0 AND type = 'message' AND id > ?
-      AND (message_id IS NULL OR message_id != ?) ORDER BY id DESC LIMIT ?`)
-      .all(umo, last.i ?? 0, excludeMessageId ?? '', limit) as Array<Record<string, any>>
+    const rows = this.db.prepare(`SELECT * FROM messages WHERE umo = ? AND type = 'message' AND (message_id IS NULL OR message_id != ?)
+      ORDER BY id DESC LIMIT ?`).all(umo, excludeMessageId ?? '', limit) as Array<Record<string, any>>
     return rows.reverse().map(fromRow)
   }
 
+
   //#region 到期、换会话
+  /** 她在某个会话里最后一次说话的时间。 */
+  lastOutTime(umo: string): number | undefined {
+    const r = this.db.prepare("SELECT MAX(time) AS t FROM messages WHERE umo = ? AND direction = 'out'").get(umo) as { t: number | null }
+    return r.t === null ? undefined : Number(r.t)
+  }
+
   /** 某个会话最后一条（收到或发出）的时间。 */
   lastTime(umo: string): number | undefined {
     const r = this.db.prepare('SELECT MAX(time) AS t FROM messages WHERE umo = ?').get(umo) as { t: number | null }

@@ -1,4 +1,4 @@
-// 单元测试：主动聊天（免打扰、随机间隔、刚聊过不触发、只找最近聊过的、群聊带上下文）、
+// 单元测试：主动聊天（免打扰、随机间隔、她刚说过话不触发、只找最近聊过的、群聊带上下文）、
 // 自动清理、定期整合和撤销、备份打包/列表/核对/导入替换。
 // 用法：node --test test/（先 pnpm run build）
 import assert from 'node:assert/strict'
@@ -18,16 +18,17 @@ const MIN = 60_000
 const DAY = 86_400_000
 const tmp = () => mkdtempSync(join(tmpdir(), 'companion-p4-'))
 
-test('免打扰（可以跨午夜）和随机间隔（别人是主人的两倍）', () => {
+test('免打扰（可以跨午夜）和随机间隔（主人、别人各自的范围）', () => {
   assert.equal(inQuiet('01:30', '01:00', '09:00'), true)
   assert.equal(inQuiet('09:00', '01:00', '09:00'), false)
   assert.equal(inQuiet('23:30', '23:00', '07:00'), true)
   assert.equal(inQuiet('06:59', '23:00', '07:00'), true)
   assert.equal(inQuiet('12:00', '23:00', '07:00'), false)
-  const s = { masterMinMinutes: 120, masterMaxMinutes: 360, othersFactor: 2 }
-  assert.equal(nextDelay('master', s, () => 0), 120 * MIN)
-  assert.equal(nextDelay('master', s, () => 1), 360 * MIN)
-  assert.equal(nextDelay('group', s, () => 0.5), 480 * MIN)
+  const s = { masterMinMinutes: 60, masterMaxMinutes: 240, othersMinMinutes: 120, othersMaxMinutes: 240 }
+  assert.equal(nextDelay('master', s, () => 0), 60 * MIN)
+  assert.equal(nextDelay('master', s, () => 1), 240 * MIN)
+  assert.equal(nextDelay('group', s, () => 0.5), 180 * MIN)
+  assert.equal(nextDelay('private', s, () => 0), 120 * MIN)
   assert.match(proactivePrompt('master', Date.now(), Date.now() - 3 * 3_600_000, { silenceToken: '[不发]', timeZone: 'Asia/Shanghai' }), /3 小时前[\s\S]*主动找主人[\s\S]*只回复「\[不发\]」/)
 })
 
@@ -43,14 +44,14 @@ function setupProactive(over = {}) {
     meta: { get: k => metaMap.get(k), set: (k, v) => metaMap.set(k, v) },
     wake: () => async (umo, content) => { woken.push({ umo, text: content.map(c => c.text ?? '[图]').join('\n'), images: content.filter(c => c.type === 'image').length }) },
     random: () => 0,
-    settings: () => ({ enabled: true, masterMinMinutes: 120, masterMaxMinutes: 360, othersFactor: 2, privateEnabled: true, groupEnabled: true,
-      quietStart: '01:00', quietEnd: '09:00', recentMinutes: 30, groupContextMessages: 15, groupContextImages: 2, activeWithinDays: 7,
+    settings: () => ({ enabled: true, masterMinMinutes: 60, masterMaxMinutes: 240, othersMinMinutes: 120, othersMaxMinutes: 240, privateEnabled: true, groupEnabled: true,
+      quietStart: '01:00', quietEnd: '09:00', recentMinutes: 30, groupContextMessages: 15, activeWithinDays: 7,
       silenceToken: '[不发]', timeZone: 'UTC', override: () => undefined, ...over }),
   })
   return { archive, organizer, metaMap, woken, p, home }
 }
 
-test('主动聊天：先排时间；到点、不在免打扰、没刚聊过才唤醒；刚聊过顺延；别人很久没聊不找', async () => {
+test('主动聊天：先排时间；到点、不在免打扰、她没刚说过话才唤醒；她刚说过话顺延（别人说话不算）；别人很久没聊不找', async () => {
   const t = setupProactive()
   const master = 'napcat:FriendMessage:42'
   const group = 'napcat:GroupMessage:555'
@@ -63,15 +64,18 @@ test('主动聊天：先排时间；到点、不在免打扰、没刚聊过才�
   msg(group, 'group', noon - 3_600_000, '群里有人在聊游戏', { groupId: '555' })
   msg(stale, 'private', noon - 30 * DAY, '一个月前', { userId: '8' })
   assert.deepEqual(await t.p.tick(noon), [], '第一次只排时间')
-  assert.equal(Number(t.metaMap.get('proactive:next:' + master)), noon + 120 * MIN)
-  assert.equal(Number(t.metaMap.get('proactive:next:' + group)), noon + 240 * MIN, '群是主人的两倍')
+  assert.equal(Number(t.metaMap.get('proactive:next:' + master)), noon + 60 * MIN)
+  assert.equal(Number(t.metaMap.get('proactive:next:' + group)), noon + 120 * MIN, '群用自己的范围')
   assert.equal(t.metaMap.get('proactive:next:' + stale), undefined, '很久没聊的别人不找')
-  assert.deepEqual(await t.p.tick(noon + 121 * MIN), [master])
+  assert.deepEqual(await t.p.tick(noon + 61 * MIN), [master])
   assert.match(t.woken[0].text, /<proactive>[\s\S]*主人/)
-  // 群：到点了，但刚有人说过话 → 顺延
-  msg(group, 'group', noon + 239 * MIN, '刚说的一句', { groupId: '555' })
-  assert.ok(!(await t.p.tick(noon + 241 * MIN)).includes(group), '群刚有人说过话，不唤醒')
-  assert.equal(Number(t.metaMap.get('proactive:next:' + group)), noon + 239 * MIN + 240 * MIN)
+  // 群：到点了，但她刚在群里说过话 → 从她那句起顺延
+  t.archive.add({ umo: group, kind: 'group', groupId: '555', type: 'message', woke: true, direction: 'out', senderName: '她', senderId: 'self', time: noon + 119 * MIN, text: '她刚说的' })
+  assert.ok(!(await t.p.tick(noon + 121 * MIN)).includes(group), '她刚说过话，不唤醒')
+  assert.equal(Number(t.metaMap.get('proactive:next:' + group)), noon + 119 * MIN + 120 * MIN)
+  // 别人刚说过话不影响
+  msg(group, 'group', noon + 238 * MIN, '群友刚说的一句', { groupId: '555' })
+  assert.ok((await t.p.tick(noon + 240 * MIN)).includes(group), '只是群友刚说过话，照样唤醒')
   // 免打扰：凌晨 2 点到点也不唤醒
   t.metaMap.set('proactive:next:' + master, String(day + 26 * 3_600_000 - MIN))
   assert.deepEqual(await t.p.tick(day + 26 * 3_600_000), [])
@@ -80,7 +84,7 @@ test('主动聊天：先排时间；到点、不在免打扰、没刚聊过才�
   t.archive.add({ umo: group, kind: 'group', groupId: '555', type: 'message', woke: true, direction: 'out', senderName: '她', senderId: 'self', time: noon + 300 * MIN, text: '我也想玩' })
   t.metaMap.set('proactive:next:' + group, String(noon + 600 * MIN))
   assert.deepEqual(await t.p.tick(noon + 601 * MIN), [group])
-  assert.match(t.woken.find(w => w.umo === group).text, /群里最近的消息[\s\S]*群里有人在聊游戏[\s\S]*\[我\] 我也想玩[\s\S]*只回复「\[不发\]」/)
+  assert.match(t.woken.findLast(w => w.umo === group).text, /群里最近的消息[\s\S]*群里有人在聊游戏[\s\S]*\[我\] 我也想玩[\s\S]*只回复「\[不发\]」/)
 })
 
 test('主动聊天：例外规则能关掉某个会话；总开关关掉就都不动', async () => {

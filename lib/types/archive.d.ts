@@ -1,6 +1,6 @@
 import { DatabaseSync } from 'node:sqlite';
 /** 数据结构版本；以后改表结构时加升级步骤，不丢旧数据。 */
-export declare const SCHEMA_VERSION = 4;
+export declare const SCHEMA_VERSION = 5;
 export interface ArchivedMessage {
     /** unified_msg_origin */
     umo: string;
@@ -50,11 +50,10 @@ export declare class Archive {
         maxId: number;
         kind: string;
     }>;
-    /**
-     * 群里她没看到的消息：她上一次发言之后、没唤醒她的那些（唤醒她的已经在会话里了），
-     * 不含 excludeMessageId（正在处理的这条），最多 limit 条，按时间顺序。
-     */
-    unseen(umo: string, limit: number, excludeMessageId?: string): ArchivedMessage[];
+    /** 这条消息之前，会话里最近的 limit 条（收到的和她发出的都算，按存进来的先后，不按时间：QQ 消息时间只精确到秒）。 */
+    lastMessages(umo: string, limit: number, excludeMessageId?: string): ArchivedMessage[];
+    /** 她在某个会话里最后一次说话的时间。 */
+    lastOutTime(umo: string): number | undefined;
     /** 某个会话最后一条（收到或发出）的时间。 */
     lastTime(umo: string): number | undefined;
     /** 某个会话最早一条的时间。 */

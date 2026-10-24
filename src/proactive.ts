@@ -1,9 +1,9 @@
 // 主动聊天：每个 QQ 会话各自按随机间隔唤醒她一次，让她自己决定要不要说话（不想说就回「[不发]」）。
-//   - 主人私聊：默认每 2～6 小时一次（在这个范围里均匀随机）；
-//   - 其他人的私聊和群聊：间隔是主人的 2 倍（4～12 小时），而且只找最近 7 天里聊过的；
-//   - 刚聊过（30 分钟内有人说话或她说过话）不触发，顺延；
+//   - 主人私聊：默认每 1～4 小时一次（在这个范围里均匀随机）；
+//   - 其他人的私聊和群聊：默认每 2～4 小时一次，而且只找最近 7 天里聊过的；
+//   - 她 30 分钟内在这个会话里说过话就不触发，从她最后一句起再等一个间隔；
 //   - 免打扰时间（默认 01:00–09:00）不触发，顺延到之后；
-//   - 群聊主动时带上群里最近 15 条消息当上下文（含她自己说的，图片用收到时存好的，最多 2 张）。
+//   - 群聊主动时带上群里最近 15 条消息当上下文（含她自己说的，图片用收到时存好的，不限张数）。
 // 需要 dsh-napcat-bridge ≥ 0.7.0 的 ctx.napcat.wake。
 
 import { existsSync, readFileSync } from 'node:fs'
@@ -21,19 +21,18 @@ export interface ProactiveSettings {
   /** 主人私聊的间隔范围（分钟） */
   masterMinMinutes: number
   masterMaxMinutes: number
-  /** 其他私聊和群聊的间隔是主人的几倍 */
-  othersFactor: number
+  /** 其他私聊和群聊的间隔范围（分钟） */
+  othersMinMinutes: number
+  othersMaxMinutes: number
   privateEnabled: boolean
   groupEnabled: boolean
   /** 免打扰 HH:MM–HH:MM（可以跨午夜） */
   quietStart: string
   quietEnd: string
-  /** 这么多分钟内聊过就不触发 */
+  /** 她这么多分钟内在这个会话里说过话就不触发 */
   recentMinutes: number
-  /** 群聊带几条上下文 */
+  /** 群聊带几条上下文（里面的图片不限张数） */
   groupContextMessages: number
-  /** 群聊上下文里最多几张图 */
-  groupContextImages: number
   /** 其他人：最近几天里聊过才主动找 */
   activeWithinDays: number
   silenceToken: string
@@ -59,12 +58,12 @@ export function inQuiet(clock: string, start: string, end: string): boolean {
   return start < end ? clock >= start && clock < end : clock >= start || clock < end
 }
 
-/** 下一次间隔（毫秒）：在范围里均匀随机；非主人乘倍数。 */
-export function nextDelay(category: Category, s: Pick<ProactiveSettings, 'masterMinMinutes' | 'masterMaxMinutes' | 'othersFactor'>, random: () => number = Math.random): number {
-  const lo = Math.max(1, Math.min(s.masterMinMinutes, s.masterMaxMinutes))
-  const hi = Math.max(lo, s.masterMaxMinutes)
-  const minutes = lo + (hi - lo) * random()
-  return Math.round(minutes * (category === 'master' ? 1 : Math.max(1, s.othersFactor)) * MINUTE)
+/** 下一次间隔（毫秒）：主人和其他人各自在自己的范围里均匀随机。 */
+export function nextDelay(category: Category, s: Pick<ProactiveSettings, 'masterMinMinutes' | 'masterMaxMinutes' | 'othersMinMinutes' | 'othersMaxMinutes'>, random: () => number = Math.random): number {
+  const [min, max] = category === 'master' ? [s.masterMinMinutes, s.masterMaxMinutes] : [s.othersMinMinutes, s.othersMaxMinutes]
+  const lo = Math.max(1, Math.min(min, max))
+  const hi = Math.max(lo, max)
+  return Math.round((lo + (hi - lo) * random()) * MINUTE)
 }
 
 function gapText(ms: number): string {
@@ -156,9 +155,10 @@ export class Proactive {
         this.deps.meta.set('proactive:next:' + umo, String(now + 30 * MINUTE + Math.round(this.random() * 30 * MINUTE)))
         continue
       }
-      if (last !== undefined && now - last < s.recentMinutes * MINUTE) {
-        // 刚聊过：从最后一次说话起再等一个间隔
-        this.schedule(umo, scope.category, last)
+      const lastOut = this.deps.archive.lastOutTime(umo)
+      if (lastOut !== undefined && now - lastOut < s.recentMinutes * MINUTE) {
+        // 她刚说过话：从她最后一句起再等一个间隔
+        this.schedule(umo, scope.category, lastOut)
         continue
       }
       this.schedule(umo, scope.category, now)
@@ -182,7 +182,7 @@ export class Proactive {
       const images: unknown[] = []
       if (scope.category === 'group') {
         const rows = this.deps.archive.recent(umo, Math.max(0, s.groupContextMessages)).filter(r => r.type === 'message')
-        let budget = s.groupContextImages
+        let budget = Infinity
         groupLines = rows.map(r => {
           let extra = ''
           if (budget > 0 && r.segments) {

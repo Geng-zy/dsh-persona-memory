@@ -19,6 +19,7 @@ import type { BeforeCompactPayload, CompanionService, ContextPolicy } from './se
 import { coreTool, personaTool, type ToolDeps } from './tools.js'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { embed, embedEnabled, Indexer, type EmbedSettings } from './embed.js'
+import { GraphBuilder, graphScores, GraphStore, type GraphSettings } from './graph.js'
 import { cleanupPrompt, complete, parseCleanup, type LlmLike, type ModelTarget } from './extract.js'
 import { KINDS, MemoryStore, defaultTrust, ownScope, type MemoryKind } from './memory.js'
 import { forgetTool, saveTool, searchTool, type MemoryToolDeps } from './memory-tools.js'
@@ -91,8 +92,11 @@ export interface Config {
   embedApiKey: string
   embedModel: string
   embedBatch: number
+  graphEnabled: boolean
+  graphModel: string
+  graphBatch: number
+  graphHops: number
   groupContextCount: number
-  groupContextImages: number
   diaryEnabled: boolean
   diaryTime: string
   dayBoundaryHour: number
@@ -109,14 +113,14 @@ export interface Config {
   proactiveEnabled: boolean
   proactiveMinMinutes: number
   proactiveMaxMinutes: number
-  proactiveOthersFactor: number
+  proactiveOthersMinMinutes: number
+  proactiveOthersMaxMinutes: number
   proactivePrivate: boolean
   proactiveGroup: boolean
   quietStart: string
   quietEnd: string
   proactiveRecentMinutes: number
   proactiveGroupContext: number
-  proactiveGroupImages: number
   proactiveActiveDays: number
   silenceToken: string
   autoCleanup: boolean
@@ -199,9 +203,12 @@ export const Config: z<LiveConfig> = z.object({
   embedApiKey: z.string().role('secret').volatile().description('向量接口 Key；不填不启用向量检索'),
   embedModel: z.string().default('BAAI/bge-m3').volatile().description('向量模型'),
   embedBatch: z.natural().min(1).max(64).default(16).volatile().description('一次算几条'),
+  graphEnabled: z.boolean().default(false).volatile().description('图记忆：从记忆里抽出人和事的关系网，召回时多走一路（每条记忆多调一次模型）'),
+  graphModel: z.string().default('').volatile().description('抽关系用的模型（提供方/模型）；空 = 和整理记忆用同一个'),
+  graphBatch: z.natural().min(1).max(30).default(8).volatile().description('一次让模型看几条记忆'),
+  graphHops: z.natural().max(2).default(1).volatile().description('从提到的东西顺着关系走几步（0–2）'),
   // 群聊上下文
-  groupContextCount: z.natural().default(10).volatile().description('参与群话题时附上之前几条她没看到的群消息（0 = 不附）'),
-  groupContextImages: z.natural().default(4).volatile().description('附带的群消息里最多给几张图片'),
+  groupContextCount: z.natural().default(10).volatile().description('参与群话题时附上群里最近几条消息（含她自己说的；图片不限张数；0 = 不附）'),
   // 日记
   diaryEnabled: z.boolean().default(true).volatile().description('每天写日记'),
   diaryTime: z.string().default('01:30').volatile().description('每天几点写日记、处理存档到期（HH:MM）'),
@@ -219,16 +226,16 @@ export const Config: z<LiveConfig> = z.object({
   archiveImages: z.boolean().default(true).volatile().description('收到图片时下载存起来（QQ 图片链接会过期）'),
   // 主动聊天（需要 dsh-napcat-bridge ≥ 0.7.0）
   proactiveEnabled: z.boolean().default(true).volatile().description('主动聊天：随机间隔唤醒她，让她决定要不要说话'),
-  proactiveMinMinutes: z.natural().min(10).default(120).volatile().description('主人私聊：最短间隔（分钟）'),
-  proactiveMaxMinutes: z.natural().min(10).default(360).volatile().description('主人私聊：最长间隔（分钟）'),
-  proactiveOthersFactor: z.number().min(1).max(20).default(2).volatile().description('其他私聊和群聊的间隔是主人的几倍'),
+  proactiveMinMinutes: z.natural().min(10).default(60).volatile().description('主人私聊：最短间隔（分钟）'),
+  proactiveMaxMinutes: z.natural().min(10).default(240).volatile().description('主人私聊：最长间隔（分钟）'),
+  proactiveOthersMinMinutes: z.natural().min(10).default(120).volatile().description('其他私聊和群聊：最短间隔（分钟）'),
+  proactiveOthersMaxMinutes: z.natural().min(10).default(240).volatile().description('其他私聊和群聊：最长间隔（分钟）'),
   proactivePrivate: z.boolean().default(true).volatile().description('也主动找别人私聊'),
   proactiveGroup: z.boolean().default(true).volatile().description('也在群里主动说话'),
   quietStart: z.string().default('01:00').volatile().description('免打扰开始（HH:MM）'),
   quietEnd: z.string().default('09:00').volatile().description('免打扰结束（HH:MM）'),
-  proactiveRecentMinutes: z.natural().default(30).volatile().description('这么多分钟内聊过就不触发'),
-  proactiveGroupContext: z.natural().default(15).volatile().description('群里主动说话时带几条上下文'),
-  proactiveGroupImages: z.natural().default(2).volatile().description('其中最多几张图'),
+  proactiveRecentMinutes: z.natural().default(30).volatile().description('她这么多分钟内在这个会话里说过话就不触发'),
+  proactiveGroupContext: z.natural().default(15).volatile().description('群里主动说话时带几条上下文（图片不限张数）'),
   proactiveActiveDays: z.natural().min(1).default(7).volatile().description('别人和群：最近几天里聊过才主动找'),
   silenceToken: z.string().default('[不发]').volatile().description('「不发」暗号，和 dsh-napcat-bridge 设置里的保持一致'),
   // 记忆保养
@@ -376,7 +383,12 @@ export function apply(ctx: Context, live: LiveConfig): void {
     const sel = (ctx.get('agentDefaultModel' as never) as { currentSelection?(): { provider: string; model: string } | undefined } | undefined)?.currentSelection?.()
     return sel ? { provider: sel.provider, model: sel.model } : undefined
   }
-  const afterWrite = (): void => { indexer?.ensure() }
+  const graphStore = archive !== undefined ? new GraphStore(archive.db) : undefined
+  const graphSettings = (): GraphSettings => ({ enabled: get('graphEnabled'), batch: get('graphBatch'), hops: get('graphHops') })
+  const graphBuilder = graphStore !== undefined
+    ? new GraphBuilder(graphStore, { settings: graphSettings, llm, target: () => parseTarget(get('graphModel')) ?? modelTarget(), embedSettings, log })
+    : undefined
+  const afterWrite = (): void => { indexer?.ensure(); graphBuilder?.ensure() }
   const organizer = archive !== undefined && memories !== undefined
     ? new Organizer({ archive, store: memories, llm, target: modelTarget, log, afterWrite })
     : undefined
@@ -415,9 +427,9 @@ export function apply(ctx: Context, live: LiveConfig): void {
       wake: () => (napcat() as any)?.wake?.bind(napcat()),
       settings: () => ({
         enabled: get('proactiveEnabled'), masterMinMinutes: get('proactiveMinMinutes'), masterMaxMinutes: get('proactiveMaxMinutes'),
-        othersFactor: get('proactiveOthersFactor'), privateEnabled: get('proactivePrivate'), groupEnabled: get('proactiveGroup'),
+        othersMinMinutes: get('proactiveOthersMinMinutes'), othersMaxMinutes: get('proactiveOthersMaxMinutes'), privateEnabled: get('proactivePrivate'), groupEnabled: get('proactiveGroup'),
         quietStart: clockOk(get('quietStart'), '01:00'), quietEnd: clockOk(get('quietEnd'), '09:00'), recentMinutes: get('proactiveRecentMinutes'),
-        groupContextMessages: get('proactiveGroupContext'), groupContextImages: get('proactiveGroupImages'), activeWithinDays: get('proactiveActiveDays'),
+        groupContextMessages: get('proactiveGroupContext'), activeWithinDays: get('proactiveActiveDays'),
         silenceToken: get('silenceToken') || '[不发]', timeZone: get('timezone'),
         override: s => {
           const row = matchRule(s, rules())
@@ -526,9 +538,15 @@ export function apply(ctx: Context, live: LiveConfig): void {
       return undefined
     }
   }
+  /** 开了图记忆时，图那一路的分数 */
+  const graphFor = (s: Scope, query: string, vec?: { query: Float32Array; model: string }): Map<number, number> | undefined => {
+    if (graphStore === undefined || !get('graphEnabled')) return undefined
+    try { return graphScores(graphStore, s, query, get('graphHops'), vec) } catch (e) { log('debug', '图记忆检索失败，只用原来那一路：' + errText(e)); return undefined }
+  }
   const search = async (s: Scope, query: string, topK: number) => {
     if (memories === undefined) return []
-    const found = recall(memories, s, query, { ...recallSettings(), topK }, await queryVector(query))
+    const vec = await queryVector(query)
+    const found = recall(memories, s, query, { ...recallSettings(), topK }, vec, Date.now(), graphFor(s, query, vec))
     memories.markRecalled(found.map(f => f.memory.id))
     return found
   }
@@ -536,7 +554,8 @@ export function apply(ctx: Context, live: LiveConfig): void {
   // 设置页改了向量设置（换模型、填 Key）后自动补算；定时看一眼
   ctx.effect(() => {
     indexer?.ensure()
-    const timer = setInterval(() => indexer?.ensure(), 15_000)
+    graphBuilder?.ensure()
+    const timer = setInterval(() => { indexer?.ensure(); graphBuilder?.ensure() }, 15_000)
     return () => clearInterval(timer)
   }, 'companion: index')
 
@@ -625,7 +644,7 @@ export function apply(ctx: Context, live: LiveConfig): void {
     organizer.onDshLine(id, text, human, get('organizeEveryRounds'))
   }) as never)
 
-  // 群聊之前 n 条：她参与群话题时，把她没看到的群消息一起给她（图片原图、语音转文字、视频截图都用插件一的媒体服务）
+  // 群聊之前 n 条：她参与群话题时，把群里最近 n 条消息（含她自己说的）一起给她，图片不限张数（原图、语音转文字、视频截图都用插件一的媒体服务）
   ctx.on('napcat/prompt' as never, (async (payload: { info: { type: string; umo: string; groupId?: string; sessionId: string }; message: any; content: any[] }) => {
     try {
       const info = payload.info
@@ -633,10 +652,10 @@ export function apply(ctx: Context, live: LiveConfig): void {
       const s: Scope = { category: 'group', qq: true, umo: info.umo, ...(info.groupId ? { groupId: info.groupId } : {}) }
       if (!archiveRule(s, defaults(), rules()).unwoken) return
       const umo = String(payload.message?.raw_message ? info.umo : info.umo)
-      const rows = archive.unseen(umo, get('groupContextCount'), payload.message?.message_id !== undefined ? String(payload.message.message_id) : undefined)
+      const rows = archive.lastMessages(umo, get('groupContextCount'), payload.message?.message_id !== undefined ? String(payload.message.message_id) : undefined)
       if (rows.length === 0) return
       const media = (napcat() as any)?.media as { convert?(components: any[], budget?: number): Promise<{ text: string; parts: any[]; used: number }> } | undefined
-      let budget = get('groupContextImages')
+      let budget = Infinity
       const lines: string[] = []
       const images: any[] = []
       for (const r of rows) {
@@ -668,9 +687,9 @@ export function apply(ctx: Context, live: LiveConfig): void {
             log('debug', '群消息里的图片/语音没转出来：' + errText(e))
           }
         }
-        lines.push('[' + (r.senderName || r.senderId) + '(' + r.senderId + ')] ' + (r.text || '').trim() + extra)
+        lines.push('[' + (r.direction === 'out' ? '我' : (r.senderName || r.senderId) + '(' + r.senderId + ')') + '] ' + ((r.text || '').trim() || (extra ? '' : '[图片/语音等]')) + extra)
       }
-      const head = { type: 'text', text: '<group_context>\n在这条消息之前，群里还有这些你没看到的消息（按时间顺序）：\n' + lines.join('\n') + '\n</group_context>' }
+      const head = { type: 'text', text: '<group_context>\n在这条消息之前，群里最近的消息（按时间顺序，[我] 是你自己说的）：\n' + lines.join('\n') + '\n</group_context>' }
       const tail = images.length > 0 ? [{ type: 'text', text: '（下面是上面那些群消息里的图片）' }, ...images] : []
       payload.content.unshift(head, ...tail)
     } catch (e) {
@@ -825,7 +844,9 @@ export function apply(ctx: Context, live: LiveConfig): void {
   const selfCheck = async () => {
     const out: Array<{ query: string; found: Array<{ id: number; content: string; relevance: number }> }> = []
     for (const q of get('selfCheckQueries').filter(x => x.trim() !== '')) {
-      const found = memories === undefined ? [] : recall(memories, { category: 'master', qq: false }, q, { ...recallSettings(), topK: 3 }, await queryVector(q))
+      const master: Scope = { category: 'master', qq: false }
+      const vec = memories === undefined ? undefined : await queryVector(q)
+      const found = memories === undefined ? [] : recall(memories, master, q, { ...recallSettings(), topK: 3 }, vec, Date.now(), graphFor(master, q, vec))
       out.push({ query: q, found: found.map(f => ({ id: f.memory.id, content: f.memory.content.slice(0, 200), relevance: Math.round(f.relevance * 100) / 100 })) })
     }
     meta.set('selfcheck:last', JSON.stringify({ at: Date.now(), results: out }))
@@ -872,6 +893,7 @@ export function apply(ctx: Context, live: LiveConfig): void {
     memory: memories?.stats() ?? null,
     pending: organizer?.pending() ?? null,
     index: indexer?.state() ?? null,
+    graph: graphBuilder === undefined ? null : { ...graphBuilder.state(), sample: graphStore?.sample(15) ?? [] },
     embedKeySet: get('embedApiKey').trim() !== '',
     modelTarget: modelTarget() ?? null,
     cleanup: lastCleanup,
@@ -1048,7 +1070,7 @@ export function apply(ctx: Context, live: LiveConfig): void {
         log('info', '设置页修改了 ' + key + ' 的日记')
         return json(200, { ok: true })
       }
-      if (['memory', 'index', 'organize', 'cleanup'].includes(parts[0] ?? '')) {
+      if (['memory', 'index', 'graph', 'organize', 'cleanup'].includes(parts[0] ?? '')) {
         if (req.method !== 'POST') return json(405, { error: '只支持 POST' })
         if (!String(req.headers['content-type'] ?? '').includes('application/json')) return json(415, { error: '需要 application/json' })
         const body = await readBody(req)
@@ -1069,6 +1091,15 @@ export function apply(ctx: Context, live: LiveConfig): void {
             return json(200, state())
           }
           await runCleanup()
+          return json(200, state())
+        }
+        if (parts[0] === 'graph') {
+          if (graphBuilder === undefined) return json(503, { error: '数据库没打开' })
+          if (parts[1] === 'rebuild') graphBuilder.start(true)
+          else if (parts[1] === 'resume') graphBuilder.start(false)
+          else if (parts[1] === 'pause') graphBuilder.pause()
+          else if (parts[1] === 'cancel') graphBuilder.cancel()
+          else return json(404, { error: 'not found' })
           return json(200, state())
         }
         if (parts[0] === 'index') {

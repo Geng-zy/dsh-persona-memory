@@ -25,6 +25,6 @@ export declare function effectiveImportance(m: Memory, halfLifeDays: number, now
 export declare function recall(store: MemoryStore, scope: Scope, query: string, s: RecallSettings, vector?: {
     query: Float32Array;
     model: string;
-}, now?: number): Recalled[];
+}, now?: number, graph?: ReadonlyMap<number, number>): Recalled[];
 /** 放进这一轮消息里的那段文字。 */
 export declare function formatRecall(items: readonly Recalled[]): string;

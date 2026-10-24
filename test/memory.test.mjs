@@ -164,7 +164,7 @@ function fakeLlm(reply) {
   }
 }
 
-test('群里她没看到的消息：她上次发言之后、没唤醒她的，不含正在处理的这条', () => {
+test('群里最近的消息：含她自己说的和唤醒过她的，不含正在处理的这条', () => {
   const { archive } = fresh()
   const umo = 'napcat:GroupMessage:555'
   const base = { umo, kind: 'group', groupId: '555', senderId: '9', senderName: '群友', type: 'message' }
@@ -174,8 +174,9 @@ test('群里她没看到的消息：她上次发言之后、没唤醒她的，�
   archive.add({ ...base, messageId: '3', time: 4000, direction: 'in', woke: true, text: '@她的上一条' })
   archive.add({ ...base, messageId: '4', time: 5000, direction: 'in', woke: false, text: '又一条' })
   archive.add({ ...base, messageId: '5', time: 6000, direction: 'in', woke: true, text: '正在处理的' })
-  assert.deepEqual(archive.unseen(umo, 10, '5').map(m => m.text), ['之后的一条', '又一条'])
-  assert.deepEqual(archive.unseen(umo, 1, '5').map(m => m.text), ['又一条'])
+  assert.deepEqual(archive.lastMessages(umo, 10, '5').map(m => m.text), ['很早的', '她说过话', '之后的一条', '@她的上一条', '又一条'])
+  assert.deepEqual(archive.lastMessages(umo, 2, '5').map(m => m.text), ['@她的上一条', '又一条'])
+  assert.equal(archive.lastOutTime(umo), 2000)
 })
 
 test('整理：只整理没整理过的部分；记到会话自己的归属；没有模型时不动进度', async () => {

@@ -6,7 +6,7 @@
 // 改人格文件后同一个会话下一步就变；主人会话有改人格工具、群里没有；她用工具改人格后文件真的变了并留了历史；
 // 群聊超过轮数按轮截断；主人超过轮数用中文回忆压缩；模型报超出上限时截断后重试成功；
 // 消息存档（收到、发出、没唤醒的群消息）；设置页接口要登录、改文件要 JSON 请求。
-// 阶段 2：召回的记忆放进这一轮的消息；群聊附上她没看到的消息；每个会话都有回忆/记住/遗忘工具；
+// 阶段 2：召回的记忆放进这一轮的消息；群聊附上最近几条消息；每个会话都有回忆/记住/遗忘工具；
 // 手动整理和压缩前整理（假模型回 JSON）；向量索引（假向量接口）；接口里遗忘一条记忆。
 // 阶段 3：写日记；群消息图片收到时下载、群聊上下文用下载好的图；模拟过了 6 天：群会话换新、旧会话归档后
 // 真的删掉文件夹（dsh 还能正常用）、新会话开头带上个会话的内容；模拟过了 400 天：主人会话换新、旧的只归档不删、
@@ -46,6 +46,7 @@ const requests = []
 const extractions = []
 const diaryPrompts = []
 const proactivePrompts = []
+const graphPrompts = []
 let proactiveSilent = false
 let overflowOnce = true
 const textOf = content => (typeof content === 'string' ? content : (content ?? []).filter(b => b.type === 'text').map(b => b.text).join('\n'))
@@ -93,6 +94,14 @@ const llm = createServer((req, res) => {
       ev('message_delta', { delta: { stop_reason: 'end_turn' }, usage: { output_tokens: 5 } })
       ev('message_stop', {})
       res.end()
+    }
+    if (lastAll.includes('请从每条里抽出提到的实体')) {
+      graphPrompts.push(lastAll)
+      return text(JSON.stringify([...lastAll.matchAll(/^#(\d+) (.*)$/gm)].map(([, id, content]) => ({
+        id: Number(id), entities: [],
+        relations: content.includes('GR-1') ? [{ src: '主人', rel: '养了', dst: '橘猫' }, { src: '橘猫', rel: '名字是', dst: '咪咪' }]
+          : content.includes('GR-2') ? [{ src: '橘猫', rel: '打了', dst: '疫苗' }] : [],
+      }))))
     }
     if (lastAll.includes('现在暂停聊天')) return text('回忆：我们聊过苹果和香蕉。')
     if (lastAll.includes('<proactive>')) { proactivePrompts.push(lastAll); return text(proactiveSilent ? '[不发]' : '在忙吗？PRO-1') }
@@ -163,6 +172,7 @@ writeFileSync(join(profile, 'cordis.patch.yml'), `- id: napcat-bridge
     privateMaxRounds: 50
     groupMaxRounds: 3
     groupDropRounds: 2
+    graphEnabled: true
 `)
 const data = join(home, 'companion')
 mkdirSync(join(data, 'persona'), { recursive: true })
@@ -297,15 +307,15 @@ if (!r.all.includes('<memory>') || !r.all.includes('MEM-1')) await fail('这一�
 if (r.system.includes('MEM-1')) await fail('召回的记忆不该放进系统提示词')
 log('召回的记忆放进这一轮的消息 OK')
 
-// 2d. 群里：有回忆/记住/遗忘工具，没有改人格工具；附上她没看到的群消息；想不起主人的记忆
+// 2d. 群里：有回忆/记住/遗忘工具，没有改人格工具；附上群里最近的消息；想不起主人的记忆
 groupMsg([text('没 @ 她的 ctx-a')])
 await new Promise(r => setTimeout(r, 800))
 await say(() => groupMsg([at(BOT), text(' 红烧肉好吃吗 g1b')]), '群 @ 回复（带之前的消息）')
 r = reqWith('g1b')
 if (!['memory_search', 'memory_save', 'memory_forget'].every(t => r.tools.includes(t))) await fail('群聊没有记忆工具：' + r.tools.join(','))
-if (!r.all.includes('<group_context>') || !r.all.includes('ctx-a')) await fail('没附上她没看到的群消息：' + r.all.slice(0, 600))
+if (!r.all.includes('<group_context>') || !r.all.includes('ctx-a')) await fail('没附上群里最近的消息：' + r.all.slice(0, 600))
 if (r.all.includes('MEM-1')) await fail('群里想起了主人的记忆')
-log('群聊：记忆工具、附上没看到的消息、记忆隔离 OK')
+log('群聊：记忆工具、附上最近的消息、记忆隔离 OK')
 
 // 3. 改人格文件 → 同一个会话下一步就变
 writeFileSync(personaFile, '你是测试用的陪伴角色 PERSONA-V2。')
@@ -326,7 +336,9 @@ log('她用工具改人格、留历史版本 OK')
 // 5. 群聊按轮截断（最多 3 轮，一次截 2 轮）
 for (const g of ['g2', 'g3', 'g4']) await say(() => groupMsg([at(BOT), text(' ' + g)]), '群 ' + g)
 r = reqWith('g4')
-if (r.all.includes(' g1') || !r.all.includes('已经省略')) await fail('群聊没有按轮截断：' + r.all.slice(0, 600))
+// 群聊上下文会再附上最近几条群消息（可能含被截掉的），所以只看对话本身
+const convo = r.all.replace(/<group_context>[\s\S]*?<\/group_context>/g, '')
+if (convo.includes(' g1') || !convo.includes('已经省略')) await fail('群聊没有按轮截断：' + convo.slice(0, 600))
 log('群聊按轮截断 OK')
 
 // 6. 主人按轮 LLM 压缩（最多 6 轮，一次压 3 轮）
@@ -514,6 +526,24 @@ if (!readFileSync(personaFile, 'utf-8').includes('PERSONA-V3')) await fail('还�
 if (!after.json.backups.some(b => b.reason === 'before-import')) await fail('还原前没有自动备份当前数据')
 if (!Array.isArray(after.json.selfCheck?.results) || after.json.selfCheck.results.length !== 3) await fail('还原后没自检：' + JSON.stringify(after.json.selfCheck))
 await say(() => privateMsg([text('还原以后还在吗 m200')]), '还原以后的回复')
+
+// 18. 图记忆：两条记忆抽出关系网；聊「咪咪」时能想起没出现「咪咪」的那条（顺着 咪咪—橘猫 走一步）
+await api('POST', 'memory/add', { scope: 'master', content: '主人养的橘猫名字叫咪咪 GR-1', kind: 'fact', importance: 0.6 })
+await api('POST', 'memory/add', { scope: 'master', content: '那只橘猫上周打了疫苗 GR-2', kind: 'event', importance: 0.5 })
+let gst
+for (let i = 0; i < 60; i++) {
+  gst = (await api('GET', 'state')).json?.graph
+  if (gst && gst.state === 'done' && gst.counts.done === gst.counts.memories && gst.sample.some(x => x.rel === '打了')) break
+  await new Promise(r => setTimeout(r, 500))
+}
+if (!gst || gst.state !== 'done' || !gst.sample.some(x => x.rel === '打了')) await fail('关系网没抽好：' + JSON.stringify(gst))
+if (graphPrompts.length === 0 || graphPrompts.some(p => p.includes('今天的日记'))) await fail('抽关系的请求不对（日记不该抽）')
+await say(() => privateMsg([text('咪咪最近好吗 gq1')]), '图记忆召回后的回复')
+r = reqWith('gq1')
+if (!r.all.includes('GR-2')) await fail('图记忆没顺着关系想起来：' + r.all.slice(-800))
+const graphRebuild = await api('POST', 'graph/rebuild', {})
+if (graphRebuild.status !== 200 || !graphRebuild.json?.graph) await fail('关系网手动重建接口不对：' + JSON.stringify(graphRebuild))
+log('图记忆：补抽关系网、顺着关系召回、手动重建 OK')
 log('备份、下载、还原（插件重新加载）、自检 OK')
 
 // 14. 删过会话以后重启 dsh：能正常起来、不报错、设置页接口照常

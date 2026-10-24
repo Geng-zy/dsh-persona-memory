@@ -1,9 +1,11 @@
 // 召回：每轮交给模型前，用这条消息去记忆库里找相关的几条。
 // 关键词一直用；向量在填了 Key 时一起用。按相关度、重要程度（会随时间衰减）、新近程度排名，
 // 主人会话里的群记忆打个折，取前几条。检索本身不调用大模型。
+// 开了图记忆时再多一路（graph.ts 的 graphScores），两路按排名融合（RRF），条数不变。
 
 import { visibleScopes, type Memory, type MemoryStore } from './memory.js'
 import type { Scope } from './rules.js'
+import { fuse } from './graph.js'
 import { cosine, fromBlob, keywordScore } from './text.js'
 
 export interface RecallSettings {
@@ -43,6 +45,7 @@ export function recall(
   s: RecallSettings,
   vector?: { query: Float32Array; model: string },
   now = Date.now(),
+  graph?: ReadonlyMap<number, number>,
 ): Recalled[] {
   if (query.trim() === '' || s.topK <= 0) return []
   const { scopes, allGroups } = visibleScopes(scope)
@@ -70,7 +73,25 @@ export function recall(
     const score = relevance * discount + s.importanceWeight * effectiveImportance(m, s.halfLifeDays, now) + s.recencyWeight * recency
     out.push({ memory: m, relevance, score })
   }
-  return out.sort((a, b) => b.score - a.score).slice(0, s.topK)
+  out.sort((a, b) => b.score - a.score)
+  if (graph === undefined || graph.size === 0) return out.slice(0, s.topK)
+  // 图那一路：只要这个会话看得到的正常记忆；同样打群折扣、加一点重要程度
+  const byId = new Map(candidates.map(m => [m.id, m]))
+  const graphRanked = [...graph.entries()]
+    .filter(([id]) => byId.has(id))
+    .map(([id, g]) => {
+      const m = byId.get(id)!
+      const discount = scope.category === 'master' && m.scope.startsWith('group:') ? s.groupDiscount : 1
+      return { id, g, rank: g * discount + s.importanceWeight * effectiveImportance(m, s.halfLifeDays, now) }
+    })
+    .sort((a, b) => b.rank - a.rank)
+  const fused = fuse(out.map(r => r.memory.id), graphRanked.map(r => r.id))
+  const docById = new Map(out.map(r => [r.memory.id, r]))
+  const merged: Recalled[] = [...fused.entries()].map(([id, f]) => {
+    const doc = docById.get(id)
+    return { memory: doc?.memory ?? byId.get(id)!, relevance: doc?.relevance ?? Math.min(1, graph.get(id) ?? 0), score: f }
+  })
+  return merged.sort((a, b) => b.score - a.score).slice(0, s.topK)
 }
 
 function day(ms: number, tz?: string): string {

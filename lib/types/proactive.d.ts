@@ -6,19 +6,18 @@ export interface ProactiveSettings {
     /** 主人私聊的间隔范围（分钟） */
     masterMinMinutes: number;
     masterMaxMinutes: number;
-    /** 其他私聊和群聊的间隔是主人的几倍 */
-    othersFactor: number;
+    /** 其他私聊和群聊的间隔范围（分钟） */
+    othersMinMinutes: number;
+    othersMaxMinutes: number;
     privateEnabled: boolean;
     groupEnabled: boolean;
     /** 免打扰 HH:MM–HH:MM（可以跨午夜） */
     quietStart: string;
     quietEnd: string;
-    /** 这么多分钟内聊过就不触发 */
+    /** 她这么多分钟内在这个会话里说过话就不触发 */
     recentMinutes: number;
-    /** 群聊带几条上下文 */
+    /** 群聊带几条上下文（里面的图片不限张数） */
     groupContextMessages: number;
-    /** 群聊上下文里最多几张图 */
-    groupContextImages: number;
     /** 其他人：最近几天里聊过才主动找 */
     activeWithinDays: number;
     silenceToken: string;
@@ -41,8 +40,8 @@ export interface ProactiveDeps {
 }
 /** 现在是不是免打扰时间。 */
 export declare function inQuiet(clock: string, start: string, end: string): boolean;
-/** 下一次间隔（毫秒）：在范围里均匀随机；非主人乘倍数。 */
-export declare function nextDelay(category: Category, s: Pick<ProactiveSettings, 'masterMinMinutes' | 'masterMaxMinutes' | 'othersFactor'>, random?: () => number): number;
+/** 下一次间隔（毫秒）：主人和其他人各自在自己的范围里均匀随机。 */
+export declare function nextDelay(category: Category, s: Pick<ProactiveSettings, 'masterMinMinutes' | 'masterMaxMinutes' | 'othersMinMinutes' | 'othersMaxMinutes'>, random?: () => number): number;
 /** 唤醒她时说的话。 */
 export declare function proactivePrompt(category: Category, now: number, lastTime: number | undefined, s: Pick<ProactiveSettings, 'silenceToken' | 'timeZone'>, groupLines?: readonly string[]): string;
 export interface ProactiveEntry {
