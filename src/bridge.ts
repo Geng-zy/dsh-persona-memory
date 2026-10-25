@@ -15,7 +15,7 @@ import {
   AiocqhttpMessageEvent, MessageType, sessionToString,
   type AstrBotMessage, type MessageSession,
 } from './adapter.js'
-import { Plain, type Component, type MessageChain } from './components.js'
+import { Plain, make, type Component, type MessageChain } from './components.js'
 import type { VideoSettings } from './ffmpeg.js'
 import type { Media, ModelPart } from './media.js'
 import { extractForwards, extractQuoted } from './quoted.js'
@@ -23,6 +23,7 @@ import type { SttSettings } from './stt.js'
 import type { SessionStore } from './store.js'
 import { Pacer, splitTyping, type PaceSettings } from './pacer.js'
 import { segmentEnabled, splitReply, type SegmentSettings } from './segment.js'
+import { planPieces, ttsActive, ttsHint, type Speech, type TtsSettings } from './tts.js'
 import type { Logger } from './onebot/server.js'
 
 declare module '@deepseek-ai/dsh-llm' {
@@ -80,6 +81,8 @@ export interface BridgeDeps {
   log: Logger
   /** 测试用：替换等待 */
   sleep?: (ms: number) => Promise<void>
+  /** 文字转语音（本插件新增，见 tts.ts）；没有时一律发文字 */
+  tts?: { speak(text: string): Promise<Speech> }
 }
 
 export interface BridgeSettings {
@@ -121,6 +124,8 @@ export interface BridgeSettings {
   pace: PaceSettings
   /** 分段发送（本插件新增，见 segment.ts） */
   segment: SegmentSettings
+  /** 文字转语音（本插件新增，见 tts.ts） */
+  tts: TtsSettings
 }
 
 /** 一个 dsh 会话对应哪个 QQ 会话（本插件新增，给其他插件按会话分规则用）。 */
@@ -570,6 +575,8 @@ export class Bridge {
     if (s.reminder.markAdmin && admin) parts.push('Sender role: admin (QQ ' + abm.sender.user_id + ')')
     if (s.reminder.groupName && abm.group?.group_name) parts.push('Group name: ' + abm.group.group_name)
     if (s.reminder.datetime) parts.push('Current datetime: ' + formatNow(s.reminder.timezone))
+    const group = abm.type === MessageType.GROUP_MESSAGE
+    if (s.tts.mode === 'tag' && this.deps.tts && ttsActive(s.tts, { group, adminPrivate: admin && !group })) parts.push(ttsHint(s.tts))
     return parts.length > 0 ? '<system_reminder>' + parts.join('\n') + '</system_reminder>' : undefined
   }
 
@@ -802,12 +809,24 @@ export class Bridge {
         ? splitReply(text, settings.segment.maxSegments)
         : [text]
       // 拆成几段时，每段按自己的字数等，但每段有单独的上限（不然一行十几个字就等十秒，八行要等一分钟）
-      const typing = segments.length > 1 ? splitTyping(segments, isGroup, settings.pace, settings.segment.maxSecondsPerSegment) : [undefined]
-      segments.forEach((segment, i) => {
-        const reply: MessageChain = { chain: [Plain(segment)] }
-        void this.pacer.run(umo, isGroup, segment, () => chat.send(reply), typing[i]).then(result => {
+      // 本插件新增：文字转语音。先把每段标上用不用语音，语音马上开始合成（发的时候再等它），发送顺序不变
+      const active = this.deps.tts !== undefined && ttsActive(settings.tts, { group: isGroup, adminPrivate: chat.info.adminPrivate })
+      const pieces = planPieces(segments, settings.tts, active)
+      const typing = pieces.length > 1 ? splitTyping(pieces.map(p => p.text), isGroup, settings.pace, settings.segment.maxSecondsPerSegment) : [undefined]
+      pieces.forEach((piece, i) => {
+        const speech = piece.voice ? this.deps.tts!.speak(piece.text).catch((e: unknown) => {
+          this.deps.log('warn', umo + '：语音没合成出来，改发文字：' + errText(e))
+          return undefined
+        }) : undefined
+        const textChain: MessageChain = { chain: [Plain(piece.text)] }
+        void this.pacer.run(umo, isGroup, piece.text, async () => {
+          const voice = await speech
+          if (voice === undefined) return chat.send(textChain)
+          await chat.send({ chain: [make('Record', { file: 'base64://' + voice.audio.toString('base64') })] })
+          if (settings.tts.alsoText) await chat.send(textChain)
+        }, typing[i]).then(result => {
           if (result === 'dropped') return
-          this.notifySent({ umo, session: chat.session, text: segment, chain: reply, source: 'reply', time: Date.now() })
+          this.notifySent({ umo, session: chat.session, text: piece.text, chain: textChain, source: 'reply', time: Date.now() })
         }, e => {
           this.deps.log('error', '发送回复失败（' + umo + '）: ' + (e instanceof Error ? e.message : String(e)))
         })

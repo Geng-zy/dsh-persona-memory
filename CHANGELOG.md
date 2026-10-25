@@ -1,5 +1,13 @@
 # 更新记录
 
+## 0.15.0
+
+- **文字转语音**（设置页新标签「语音回复」）：她的回复可以用语音发。先用 BreezeBlue（Breeze TTS 2），连不上、超时、出错时这一条自动改用 Inworld（Realtime TTS-2 Flash，`inworld-tts-2-flash`）；BreezeBlue 报额度用完（HTTP 402）后，到第二天 0 点（按 `timezone`）前都直接用 Inworld；连续出错 3 次先 5 分钟不试 BreezeBlue；两家都不行就照常发文字。两家各填自己的 Key 和音色 id（克隆音色也行，要和 Key 同一个账号 / 工作区）。
+- 什么时候用语音（`ttsMode`）：`tag` 她自己决定（默认；每条消息后面的 `<system_reminder>` 告诉她「想用语音说的话，在那一行开头写 [语音]」）、`always` 每条都用、`chance` 按概率（`ttsChance`，默认 30%）。主人私聊（默认开）、其他私聊、群聊分别开关。一段超过 `ttsMaxChars`（默认 150 字）就发文字；念之前去掉括号里的动作和 Markdown 符号（`ttsStripParens`）；语速 `ttsSpeed`；可以语音后再发一条文字（`ttsAlsoText`）。不能发语音的会话里，她写的 [语音] 记号会被去掉。
+- 语音按 mp3 发给 NapCat（`record` 段，`base64://`），NapCat 转成 QQ 语音。语音和文字按原来的顺序发，合成和打字等待同时进行。`napcat/sent` 里给其他插件的仍是文字。
+- 设置页每家有「试听」按钮（用页面上现在填的值念一句，直接在页面上播放），显示今天两家各念了多少条、BreezeBlue 是不是在跳过（可以「现在就重试」）、最近一次失败的原因。
+- 新设置 `ttsEnabled`、`ttsMode`、`ttsChance`、`ttsAdminPrivate`、`ttsPrivate`、`ttsGroup`、`ttsMaxChars`、`ttsAlsoText`、`ttsStripParens`、`ttsSpeed`、`breezeApiKey`、`breezeVoiceId`、`breezeModel`、`breezeLanguage`、`inworldApiKey`、`inworldVoiceId`、`inworldModel`；新接口 `GET <dsh>/api/napcat-bridge/tts/status`、`POST …/tts/test`、`POST …/tts/reset`。
+
 ## 0.14.2
 
 - 她一轮正常结束、却一句话都没说出来时（DeepSeek 思考等级高时偶尔把要回的话只写在思考里，正文是空的，QQ 上什么都收不到），自动提醒她一次把话说出来；她可以说出来，也可以回「不发」暗号。同一条消息只提醒一次，被 /stop 打断或出错的不提醒。提醒的来源是 `plugin:napcat-bridge-nudge`，不算「人说的话」。新设置 `nudgeOnEmpty`（默认开，在「会话和模型」标签）。

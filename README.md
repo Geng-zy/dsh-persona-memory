@@ -46,6 +46,7 @@
 | 直接发来的聊天记录 | 不展开 | 展开成 `<Forward Message>` |
 | 视频 | 不交给模型 | 文字里写 `[视频]`；有 ffmpeg 时截几张画面当图片交给模型（DeepSeek 模型收不了视频原件），设置页可以一键安装 ffmpeg |
 | 发消息节奏 | 没有 | 模拟打字速度；群里限制发言频率（见上面第 7 条） |
+| 发语音 | 文字转语音（TTS）插件，单家服务商 | BreezeBlue 优先、出错或当天额度用完自动换 Inworld，两家都不行发文字；她可以自己决定哪句用语音（见「配置项 · 语音回复」） |
 | 给其他插件的接口 | — | 交给模型前的 `napcat/prompt`、发出后的 `napcat/sent`、会话信息、换会话、媒体转换（见「给其他插件用」） |
 
 ## 部署：从零装好整套 QQ 陪伴 AI
@@ -148,9 +149,9 @@ dsh --version                        # 0.2.1-rc.2
 
 # 6. 两个插件（回到家目录）
 cd ~
-dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.14.2 github:Geng-zy/dsh-companion-core#v0.12.2
+dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.15.0 github:Geng-zy/dsh-companion-core#v0.12.2
 #    连不上 GitHub：到两个仓库的 Releases 下载 .tgz，传到 ~/pkgs/ 后
-#    dsh plugin --profile web add ./pkgs/dsh-napcat-bridge-0.14.2.tgz ./pkgs/dsh-companion-core-0.12.2.tgz
+#    dsh plugin --profile web add ./pkgs/dsh-napcat-bridge-0.15.0.tgz ./pkgs/dsh-companion-core-0.12.2.tgz
 #    （~/pkgs 以后不能删：dsh 的 profile 里记着它）
 
 # 7. 配置
@@ -264,7 +265,7 @@ sudo systemctl daemon-reload && sudo systemctl enable --now napcat
 ## 安装
 
 ```bash
-dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.14.2
+dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.15.0
 ```
 
 然后在 profile 的 `cordis.patch.yml` 里写配置（行 id 固定是 `napcat-bridge`）：
@@ -348,6 +349,13 @@ NapCat 那边在「网络配置」里新建一个 **WebSocket 客户端**：
 | | `sendMaxWaitSeconds` | `120` | 为了守频率最多排队几秒，超过就不发 |
 | 分段发送 | `segmentAdminPrivate` / `segmentPrivate` / `segmentGroup` | `true` / `false` / `false` | 把一次回复按行拆成几条发（代码块不拆）；每条按自己的字数等打字，但每条最多 `segmentMaxSeconds` 秒 |
 | | `segmentMax` / `segmentMaxSeconds` | `10` / `3` | 一次最多拆成几条（多出来的并进最后一条）；拆开时每条最多等几秒打字 |
+| 语音回复 | `ttsEnabled` | `false` | 文字转语音：她的回复可以用语音发（mp3 交给 NapCat 转成 QQ 语音） |
+| | `ttsMode` / `ttsChance` | `tag` / `30` | 什么时候用语音：`tag` 她自己决定（要念的那一行开头写 `[语音]`，每条消息会提示她怎么用）、`always` 每条都用、`chance` 按概率（%，按一次回复算） |
+| | `ttsAdminPrivate` / `ttsPrivate` / `ttsGroup` | `true` / `false` / `false` | 主人私聊、其他私聊、群聊里能不能发语音；不能发的会话里 `[语音]` 记号会被去掉 |
+| | `ttsMaxChars` / `ttsSpeed` | `150` / `100` | 一条语音最多几个字（超过发文字）；语速 %（50–150） |
+| | `ttsStripParens` / `ttsAlsoText` | `true` / `false` | 念之前去掉括号里的动作和 Markdown 符号；语音后再发一条文字 |
+| | `breezeApiKey` / `breezeVoiceId` / `breezeModel` / `breezeLanguage` | 不设 / 空 / `breeze-tts-2` / `zh` | BreezeBlue（先用）：Key（密钥）、音色 id（克隆音色也行，和 Key 同一个账号）、模型、语言（`auto` = 自己判断） |
+| | `inworldApiKey` / `inworldVoiceId` / `inworldModel` | 不设 / 空 / `inworld-tts-2-flash` | Inworld（BreezeBlue 连不上、出错或额度用完时用）：Key（后台给的 Basic 那一串，密钥）、音色 id（和 Key 同一个工作区）、模型 |
 | 指令 | `commandsEnabled` / `noPermissionReply` | `true` / `true` | QQ 指令；没有权限时回一句 |
 | 日志 | `logLevel` | `info` | 日志级别 |
 

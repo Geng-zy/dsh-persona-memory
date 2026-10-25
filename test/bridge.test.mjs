@@ -35,6 +35,7 @@ function settings(over = {}) {
     silenceToken: '[不发]',
     segment: { adminPrivate: false, private: false, group: false, maxSegments: 10, maxSecondsPerSegment: 3 },
     pace: { typingPrivate: false, typingGroup: false, charsPerMinute: 0, typingMinSeconds: 0, typingMaxSeconds: 0, groupMinGapSeconds: 0, groupMaxPerWindow: 0, groupWindowSeconds: 60, maxWaitSeconds: 120 },
+    tts: { enabled: false, mode: 'tag', chance: 30, adminPrivate: true, private: false, group: false, maxChars: 150, alsoText: false, stripParens: true, speed: 100, timezone: 'Asia/Shanghai', breeze: { key: '', voiceId: '', model: '', language: '' }, inworld: { key: '', voiceId: '', model: '' } },
     ...over,
   }
 }
@@ -67,7 +68,7 @@ function harness(over = {}, api = {}, hooks = {}) {
   const adapter = new AiocqhttpAdapter({ id: 'napcat', ws_reverse_host: '127.0.0.1', ws_reverse_port: 0, log: () => {}, onMessage: (abm, ev) => bridge.handle(abm, ev) })
   adapter.bot.callAction = async (action, params) => {
     if (action === 'send_private_msg' || action === 'send_group_msg') {
-      sent.push({ action, text: params.message.map(m => m.data.text ?? '').join('') })
+      sent.push({ action, text: params.message.map(m => m.type === 'record' ? '[语音:' + Buffer.from(String(m.data.file).replace('base64://', ''), 'base64').toString() + ']' : m.data.text ?? '').join('') })
       return { message_id: 1 }
     }
     if (action in api) return api[action](params)
@@ -98,6 +99,7 @@ function harness(over = {}, api = {}, hooks = {}) {
     settings: () => s,
     store: new SessionStore(join(mkdtempSync(join(tmpdir(), 'napcat-store-')), 'sessions.json')),
     log: () => {},
+    tts: hooks.tts,
   })
   let id = 100
   const send = async (ev) => {
@@ -426,4 +428,31 @@ test('wake：主动唤醒一个还没建过的 QQ 会话，回复照常发出去
   assert.equal(h.sent.at(-1).action, 'send_group_msg')
   await assert.rejects(h.bridge.wake('napcat:GroupMessage:9_555', 'x'), /不支持/)
   await assert.rejects(h.bridge.wake('bad', 'x'), /会话标识不对/)
+})
+
+const TTS_ON = { enabled: true, mode: 'tag', chance: 30, adminPrivate: true, private: false, group: false, maxChars: 20, alsoText: false, stripParens: true, speed: 100, timezone: 'Asia/Shanghai', breeze: { key: 'k', voiceId: 'v', model: '', language: '' }, inworld: { key: '', voiceId: '', model: '' } }
+/** 假的语音合成：把要念的字当成音频内容，方便检查；「失败」两个字会报错 */
+const fakeTts = { speak: async t => { if (t.includes('失败')) throw new Error('合成失败'); await new Promise(r => setTimeout(r, 15)); return { audio: Buffer.from(t), provider: 'breeze', ms: 1 } } }
+
+test('文字转语音：她在一行开头写 [语音]，那一行发语音，其他照常发文字，顺序不变', async () => {
+  const h = harness({ tts: TTS_ON }, memberInfo, { tts: fakeTts })
+  await h.privateMsg(Number(ADMIN), [text('在吗')])
+  assert.match(h.followups[0].text, /\[语音\]/, '主人私聊里提示她怎么发语音')
+  h.turn(String(h.created[0].sessionId), '在的\n[语音] 想你了（抱住）\n你呢')
+  await new Promise(r => setTimeout(r, 80))
+  assert.deepEqual(h.sent.map(m => m.text), ['在的', '[语音:想你了（抱住）]', '你呢'])
+  assert.deepEqual(h.events.sent.map(e => e.text), ['在的', '想你了（抱住）', '你呢'], '通知其他插件的是文字')
+})
+
+test('文字转语音：合成失败、太长就发文字；不能发语音的会话把 [语音] 去掉、也不提示', async () => {
+  const h = harness({ tts: TTS_ON }, memberInfo, { tts: fakeTts })
+  await h.privateMsg(Number(ADMIN), [text('在吗')])
+  h.turn(String(h.created[0].sessionId), '[语音]这条会失败\n[语音]这一条特别特别特别特别特别特别特别特别特别长')
+  await new Promise(r => setTimeout(r, 80))
+  assert.deepEqual(h.sent.map(m => m.text), ['这条会失败', '这一条特别特别特别特别特别特别特别特别特别长'])
+  await h.privateMsg(8, [text('你好')])
+  assert.doesNotMatch(h.followups[1].text, /\[语音\]/)
+  h.turn(String(h.created[1].sessionId), '[语音]你好呀')
+  await new Promise(r => setTimeout(r, 40))
+  assert.equal(h.sent.at(-1).text, '你好呀')
 })

@@ -8,6 +8,7 @@ import type { SttSettings } from './stt.js';
 import type { SessionStore } from './store.js';
 import { type PaceSettings } from './pacer.js';
 import { type SegmentSettings } from './segment.js';
+import { type Speech, type TtsSettings } from './tts.js';
 import type { Logger } from './onebot/server.js';
 declare module '@deepseek-ai/dsh-llm' {
     interface MessageSourceMap {
@@ -81,6 +82,10 @@ export interface BridgeDeps {
     log: Logger;
     /** 测试用：替换等待 */
     sleep?: (ms: number) => Promise<void>;
+    /** 文字转语音（本插件新增，见 tts.ts）；没有时一律发文字 */
+    tts?: {
+        speak(text: string): Promise<Speech>;
+    };
 }
 export interface BridgeSettings {
     cwd: string;
@@ -155,6 +160,8 @@ export interface BridgeSettings {
     pace: PaceSettings;
     /** 分段发送（本插件新增，见 segment.ts） */
     segment: SegmentSettings;
+    /** 文字转语音（本插件新增，见 tts.ts） */
+    tts: TtsSettings;
 }
 /** 一个 dsh 会话对应哪个 QQ 会话（本插件新增，给其他插件按会话分规则用）。 */
 export interface SessionInfo {

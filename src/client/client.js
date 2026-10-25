@@ -245,6 +245,54 @@ window.__ModuleLoader__.load({
 			tab_content: "消息内容",
 			tab_send: "发消息",
 			tab_log: "日志",
+			tab_voice: "语音回复",
+			ttsSec: "文字转语音",
+			ttsSecHint: "她的回复可以用语音发。先用 BreezeBlue，连不上、出错或者当天额度用完，自动换 Inworld；两家都不行就照常发文字。语音由 NapCat 转成 QQ 语音。",
+			ttsEnabled: "启用文字转语音",
+			ttsMode: "什么时候用语音",
+			ttsModeHint: "「她自己决定」会在每条消息后面告诉她怎么发语音，她想发时在那一行开头写 [语音]；另外两种不用她管。",
+			ttsModeTag: "她自己决定",
+			ttsModeAlways: "每条都用语音",
+			ttsModeChance: "按概率",
+			ttsChance: "用语音的概率（%）",
+			ttsChanceHint: "按一次回复算：这次用语音，就整次回复都念。",
+			ttsWhereSub: "在哪些聊天里发语音",
+			ttsAdminPrivate: "主人私聊",
+			ttsPrivate: "其他私聊",
+			ttsGroup: "群聊",
+			ttsMaxChars: "一条语音最多几个字",
+			ttsMaxCharsHint: "超过就发文字（太长的语音听着累，也费额度）。",
+			ttsSpeed: "语速（%）",
+			ttsSpeedHint: "100 是正常，可以填 50–150。",
+			ttsAlsoText: "发语音后再发一条文字",
+			ttsStripParens: "念之前去掉括号里的动作",
+			ttsStripParensHint: "比如「（抱住）」「*歪头*」不念出来；只发文字时照常保留。",
+			breezeSub: "BreezeBlue（先用这家）",
+			inworldSub: "Inworld（BreezeBlue 不行时用）",
+			ttsApiKey: "API Key",
+			breezeKeyHint: "在 BreezeBlue 后台创建的 API Key。",
+			inworldKeyHint: "在 Inworld 后台 API Keys 里复制 Basic 那一串（已经是 Base64，不用再编码）。",
+			ttsVoiceId: "音色 id",
+			breezeVoiceHint: "你克隆的音色 id 也行，要和上面的 Key 是同一个账号。",
+			inworldVoiceHint: "你克隆的音色 id 也行，要和上面的 Key 是同一个工作区。",
+			ttsModel: "模型",
+			breezeModelHint: "breeze-tts-2（中文、英文）；其他语言用 breeze-tts-2-multilingual。",
+			inworldModelHint: "inworld-tts-2-flash 最快最便宜；也可以填 inworld-tts-2。",
+			breezeLanguage: "语言代码",
+			breezeLanguageHint: "zh 是中文；填 auto 让它自己判断（会改用多语言模型）。",
+			ttsTestText: "试听的句子",
+			ttsTestDefault: "你好呀，这是语音测试。",
+			ttsTestBreeze: "试听 BreezeBlue",
+			ttsTestInworld: "试听 Inworld",
+			ttsTestOk: "能用：{ms} 毫秒合成好。",
+			ttsTestUsesForm: "用页面上现在填的值试，没保存的也算；Key 没填就用保存过的。",
+			ttsTodaySub: "今天的情况",
+			ttsToday: "BreezeBlue 念了 {breeze} 条（{breezeChars} 字），Inworld 念了 {inworld} 条（{inworldChars} 字），没念成改发文字 {failed} 条。",
+			ttsSkipping: "BreezeBlue {reason}，{time} 前直接用 Inworld。",
+			ttsSkipReset: "现在就重试 BreezeBlue",
+			ttsLastError: "最近一次没念成：{time}，{text}",
+			ttsRefresh: "刷新",
+			ttsNeedKey: "两家都还没填全 Key 和音色 id，开了也不会发语音。",
 			rateSub: "频率限制",
 			presetSub: "预设",
 			modelSub: "模型和思考等级",
@@ -538,6 +586,54 @@ window.__ModuleLoader__.load({
 			tab_content: "Message content",
 			tab_send: "Sending",
 			tab_log: "Log",
+			tab_voice: "Voice replies",
+			ttsSec: "Text to speech",
+			ttsSecHint: "Her replies can be sent as voice. BreezeBlue is tried first; if it can't be reached, errors, or runs out of today's credits, Inworld takes over. If both fail the text is sent as usual. NapCat converts the audio to QQ voice.",
+			ttsEnabled: "Enable text to speech",
+			ttsMode: "When to use voice",
+			ttsModeHint: "\"She decides\" tells her with every message how to send voice: she starts a line with [语音]. The other two need nothing from her.",
+			ttsModeTag: "She decides",
+			ttsModeAlways: "Every reply",
+			ttsModeChance: "By chance",
+			ttsChance: "Chance of voice (%)",
+			ttsChanceHint: "Per reply: when it hits, the whole reply is spoken.",
+			ttsWhereSub: "Where to send voice",
+			ttsAdminPrivate: "Admin private chat",
+			ttsPrivate: "Other private chats",
+			ttsGroup: "Groups",
+			ttsMaxChars: "Max characters per voice message",
+			ttsMaxCharsHint: "Longer pieces are sent as text.",
+			ttsSpeed: "Speed (%)",
+			ttsSpeedHint: "100 is normal; 50–150.",
+			ttsAlsoText: "Also send the text after the voice",
+			ttsStripParens: "Skip actions in brackets",
+			ttsStripParensHint: "E.g. \"（抱住）\" or \"*tilts head*\" is not read out; text messages keep it.",
+			breezeSub: "BreezeBlue (tried first)",
+			inworldSub: "Inworld (fallback)",
+			ttsApiKey: "API key",
+			breezeKeyHint: "An API key created in the BreezeBlue dashboard.",
+			inworldKeyHint: "Copy the Basic (Base64) key from Inworld's API Keys page; don't encode it again.",
+			ttsVoiceId: "Voice ID",
+			breezeVoiceHint: "A cloned voice ID works too; it must belong to the same account as the key.",
+			inworldVoiceHint: "A cloned voice ID works too; it must be in the same workspace as the key.",
+			ttsModel: "Model",
+			breezeModelHint: "breeze-tts-2 (Chinese, English); breeze-tts-2-multilingual for other languages.",
+			inworldModelHint: "inworld-tts-2-flash is fastest and cheapest; inworld-tts-2 also works.",
+			breezeLanguage: "Language code",
+			breezeLanguageHint: "zh for Chinese; auto lets it detect (switches to the multilingual model).",
+			ttsTestText: "Sentence to preview",
+			ttsTestDefault: "你好呀，这是语音测试。",
+			ttsTestBreeze: "Preview BreezeBlue",
+			ttsTestInworld: "Preview Inworld",
+			ttsTestOk: "Works: synthesized in {ms} ms.",
+			ttsTestUsesForm: "Uses what's on the page now, saved or not; an empty key uses the saved one.",
+			ttsTodaySub: "Today",
+			ttsToday: "BreezeBlue spoke {breeze} ({breezeChars} chars), Inworld {inworld} ({inworldChars} chars), {failed} fell back to text.",
+			ttsSkipping: "BreezeBlue: {reason}; using Inworld until {time}.",
+			ttsSkipReset: "Retry BreezeBlue now",
+			ttsLastError: "Last failure: {time}, {text}",
+			ttsRefresh: "Refresh",
+			ttsNeedKey: "Neither provider has both a key and a voice ID yet, so no voice will be sent.",
 			rateSub: "Rate limit",
 			presetSub: "Presets",
 			modelSub: "Models & reasoning",
@@ -649,6 +745,7 @@ window.__ModuleLoader__.load({
 			".napcatb-testBtn:focus-visible{outline:2px solid var(--dsw-alias-border-focus,var(--dsw-alias-label-tertiary));outline-offset:2px}",
 			".napcatb-testIcon{font-size:14px;line-height:1}",
 			".napcatb-row{display:flex;align-items:center;flex-wrap:wrap;gap:10px}",
+			".napcatb-audio{height:36px;max-width:100%}",
 			".napcatb-input{height:35px;padding:0 12px;border:.5px solid var(--dsw-alias-border-l4);border-radius:12px;background:var(--dsw-alias-bg-layer-2,transparent);color:var(--dsw-alias-label-primary);font:inherit;font-size:13px}",
 			".napcatb-input:focus-visible{outline:2px solid var(--dsw-alias-border-focus,var(--dsw-alias-label-tertiary));outline-offset:1px}",
 			".napcatb-pCurrent{display:inline-flex;align-items:center;gap:10px;min-width:220px;max-width:100%;height:38px;padding:0 12px;border:.5px solid var(--dsw-alias-border-l4);border-radius:12px;background:var(--dsw-alias-bg-layer-2,transparent);color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;cursor:pointer}",
@@ -736,6 +833,7 @@ window.__ModuleLoader__.load({
 		var RATE_STRATEGIES = ["stall", "discard"];
 		var STT_MODES = ["off", "command", "openai"];
 		var PUSH_SERVICES = ["off", "serverchan", "pushplus"];
+		var TTS_MODES = ["tag", "always", "chance"];
 		var BOOLS = [
 			"nudgeOnEmpty",
 			"watchEnabled", "alertOnRecover", "mailEnabled",
@@ -743,13 +841,15 @@ window.__ModuleLoader__.load({
 			"whitelistEnabled", "whitelistIgnoreAdminOnGroup", "whitelistIgnoreAdminOnFriend", "whitelistLog",
 			"emptyMentionWaiting", "emptyMentionNeedReply", "uniqueSession",
 			"datetimeReminder", "groupNameDisplay", "markAdmin", "commandsEnabled", "noPermissionReply",
-			"videoFrames", "typingPrivate", "typingGroup", "segmentAdminPrivate", "segmentPrivate", "segmentGroup"
+			"videoFrames", "typingPrivate", "typingGroup", "segmentAdminPrivate", "segmentPrivate", "segmentGroup",
+			"ttsEnabled", "ttsAdminPrivate", "ttsPrivate", "ttsGroup", "ttsAlsoText", "ttsStripParens"
 		];
 		var TEXTS = [
 			"ws_reverse_host", "id", "workspacePath", "agentPreset", "timezone",
 			"privateAgentPreset", "groupAgentPreset", "adminPrivateAgentPreset",
 			"privateModel", "groupModel", "adminPrivateModel", "adminPrivateReasoning", "privateReasoning", "groupReasoning",
-			"sttCommand", "sttApiUrl", "sttModel", "ffmpegPath", "silenceToken", "smtpHost", "smtpUser", "mailTo"
+			"sttCommand", "sttApiUrl", "sttModel", "ffmpegPath", "silenceToken", "smtpHost", "smtpUser", "mailTo",
+			"breezeVoiceId", "breezeModel", "breezeLanguage", "inworldVoiceId", "inworldModel"
 		];
 		/** 整数字段：[字段, 最小值] */
 		var INTS = [
@@ -757,10 +857,11 @@ window.__ModuleLoader__.load({
 			["videoMaxFrames", 1], ["videoSecondsPerFrame", 1], ["videoMaxEdge", 64], ["videoMaxMB", 1],
 			["videoMaxMinutes", 1], ["videoTimeoutSeconds", 5],
 			["typingCharsPerMinute", 0], ["typingMinSeconds", 0], ["typingMaxSeconds", 0], ["groupMinGapSeconds", 0], ["groupMaxPerWindow", 0], ["groupWindowSeconds", 1], ["sendMaxWaitSeconds", 0], ["segmentMax", 1], ["segmentMaxSeconds", 1],
-			["watchIntervalMinutes", 1], ["watchGraceMinutes", 0], ["alertRepeatHours", 0], ["smtpPort", 1, 65535]
+			["watchIntervalMinutes", 1], ["watchGraceMinutes", 0], ["alertRepeatHours", 0], ["smtpPort", 1, 65535],
+			["ttsChance", 0, 100], ["ttsMaxChars", 1], ["ttsSpeed", 50, 150]
 		];
 		var LISTS = ["wake_prefix", "wakeKeywords", "admins", "whitelist"];
-		var SECRETS = ["ws_reverse_token", "sttApiKey", "smtpPass", "pushKey"];
+		var SECRETS = ["ws_reverse_token", "sttApiKey", "smtpPass", "pushKey", "breezeApiKey", "inworldApiKey"];
 		//#endregion
 
 		//#region 表单模型
@@ -769,13 +870,14 @@ window.__ModuleLoader__.load({
 				enumField("logLevel", LOG_LEVELS),
 				enumField("rateLimitStrategy", RATE_STRATEGIES),
 				enumField("sttMode", STT_MODES),
-				enumField("pushService", PUSH_SERVICES)
+				enumField("pushService", PUSH_SERVICES),
+				enumField("ttsMode", TTS_MODES)
 			], LISTS.map(listField), BOOLS.map(boolField), TEXTS.map(function (f) { return P.settingsTextField(f); }));
 			var secrets = SECRETS.map(function (field) {
 				return { field: field, write: function (text) { return scope.mutate([{ op: "set", path: [field], value: text }]); } };
 			});
 			var form = new P.SettingsFormModel(scope, specs, secrets);
-			var all = INTS.map(function (x) { return x[0]; }).concat(["logLevel", "rateLimitStrategy", "sttMode", "pushService"], LISTS, BOOLS, TEXTS, SECRETS);
+			var all = INTS.map(function (x) { return x[0]; }).concat(["logLevel", "rateLimitStrategy", "sttMode", "pushService", "ttsMode"], LISTS, BOOLS, TEXTS, SECRETS);
 			// 设置服务不把密钥发给浏览器，只告诉它有没有设置；由 refreshSecrets 向服务查询
 			var secretSet = {};
 			function compute() {
@@ -807,7 +909,7 @@ window.__ModuleLoader__.load({
 					h("span", { className: "napcatb-tip", tabIndex: 0, role: "img", "aria-label": props.hint }, "?")));
 		}
 
-		var TAB_IDS = ["conn", "session", "content", "send", "log"];
+		var TAB_IDS = ["conn", "session", "content", "send", "voice", "log"];
 		function readTab() {
 			try { var v = window.localStorage.getItem("napcat-bridge:tab"); return TAB_IDS.indexOf(v) >= 0 ? v : "conn"; } catch (e) { return "conn"; }
 		}
@@ -1318,6 +1420,76 @@ window.__ModuleLoader__.load({
 				push !== "off" ? h(AlertTest, { t: t, channel: "push", label: t("pushTest"), state: state }) : null);
 		}
 		//#endregion
+		//#region 文字转语音
+		/** 试听：只用一家念一句，页面上直接播放（POST <dsh>/api/napcat-bridge/tts/test） */
+		function TtsTest(props) {
+			var t = props.t;
+			var rHook = React.useState(null), r = rHook[0], setR = rHook[1];
+			var busyHook = React.useState(false), busy = busyHook[0], setBusy = busyHook[1];
+			function run() {
+				var st = props.state, v = function (f) { return st[f] ? st[f].text : ""; };
+				var form = {};
+				["breezeApiKey", "breezeVoiceId", "breezeModel", "breezeLanguage", "inworldApiKey", "inworldVoiceId", "inworldModel", "ttsSpeed", "ttsStripParens"].forEach(function (f) { form[f] = v(f); });
+				setBusy(true); setR(null);
+				napcatApi("POST", "tts/test", { provider: props.provider, text: props.text, form: form })
+					.then(function (x) { setR(x.ok ? { tone: "ok", text: t("ttsTestOk", { ms: x.ms }), audio: "data:audio/mpeg;base64," + x.audio } : { tone: "error", text: t("testFailed", { error: x.error }) }); },
+						function (e) { setR({ tone: "error", text: t("testFailed", { error: e && e.message || String(e) }) }); })
+					.finally(function () { setBusy(false); props.onDone(); });
+			}
+			return h("div", { className: "napcatb-test" },
+				h("div", { className: "napcatb-testRow" }, h(TestButton, { busy: busy, onClick: run, label: busy ? t("testing") : props.label })),
+				r ? h("div", { className: "napcatb-row" },
+					h("p", { className: "napcatb-pill napcatb-result napcatb-" + r.tone, role: "status" }, r.text),
+					r.audio ? h("audio", { className: "napcatb-audio", controls: true, autoPlay: true, src: r.audio }) : null) : null);
+		}
+		function TtsSection(props) {
+			var t = props.t, common = props.common, state = props.state;
+			var stHook = React.useState(null), st = stHook[0], setSt = stHook[1];
+			var textHook = React.useState(""), text = textHook[0], setText = textHook[1];
+			function load() { napcatApi("GET", "tts/status").then(setSt, function () {}); }
+			function retry() { napcatApi("POST", "tts/reset").then(setSt, function () {}); }
+			React.useEffect(load, []);
+			var mode = state.ttsMode.text || "tag";
+			var has = function (key, voice) { return (state.secretSet[key] === true || state[key].text !== "") && state[voice].text !== ""; };
+			var ready = has("breezeApiKey", "breezeVoiceId") || has("inworldApiKey", "inworldVoiceId");
+			var time = function (ms) { return new Date(ms).toLocaleString(); };
+			var sample = text.trim() || t("ttsTestDefault");
+			return h(Section, { title: t("ttsSec"), hint: t("ttsSecHint") },
+				h(Toggle, Object.assign({ field: "ttsEnabled", label: t("ttsEnabled") }, common)),
+				state.ttsEnabled.text === "true" && !ready ? h("p", { className: "napcatb-pill napcatb-result napcatb-warn", role: "status" }, t("ttsNeedKey")) : null,
+				st ? h("div", { className: "napcatb-test" },
+					h("p", { className: "napcatb-hint" }, t("ttsTodaySub") + "：" + t("ttsToday", st.today)),
+					st.breezeSkipUntil ? h("div", { className: "napcatb-row" },
+						h("p", { className: "napcatb-pill napcatb-result napcatb-warn" }, t("ttsSkipping", { reason: st.breezeSkipReason, time: time(st.breezeSkipUntil) })),
+						h(P.Button, { size: "sm", onClick: retry }, t("ttsSkipReset"))) : null,
+					st.lastError ? h("p", { className: "napcatb-hint" }, t("ttsLastError", { time: time(st.lastError.at), text: st.lastError.text })) : null,
+					h("div", { className: "napcatb-testRow" }, h(P.Button, { size: "sm", onClick: load }, t("ttsRefresh")))) : null,
+				G(h(Select, Object.assign({ field: "ttsMode", label: t("ttsMode"), hint: t("ttsModeHint"), fallback: "tag", options: [{ value: "tag", label: t("ttsModeTag") }, { value: "always", label: t("ttsModeAlways") }, { value: "chance", label: t("ttsModeChance") }] }, common)),
+					mode === "chance" ? h(Value, Object.assign({ field: "ttsChance", label: t("ttsChance"), hint: t("ttsChanceHint"), numeric: true, invalidLabel: t("invalid") }, common)) : null,
+					h(Value, Object.assign({ field: "ttsMaxChars", label: t("ttsMaxChars"), hint: t("ttsMaxCharsHint"), numeric: true, invalidLabel: t("invalidPositive") }, common)),
+					h(Value, Object.assign({ field: "ttsSpeed", label: t("ttsSpeed"), hint: t("ttsSpeedHint"), numeric: true, invalidLabel: t("invalid") }, common))),
+				h(Toggle, Object.assign({ field: "ttsStripParens", label: t("ttsStripParens"), hint: t("ttsStripParensHint") }, common)),
+				h(Toggle, Object.assign({ field: "ttsAlsoText", label: t("ttsAlsoText") }, common)),
+				Sub(t("ttsWhereSub")),
+				h(Toggle, Object.assign({ field: "ttsAdminPrivate", label: t("ttsAdminPrivate") }, common)),
+				h(Toggle, Object.assign({ field: "ttsPrivate", label: t("ttsPrivate") }, common)),
+				h(Toggle, Object.assign({ field: "ttsGroup", label: t("ttsGroup") }, common)),
+				h("div", { className: "napcatb-field" },
+					h("label", { className: "napcatb-label", htmlFor: "napcat-bridge-ttsTestText" }, h(Label, { text: t("ttsTestText"), hint: t("ttsTestUsesForm") })),
+					h("input", { id: "napcat-bridge-ttsTestText", className: "napcatb-input", type: "text", maxLength: 200, placeholder: t("ttsTestDefault"), value: text, onChange: function (e) { setText(e.target.value); } })),
+				Sub(t("breezeSub")),
+				h(Secret, Object.assign({ field: "breezeApiKey", label: t("ttsApiKey"), hint: t("breezeKeyHint"), setLabel: t("keySet"), unsetLabel: t("keyUnset") }, common)),
+				G(h(Value, Object.assign({ field: "breezeVoiceId", label: t("ttsVoiceId"), hint: t("breezeVoiceHint") }, common)),
+					h(Value, Object.assign({ field: "breezeModel", label: t("ttsModel"), hint: t("breezeModelHint") }, common)),
+					h(Value, Object.assign({ field: "breezeLanguage", label: t("breezeLanguage"), hint: t("breezeLanguageHint") }, common))),
+				h(TtsTest, { t: t, provider: "breeze", label: t("ttsTestBreeze"), state: state, text: sample, onDone: load }),
+				Sub(t("inworldSub")),
+				h(Secret, Object.assign({ field: "inworldApiKey", label: t("ttsApiKey"), hint: t("inworldKeyHint"), setLabel: t("keySet"), unsetLabel: t("keyUnset") }, common)),
+				G(h(Value, Object.assign({ field: "inworldVoiceId", label: t("ttsVoiceId"), hint: t("inworldVoiceHint") }, common)),
+					h(Value, Object.assign({ field: "inworldModel", label: t("ttsModel"), hint: t("inworldModelHint") }, common))),
+				h(TtsTest, { t: t, provider: "inworld", label: t("ttsTestInworld"), state: state, text: sample, onDone: load }));
+		}
+		//#endregion
 		/** 有改动还没保存时，贴在页面底部的保存栏（dsh 自带的保存按钮在整页最下面，改完上面的设置容易找不到） */
 		function SaveBar(props) {
 			var t = props.t, st = props.state;
@@ -1442,6 +1614,7 @@ window.__ModuleLoader__.load({
 						h(Value, Object.assign({ field: "groupMaxPerWindow", label: t("groupMaxPerWindow"), numeric: true, invalidLabel: t("invalidCount") }, common)),
 						h(Value, Object.assign({ field: "groupWindowSeconds", label: t("groupWindowSeconds"), numeric: true, invalidLabel: t("invalidCount") }, common)),
 						h(Value, Object.assign({ field: "sendMaxWaitSeconds", label: t("sendMaxWaitSeconds"), hint: t("sendMaxWaitSecondsHint"), numeric: true, invalidLabel: t("invalidCount") }, common)))) : null,
+				tab === "voice" ? h(TtsSection, { t: t, common: common, state: state }) : null,
 				tab === "log" ? h(Section, { title: t("log") },
 					h(Select, Object.assign({ field: "logLevel", label: t("logLevel"), hint: t("logLevelHint"), fallback: "info", options: LOG_LEVELS.map(function (l) { return { value: l, label: l }; }) }, common))) : null), h(SaveBar, { t: t, state: state, save: props.save, discard: props.discard }));
 		}

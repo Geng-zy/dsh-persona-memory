@@ -326,6 +326,15 @@ const sttJson = sttRes.ok ? await sttRes.json() : null
 if (!sttJson || sttJson.ok !== false || sttJson.error !== '语音转文字关着') await fail('语音测试接口返回不对：' + sttRes.status + ' ' + JSON.stringify(sttJson))
 log('语音转文字测试接口 OK（需登录）')
 
+// 13c. 文字转语音：状态和试听接口要登录；没填 Key 时试听说没填，不会真的去请求外面
+const anonTts = await fetch(webBase + 'api/napcat-bridge/tts/status')
+if (anonTts.status !== 401) await fail('没登录也能访问文字转语音状态接口：' + anonTts.status)
+const ttsSt = await (await fetch(webBase + 'api/napcat-bridge/tts/status', { headers: { cookie } })).json()
+if (!ttsSt.today || ttsSt.today.breeze !== 0 || ttsSt.breezeSkipUntil !== undefined) await fail('文字转语音状态不对：' + JSON.stringify(ttsSt))
+const ttsTest = await (await fetch(webBase + 'api/napcat-bridge/tts/test', { method: 'POST', headers: { cookie, 'content-type': 'application/json' }, body: JSON.stringify({ provider: 'inworld' }) })).json()
+if (ttsTest.ok !== false || !/还没填 Inworld 的 Key/.test(ttsTest.error)) await fail('文字转语音试听接口返回不对：' + JSON.stringify(ttsTest))
+log('文字转语音接口 OK（需登录、没填 Key 时说没填）')
+
 // 14. ffmpeg 状态接口：要先登录；返回有没有 ffmpeg、能不能一键安装
 const anonFf = await fetch(webBase + 'api/napcat-bridge/ffmpeg')
 if (anonFf.status !== 401) await fail('没登录也能访问 ffmpeg 接口：' + anonFf.status)

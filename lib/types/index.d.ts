@@ -6,6 +6,7 @@ import { type PromptPayload, type SentPayload, type SessionChange, type SessionI
 import type { MessageChain } from './components.js';
 import { Media, type ModelPart } from './media.js';
 import { type PushService } from './alert.js';
+import { type TtsMode } from './tts.js';
 export * from './adapter.js';
 export * from './components.js';
 export type { PromptPayload, SentPayload, SessionChange, SessionInfo } from './bridge.js';
@@ -94,6 +95,23 @@ export interface Config {
     mailTo: string;
     pushService: PushService;
     pushKey: string;
+    ttsEnabled: boolean;
+    ttsMode: TtsMode;
+    ttsChance: number;
+    ttsAdminPrivate: boolean;
+    ttsPrivate: boolean;
+    ttsGroup: boolean;
+    ttsMaxChars: number;
+    ttsAlsoText: boolean;
+    ttsStripParens: boolean;
+    ttsSpeed: number;
+    breezeApiKey: string;
+    breezeVoiceId: string;
+    breezeModel: string;
+    breezeLanguage: string;
+    inworldApiKey: string;
+    inworldVoiceId: string;
+    inworldModel: string;
     logLevel: 'debug' | 'info' | 'warn' | 'error';
 }
 /** 插件收到的配置：每项都是可实时读取的引用（.get()），设置页保存后立即更新。 */
