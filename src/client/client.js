@@ -19,6 +19,8 @@ window.__ModuleLoader__.load({
 		var SECTION = "companion-core";
 
 		var zh = {
+			unsavedBar: "有改动还没保存：点「保存」才生效，离开这个页面会丢掉",
+			discardChanges: "放弃改动",
 			diaryModel: "写日记用的模型",
 			diaryModelHint: "日记和月度总览只写关于你的事，所以用和你私聊用的模型（在 dsh-napcat-bridge 设置页「会话和模型」里改）。这里只单独选思考等级，默认「高」。",
 			diaryModelFrom_admin: "来自 dsh-napcat-bridge「管理员私聊用的模型」。",
@@ -219,8 +221,8 @@ window.__ModuleLoader__.load({
 			activeMemoryHint: "给每个会话装上「回忆」「记住」「遗忘」三个工具，她自己觉得要记、要查、要忘的时候用。只影响新开的会话。",
 			organizeEveryRounds: "每多少轮整理一次",
 			organizeEveryRoundsHint: "0 表示不按轮数整理。",
-			organizeBeforeCompact: "截断/压缩前先整理",
-			organizeBeforeCompactHint: "处理掉最早几轮之前，先把那部分里要紧的事写进记忆。",
+			organizeBeforeCompact: "压缩前先整理记忆",
+			organizeBeforeCompactHint: "截断或写回忆之前，先把要被处理掉的那几轮里要紧的事存进长期记忆，以后聊到还能想起来（默认开）。「对话」和「记忆」两个标签里是同一个开关。",
 			memoryModel: "整理用的模型",
 			memoryModelHint: "整理记忆、清理和整合记忆、审核她改人格，都用这个模型（写日记用的是和你私聊的模型，在「日记」标签里）。",
 			currentModel: "现在用的模型：{model}",
@@ -510,6 +512,8 @@ window.__ModuleLoader__.load({
 			selfCheckNone: "（没想起来）"
 		};
 		var en = {
+			unsavedBar: "Unsaved changes: click Save to apply; leaving the page discards them",
+			discardChanges: "Discard",
 			diaryModel: "Diary model",
 			diaryModelHint: "Diaries are only about you, so they use the model of your private chat (set in dsh-napcat-bridge → Sessions & models). Only the reasoning effort is chosen here; default High.",
 			diaryModelFrom_admin: "From dsh-napcat-bridge's admin private chat model.",
@@ -1054,6 +1058,8 @@ window.__ModuleLoader__.load({
 			".compc-link{text-decoration:underline;text-underline-offset:2px}",
 			"@media (max-width:520px){.compc-pCurrent{width:100%}.compc-pGrid{grid-template-columns:1fr 1fr}}",
 			".compc-llm{gap:10px}",
+			".compc-saveBar{position:sticky;bottom:12px;z-index:5;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-top:16px;padding:10px 14px;border:.5px solid var(--dsw-alias-border-l4);border-radius:12px;background:var(--dsw-alias-bg-layer-1,var(--dsw-alias-bg-base,#1e1e1e));box-shadow:0 4px 18px rgba(0,0,0,.25);color:var(--dsw-alias-label-primary);font-size:13px;font-weight:600}",
+			".compc-saveBtns{display:flex;gap:8px}",
 			".compc-pill{display:inline-block;margin:0;padding:6px 10px;border-radius:8px;font-size:12px;line-height:1.5;overflow-wrap:anywhere}",
 			".compc-pill.compc-ok{background:color-mix(in srgb,var(--dsw-alias-state-success-primary,#2f9e44) 14%,transparent)}",
 			".compc-pill.compc-error{background:color-mix(in srgb,var(--dsw-alias-state-error-primary,#e03131) 14%,transparent)}",
@@ -2363,6 +2369,16 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 
+		/** 有改动还没保存时，贴在页面底部的保存栏（dsh 自带的保存按钮在整页最下面，改完上面的设置容易找不到） */
+		function SaveBar(props) {
+			var t = props.t, st = props.state;
+			if (!st.dirty) return null;
+			return h("div", { className: "compc-saveBar", role: "region", "aria-label": t("unsavedBar") },
+				h("span", { className: "compc-saveText" }, t("unsavedBar")),
+				h("div", { className: "compc-saveBtns" },
+					h(P.Button, { size: "sm", disabled: st.saving, onClick: props.discard }, t("discardChanges")),
+					h(P.Button, { size: "sm", disabled: st.saving || !st.writable, onClick: props.save }, st.saving ? t("saving") : t("save"))));
+		}
 		function SettingsPage(props) {
 			var t = props.t;
 			if (props.view === "summary") return t("summary");
@@ -2387,7 +2403,7 @@ window.__ModuleLoader__.load({
 					stats ? h("p", { key: "a", className: "compc-hint" }, t("archiveCount", { total: stats.total, private: (stats.byKind && stats.byKind.private) || 0, group: (stats.byKind && stats.byKind.group) || 0 })) : null,
 					h("p", { key: "d", className: "compc-hint" }, t("dataDir", { dir: data.dataDir }))
 				];
-			return h(P.SettingsForm, {
+			return h(React.Fragment, null, h(P.SettingsForm, {
 				labels: { unavailable: t("unavailable"), readOnly: t("readOnly"), saveFailed: t("saveFailed"), save: t("save"), saving: t("saving") },
 				state: state,
 				onSave: props.save,
@@ -2427,6 +2443,7 @@ window.__ModuleLoader__.load({
 					h(ContextRow, { t: t, common: common, prefix: "master", title: t("masterRow"), fallback: "llm" }),
 					h(ContextRow, { t: t, common: common, prefix: "private", title: t("privateRow"), fallback: "truncate" }),
 					h(ContextRow, { t: t, common: common, prefix: "group", title: t("groupRow"), fallback: "truncate" }),
+					h(Toggle, Object.assign({ field: "organizeBeforeCompact", label: t("organizeBeforeCompact"), hint: t("organizeBeforeCompactHint") }, common)),
 					h(LlmField, { common: common, t: t, state: state, edit: props.edit, disabled: disabled, task: "summary", label: t("summaryModel"), hint: t("summaryModelHint"), followLabel: t("followSummary"), noFollowEffort: true, followNote: t("followSummaryNote") })),
 				h(Section, { tab: "chat", cur: tab, title: t("rules"), hint: t("rulesHint") },
 					h(RulesEditor, { t: t, state: state, edit: props.edit, disabled: disabled })),
@@ -2556,7 +2573,7 @@ window.__ModuleLoader__.load({
 						h("div", { className: "compc-detailsBody" },
 							data && data.logs && data.logs.length > 0
 								? h("pre", { className: "compc-pre" }, data.logs.slice().reverse().map(function (l) { return fmtTime(l.time) + " [" + l.level + "] " + l.message; }).join("\n"))
-								: h("p", { className: "compc-hint" }, t("noLogs"))))));
+								: h("p", { className: "compc-hint" }, t("noLogs")))))), h(SaveBar, { t: t, state: state, save: props.save, discard: props.discard }));
 		}
 		//#endregion
 
