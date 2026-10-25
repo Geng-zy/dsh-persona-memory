@@ -187,6 +187,22 @@ test('提示：时间、群名、管理员身份写进 <system_reminder>', async
   assert.match(t, /<system_reminder>Sender role: admin \(QQ 42\)\nGroup name: 测试群\nCurrent datetime: \d{4}-\d{2}-\d{2} \d{2}:\d{2} \(.+\), Weekday: \w+day<\/system_reminder>/)
 })
 
+test('提示：群里被 @ 或引用叫醒时告诉她「这条是在叫你」和她的 QQ 号、群名片；私聊、关掉时不写', async () => {
+  const R = { datetime: false, timezone: 'Asia/Shanghai', groupName: false, markAdmin: false, markWake: true }
+  const h = harness({ reminder: R }, memberInfo)
+  await h.groupMsg(7, 555, [at(BOT), at(8), text('形容一下这个表情包')])
+  const t = h.followups[0].text
+  assert.match(t, /@路人\(8\)/, '别人的 @ 还在文字里')
+  assert.match(t, /<system_reminder>这条消息@ 了你，是在叫你。你在这个群里的 QQ 号是 10001，群名片「鱼」。叫你的那个 @ 已经从文字里去掉了/)
+  await h.groupMsg(7, 555, [text('/在吗')])
+  assert.doesNotMatch(h.followups[1].text, /是在叫你/, '唤醒前缀叫醒的不写')
+  await h.privateMsg(8, [text('你好')])
+  assert.doesNotMatch(h.followups[2].text, /是在叫你/)
+  h.set({ reminder: { ...R, markWake: false } })
+  await h.groupMsg(7, 556, [at(BOT), text('在吗')])
+  assert.doesNotMatch(h.followups[3].text, /是在叫你/)
+})
+
 test('时间格式', () => {
   assert.equal(formatNow('Asia/Shanghai', new Date('2026-10-23T13:40:00Z')), '2026-10-23 21:40 (GMT+8), Weekday: Friday')
 })

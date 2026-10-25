@@ -119,12 +119,13 @@ export interface BridgeSettings {
     };
     /** AstrBot unique_session：群里每人单独一个会话 */
     uniqueSession: boolean;
-    /** AstrBot datetime_system_prompt / group_name_display / timezone；markAdmin 为本插件新增 */
+    /** AstrBot datetime_system_prompt / group_name_display / timezone；markAdmin、markWake 为本插件新增 */
     reminder: {
         datetime: boolean;
         timezone: string;
         groupName: boolean;
         markAdmin: boolean;
+        markWake: boolean;
     };
     /** QQ 里的指令（/help /sid /new /reset /stop）；noPermissionReply 同 AstrBot */
     commands: {
@@ -268,7 +269,17 @@ export declare class Bridge {
     sessionInfo(sessionId: string): SessionInfo | undefined;
     /** QQ 会话（unified_msg_origin）→ 当前的会话信息。 */
     sessionInfoByUmo(umo: string): SessionInfo | undefined;
-    /** AstrBot _append_system_reminders；markAdmin 为本插件新增。 */
+    /** 她自己在各个群里的名片（群号 → 名片），10 分钟 */
+    private readonly selfCards;
+    /** 她自己在这个群里的群名片（没设名片用 QQ 昵称）；查不到返回空。 */
+    private selfCard;
+    /**
+     * 本插件新增：群里被 @ 或被引用叫醒时告诉她「这条是在叫你」，以及她自己的 QQ 号和群名片。
+     * 叫醒她的那个 @ 会照 AstrBot 的做法从文字里去掉，剩下的 @ 都是别人（比如回复别人时 QQ 自动带上的 @），
+     * 不说清楚的话她会以为这条是在叫别人。
+     */
+    private wakeNote;
+    /** AstrBot _append_system_reminders；markAdmin、markWake 为本插件新增。 */
     private reminder;
     /**
      * 交给模型的内容：（群里）[昵称(QQ号)] + 文字；有引用时接 <Quoted Message>（照 AstrBot），

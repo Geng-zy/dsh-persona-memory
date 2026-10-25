@@ -42,6 +42,7 @@ export interface Config {
     timezone: string;
     groupNameDisplay: boolean;
     markAdmin: boolean;
+    markWake: boolean;
     commandsEnabled: boolean;
     noPermissionReply: boolean;
     privateAgentPreset: string;

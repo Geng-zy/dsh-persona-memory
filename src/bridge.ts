@@ -25,6 +25,7 @@ import { Pacer, splitTyping, type PaceSettings } from './pacer.js'
 import { segmentEnabled, splitReply, type SegmentSettings } from './segment.js'
 import { planPieces, ttsActive, ttsHint, type Speech, type TtsSettings } from './tts.js'
 import type { Logger } from './onebot/server.js'
+import { TtlCache } from './cache.js'
 
 declare module '@deepseek-ai/dsh-llm' {
   interface MessageSourceMap {
@@ -104,8 +105,8 @@ export interface BridgeSettings {
   emptyMention: { waiting: boolean; needReply: boolean }
   /** AstrBot unique_session：群里每人单独一个会话 */
   uniqueSession: boolean
-  /** AstrBot datetime_system_prompt / group_name_display / timezone；markAdmin 为本插件新增 */
-  reminder: { datetime: boolean; timezone: string; groupName: boolean; markAdmin: boolean }
+  /** AstrBot datetime_system_prompt / group_name_display / timezone；markAdmin、markWake 为本插件新增 */
+  reminder: { datetime: boolean; timezone: string; groupName: boolean; markAdmin: boolean; markWake: boolean }
   /** QQ 里的指令（/help /sid /new /reset /stop）；noPermissionReply 同 AstrBot */
   commands: { enabled: boolean; noPermissionReply: boolean }
   /** 新会话用的预设：主人私聊 > 私聊/群聊 > 默认（空 = 往下找） */
@@ -569,9 +570,48 @@ export class Bridge {
     return this.infos.get(id)
   }
 
-  /** AstrBot _append_system_reminders；markAdmin 为本插件新增。 */
-  private reminder(abm: AstrBotMessage, admin: boolean, s: BridgeSettings): string | undefined {
+  /** 她自己在各个群里的名片（群号 → 名片），10 分钟 */
+  private readonly selfCards = new TtlCache<string>(10 * 60_000, 500)
+
+  /** 她自己在这个群里的群名片（没设名片用 QQ 昵称）；查不到返回空。 */
+  private async selfCard(groupId: string, selfId: string): Promise<string> {
+    const hit = this.selfCards.get(groupId)
+    if (hit !== undefined) return hit
+    let name = ''
+    try {
+      const info = await this.deps.callAction('get_group_member_info', { group_id: Number(groupId), user_id: Number(selfId), no_cache: false })
+      name = String(info?.card || info?.nickname || '').trim()
+    } catch {
+      // 查不到就只写 QQ 号
+    }
+    this.selfCards.set(groupId, name)
+    return name
+  }
+
+  /**
+   * 本插件新增：群里被 @ 或被引用叫醒时告诉她「这条是在叫你」，以及她自己的 QQ 号和群名片。
+   * 叫醒她的那个 @ 会照 AstrBot 的做法从文字里去掉，剩下的 @ 都是别人（比如回复别人时 QQ 自动带上的 @），
+   * 不说清楚的话她会以为这条是在叫别人。
+   */
+  private async wakeNote(abm: AstrBotMessage): Promise<string | undefined> {
+    if (abm.type !== MessageType.GROUP_MESSAGE || !abm.group?.group_id) return undefined
+    const self = String(abm.self_id)
+    const atSelf = abm.message.some(m => m.type === 'At' && String(m.qq) === self)
+    const quotedSelf = abm.message.some(m => m.type === 'Reply' && String(m.sender_id) === self)
+    if (!atSelf && !quotedSelf) return undefined
+    const card = await this.selfCard(String(abm.group.group_id), self)
+    const how = atSelf && quotedSelf ? '@ 了你，还引用了你说过的话' : atSelf ? '@ 了你' : '引用了你说过的话'
+    return '这条消息' + how + '，是在叫你。你在这个群里的 QQ 号是 ' + self + (card ? '，群名片「' + card + '」' : '')
+      + '。叫你的那个 @ 已经从文字里去掉了，文字里剩下的 @ 是别人（比如回复别人时 QQ 自动带上的）。'
+  }
+
+  /** AstrBot _append_system_reminders；markAdmin、markWake 为本插件新增。 */
+  private async reminder(abm: AstrBotMessage, admin: boolean, s: BridgeSettings): Promise<string | undefined> {
     const parts: string[] = []
+    if (s.reminder.markWake) {
+      const note = await this.wakeNote(abm)
+      if (note !== undefined) parts.push(note)
+    }
     if (s.reminder.markAdmin && admin) parts.push('Sender role: admin (QQ ' + abm.sender.user_id + ')')
     if (s.reminder.groupName && abm.group?.group_name) parts.push('Group name: ' + abm.group.group_name)
     if (s.reminder.datetime) parts.push('Current datetime: ' + formatNow(s.reminder.timezone))
@@ -608,7 +648,7 @@ export class Bridge {
     const texts: ModelPart[] = [{ type: 'text', text }]
     if (quoted !== null) texts.push({ type: 'text', text: quoted.text })
     if (forwarded !== null) texts.push({ type: 'text', text: forwarded.text })
-    const reminder = this.reminder(abm, admin, s)
+    const reminder = await this.reminder(abm, admin, s)
     if (reminder !== undefined) texts.push({ type: 'text', text: reminder })
     const asImage = (ref: string): Component => ({ type: 'Image', file: ref, url: ref.startsWith('http') ? ref : '', _type: '', path: '' })
     const quotedImages = (quoted?.imageRefs ?? []).map(asImage)

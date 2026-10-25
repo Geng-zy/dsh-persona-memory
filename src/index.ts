@@ -54,6 +54,7 @@ export interface Config {
   timezone: string
   groupNameDisplay: boolean
   markAdmin: boolean
+  markWake: boolean
   commandsEnabled: boolean
   noPermissionReply: boolean
   privateAgentPreset: string
@@ -164,6 +165,7 @@ export const Config: z<LiveConfig> = z.object({
   timezone: z.string().default('Asia/Shanghai').volatile().description('时区'),
   groupNameDisplay: z.boolean().default(true).volatile().description('告诉模型群名'),
   markAdmin: z.boolean().default(true).volatile().description('发送者是管理员时告诉模型'),
+  markWake: z.boolean().default(true).volatile().description('群里被 @ 或被引用叫醒时，告诉模型「这条是在叫你」和她自己的 QQ 号、群名片'),
   // 指令
   commandsEnabled: z.boolean().default(true).volatile().description('启用 QQ 里的指令（/help /sid /new /reset /stop）'),
   noPermissionReply: z.boolean().default(true).volatile().description('没有权限用指令时回一句'),
@@ -372,7 +374,7 @@ export function apply(ctx: Context, live: LiveConfig): void {
       rateLimit: { count: get('rateLimitCount'), seconds: get('rateLimitSeconds'), strategy: get('rateLimitStrategy') },
       emptyMention: { waiting: get('emptyMentionWaiting'), needReply: get('emptyMentionNeedReply') },
       uniqueSession: get('uniqueSession'),
-      reminder: { datetime: get('datetimeReminder'), timezone: get('timezone'), groupName: get('groupNameDisplay'), markAdmin: get('markAdmin') },
+      reminder: { datetime: get('datetimeReminder'), timezone: get('timezone'), groupName: get('groupNameDisplay'), markAdmin: get('markAdmin'), markWake: get('markWake') ?? true },
       commands: { enabled: get('commandsEnabled'), noPermissionReply: get('noPermissionReply') },
       presets: { default: get('agentPreset'), private: get('privateAgentPreset'), group: get('groupAgentPreset'), adminPrivate: get('adminPrivateAgentPreset') },
       models: { private: get('privateModel'), group: get('groupModel'), adminPrivate: get('adminPrivateModel') },

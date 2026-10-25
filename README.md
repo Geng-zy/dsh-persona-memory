@@ -149,9 +149,9 @@ dsh --version                        # 0.2.1-rc.2
 
 # 6. 两个插件（回到家目录）
 cd ~
-dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.15.0 github:Geng-zy/dsh-companion-core#v0.12.2
+dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.16.0 github:Geng-zy/dsh-companion-core#v0.12.2
 #    连不上 GitHub：到两个仓库的 Releases 下载 .tgz，传到 ~/pkgs/ 后
-#    dsh plugin --profile web add ./pkgs/dsh-napcat-bridge-0.15.0.tgz ./pkgs/dsh-companion-core-0.12.2.tgz
+#    dsh plugin --profile web add ./pkgs/dsh-napcat-bridge-0.16.0.tgz ./pkgs/dsh-companion-core-0.12.2.tgz
 #    （~/pkgs 以后不能删：dsh 的 profile 里记着它）
 
 # 7. 配置
@@ -265,7 +265,7 @@ sudo systemctl daemon-reload && sudo systemctl enable --now napcat
 ## 安装
 
 ```bash
-dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.15.0
+dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.16.0
 ```
 
 然后在 profile 的 `cordis.patch.yml` 里写配置（行 id 固定是 `napcat-bridge`）：
@@ -319,6 +319,7 @@ NapCat 那边在「网络配置」里新建一个 **WebSocket 客户端**：
 | | `emptyMentionWaiting` / `emptyMentionNeedReply` | `true` / `true` | 只 @ 不说话时等下一条 / 先问一句 |
 | 交给模型的内容 | `identifier` | `true` | 群消息前面加 `[昵称(QQ号)]` |
 | | `markAdmin` | `true` | 发送者是管理员时告诉模型 |
+| | `markWake` | `true` | 群里被 @ 或被引用叫醒时，告诉模型「这条是在叫你」和她自己的 QQ 号、群名片（叫醒她的 @ 会从文字里去掉，不写明她可能以为在叫别人） |
 | | `groupNameDisplay` | `true` | 告诉模型群名 |
 | | `datetimeReminder` / `timezone` | `true` / `Asia/Shanghai` | 告诉模型当前时间 |
 | | `imageToModel` / `maxImages` | `true` / `0` | 图片交给模型；每条最多几张，0 = 不限 |
