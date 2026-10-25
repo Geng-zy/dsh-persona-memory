@@ -222,7 +222,7 @@ export const Config: z<LiveConfig> = z.object({
   mailTo: z.string().default('').volatile().description('收件人；空 = 发给自己'),
   pushService: z.union(['off', 'serverchan', 'pushplus']).default('off').volatile().description('微信推送：Server酱 或 PushPlus'),
   pushKey: z.string().role('secret').volatile().description('Server酱的 SendKey 或 PushPlus 的 token'),
-  // 文字转语音（本插件新增）：先用 BreezeBlue，不行自动换 Inworld
+  // 文字转语音（本插件新增）：每条先用 BreezeBlue，这条不行就换 Inworld
   ttsEnabled: z.boolean().default(false).volatile().description('文字转语音：她的回复可以用语音发（要填至少一家的 Key 和音色 id）'),
   ttsMode: z.union(['tag', 'always', 'chance']).default('tag').volatile().description('什么时候用语音：tag 她自己决定（那一行开头写 [语音]），always 每条都用，chance 按概率'),
   ttsChance: z.natural().max(100).default(30).volatile().description('按概率时：一次回复用语音的概率（%）'),
@@ -483,14 +483,8 @@ export function apply(ctx: Context, live: LiveConfig): void {
     if (path.endsWith('/napcat-bridge/status')) return json(200, await status())
     // 掉线检测：GET …/watch 看状态（?fresh=1 先问一次）；POST …/alert/test { channel: 'mail' | 'push' } 用保存过的设置发一条测试提醒
     // 设置页文字转语音：GET <dsh>/api/napcat-bridge/tts/status（今天用了多少、Breeze 是不是在跳过）；
-    // POST …/tts/test { provider, text?, form? }（只用这一家念一句，返回 base64 的 mp3 给页面播放；form 是页面上现在填的值，没填的用保存过的）；
-    // POST …/tts/reset（清掉「Breeze 额度用完 / 连续出错」的记号，下一条先试 Breeze）
+    // POST …/tts/test { provider, text?, form? }（只用这一家念一句，返回 base64 的 mp3 给页面播放；form 是页面上现在填的值，没填的用保存过的）
     if (path.endsWith('/napcat-bridge/tts/status') && req.method === 'GET') return json(200, tts.status())
-    if (path.endsWith('/napcat-bridge/tts/reset')) {
-      if (req.method !== 'POST') return json(405, { error: 'POST only' })
-      tts.resetSkip()
-      return json(200, tts.status())
-    }
     if (path.endsWith('/napcat-bridge/tts/test')) {
       if (req.method !== 'POST') return json(405, { error: 'POST only' })
       let body: { provider?: unknown; text?: unknown; form?: unknown } = {}

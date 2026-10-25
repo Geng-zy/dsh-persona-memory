@@ -63,9 +63,6 @@ export interface Piece {
  */
 export declare function planPieces(segments: string[], s: TtsSettings, active: boolean, random?: () => number): Piece[];
 export interface TtsStatus {
-    /** Breeze 额度用完，到这个时间前不用（毫秒） */
-    breezeSkipUntil?: number;
-    breezeSkipReason?: string;
     today: {
         date: string;
         breeze: number;
@@ -78,6 +75,11 @@ export interface TtsStatus {
         at: number;
         text: string;
     };
+    /** 最近一次 Breeze 没成功、改用 Inworld 的原因 */
+    lastFallback?: {
+        at: number;
+        text: string;
+    };
 }
 export interface TtsDeps {
     settings(): TtsSettings;
@@ -87,16 +89,12 @@ export interface TtsDeps {
 }
 export declare class Tts {
     private readonly deps;
-    private skipUntil;
-    private skipReason;
-    private fails;
     private today;
     private lastError?;
+    private lastFallback?;
     constructor(deps: TtsDeps);
     private now;
     status(): TtsStatus;
-    /** 清掉「额度用完」的记号（设置页手动重试用） */
-    resetSkip(): void;
     private roll;
     /** 合成一段语音：先 Breeze，不行 Inworld；都不行抛错。 */
     speak(raw: string): Promise<Speech>;
@@ -112,5 +110,3 @@ export declare function testSpeak(s: TtsSettings, provider: TtsProvider, text: s
 }>;
 /** 某个时区里的日期 YYYY-MM-DD */
 export declare function dayOf(t: number, timezone: string): string;
-/** 某个时区里下一个 0 点（毫秒） */
-export declare function nextMidnight(t: number, timezone: string): number;

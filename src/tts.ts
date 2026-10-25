@@ -2,10 +2,8 @@
 // 两家接口，先用 BreezeBlue（Breeze TTS 2），不行再用 Inworld（Realtime TTS-2 Flash）：
 //   - Breeze：POST https://api.breeze.blue/v1/text-to-speech/{voice_id}?output_format=mp3，头 xi-api-key，返回就是 mp3；
 //   - Inworld：POST https://api.inworld.ai/tts/v1/voice，头 Authorization: Basic <Key>，返回 JSON 里 audioContent 是 base64 的 mp3。
-// 切换规则：
-//   - Breeze 报额度用完（HTTP 402、或者错误里有 CREDIT）→ 到第二天 0 点（按设置的时区）之前都直接用 Inworld；
-//   - 其他错误（连不上、超时、限流、服务器出错、Key 不对）→ 这一条改用 Inworld；连续出错 3 次，5 分钟内先不试 Breeze（免得每条都多等一次）；
-//   - 两家都不行 → 这一条照常发文字。
+// 切换规则：每一条都先试 Breeze；这一条出错（连不上、超时、额度用完、限流、Key 不对……）就这一条改用 Inworld，
+// 下一条照样先试 Breeze。两家都不行 → 这一条照常发文字。
 // 什么时候发语音：她自己决定（要念的那一行开头写 [语音]）、每条都发、或者按概率；主人私聊 / 其他私聊 / 群聊分别开关。
 // Key 只在请求里用，不打印、不写进日志。
 
@@ -157,11 +155,10 @@ export function planPieces(segments: string[], s: TtsSettings, active: boolean, 
 }
 
 export interface TtsStatus {
-  /** Breeze 额度用完，到这个时间前不用（毫秒） */
-  breezeSkipUntil?: number
-  breezeSkipReason?: string
   today: { date: string; breeze: number; inworld: number; failed: number; breezeChars: number; inworldChars: number }
   lastError?: { at: number; text: string }
+  /** 最近一次 Breeze 没成功、改用 Inworld 的原因 */
+  lastFallback?: { at: number; text: string }
 }
 
 export interface TtsDeps {
@@ -171,15 +168,10 @@ export interface TtsDeps {
   fetch?: typeof fetch
 }
 
-const FAIL_LIMIT = 3
-const FAIL_PAUSE_MS = 5 * 60_000
-
 export class Tts {
-  private skipUntil = 0
-  private skipReason = ''
-  private fails = 0
   private today: TtsStatus['today'] = { date: '', breeze: 0, inworld: 0, failed: 0, breezeChars: 0, inworldChars: 0 }
   private lastError?: TtsStatus['lastError']
+  private lastFallback?: TtsStatus['lastFallback']
 
   constructor(private readonly deps: TtsDeps) {}
 
@@ -187,11 +179,8 @@ export class Tts {
 
   status(): TtsStatus {
     this.roll()
-    return { ...(this.skipUntil > this.now() ? { breezeSkipUntil: this.skipUntil, breezeSkipReason: this.skipReason } : {}), today: { ...this.today }, ...(this.lastError ? { lastError: this.lastError } : {}) }
+    return { today: { ...this.today }, ...(this.lastError ? { lastError: this.lastError } : {}), ...(this.lastFallback ? { lastFallback: this.lastFallback } : {}) }
   }
-
-  /** 清掉「额度用完」的记号（设置页手动重试用） */
-  resetSkip(): void { this.skipUntil = 0; this.fails = 0 }
 
   private roll(): void {
     const d = dayOf(this.now(), this.deps.settings().timezone)
@@ -206,28 +195,17 @@ export class Tts {
     this.roll()
     const start = this.now()
     const errors: string[] = []
-    if (s.breeze.key.trim() && s.breeze.voiceId.trim() && this.now() >= this.skipUntil) {
+    if (s.breeze.key.trim() && s.breeze.voiceId.trim()) {
       try {
         const audio = await breezeSpeak(s, text, this.deps.fetch)
-        this.fails = 0
         this.today.breeze++
         this.today.breezeChars += text.length
         return { audio, provider: 'breeze', ms: this.now() - start }
       } catch (e) {
-        const err = e instanceof TtsError ? e : new TtsError(String(e))
-        errors.push(err.message)
-        if (err.exhausted) {
-          this.skipUntil = nextMidnight(this.now(), s.timezone)
-          this.skipReason = '额度用完'
-          this.deps.log('info', 'BreezeBlue 今天的额度用完了，明天 0 点前改用 Inworld')
-        } else if (++this.fails >= FAIL_LIMIT) {
-          this.skipUntil = this.now() + FAIL_PAUSE_MS
-          this.skipReason = '连续出错'
-          this.fails = 0
-          this.deps.log('warn', 'BreezeBlue 连续出错，5 分钟内先用 Inworld：' + err.message)
-        } else {
-          this.deps.log('warn', 'BreezeBlue 这一条没成功，改用 Inworld：' + err.message)
-        }
+        const msg = e instanceof Error ? e.message : String(e)
+        errors.push(msg)
+        this.lastFallback = { at: this.now(), text: msg }
+        this.deps.log(e instanceof TtsError && e.exhausted ? 'info' : 'warn', 'BreezeBlue 这一条没成功，改用 Inworld：' + msg)
       }
     }
     if (s.inworld.key.trim() && s.inworld.voiceId.trim()) {
@@ -280,15 +258,4 @@ async function errorDetail(res: Response): Promise<string> {
 /** 某个时区里的日期 YYYY-MM-DD */
 export function dayOf(t: number, timezone: string): string {
   try { return new Intl.DateTimeFormat('en-CA', { timeZone: timezone || 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' }).format(t) } catch { return new Date(t).toISOString().slice(0, 10) }
-}
-
-/** 某个时区里下一个 0 点（毫秒） */
-export function nextMidnight(t: number, timezone: string): number {
-  let parts: Record<string, number>
-  try {
-    parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: timezone || 'Asia/Shanghai', hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
-      .formatToParts(t).filter(p => p.type !== 'literal').map(p => [p.type, Number(p.value)]))
-  } catch { parts = { hour: new Date(t).getHours(), minute: new Date(t).getMinutes(), second: new Date(t).getSeconds() } }
-  const elapsed = ((parts.hour % 24) * 3600 + parts.minute * 60 + parts.second) * 1000 + (t % 1000)
-  return t - elapsed + 24 * 3600 * 1000
 }

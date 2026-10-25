@@ -247,7 +247,7 @@ window.__ModuleLoader__.load({
 			tab_log: "日志",
 			tab_voice: "语音回复",
 			ttsSec: "文字转语音",
-			ttsSecHint: "她的回复可以用语音发。先用 BreezeBlue，连不上、出错或者当天额度用完，自动换 Inworld；两家都不行就照常发文字。语音由 NapCat 转成 QQ 语音。",
+			ttsSecHint: "她的回复可以用语音发。每一条都先用 BreezeBlue，这一条连不上、出错或额度用完，就这一条改用 Inworld，下一条还是先试 BreezeBlue；两家都不行就照常发文字。语音由 NapCat 转成 QQ 语音。",
 			ttsEnabled: "启用文字转语音",
 			ttsMode: "什么时候用语音",
 			ttsModeHint: "「她自己决定」会在每条消息后面告诉她怎么发语音，她想发时在那一行开头写 [语音]；另外两种不用她管。",
@@ -268,7 +268,7 @@ window.__ModuleLoader__.load({
 			ttsStripParens: "念之前去掉括号里的动作",
 			ttsStripParensHint: "比如「（抱住）」「*歪头*」不念出来；只发文字时照常保留。",
 			breezeSub: "BreezeBlue（先用这家）",
-			inworldSub: "Inworld（BreezeBlue 不行时用）",
+			inworldSub: "Inworld（BreezeBlue 这一条不行时用）",
 			ttsApiKey: "API Key",
 			breezeKeyHint: "在 BreezeBlue 后台创建的 API Key。",
 			inworldKeyHint: "在 Inworld 后台 API Keys 里复制 Basic 那一串（已经是 Base64，不用再编码）。",
@@ -288,8 +288,7 @@ window.__ModuleLoader__.load({
 			ttsTestUsesForm: "用页面上现在填的值试，没保存的也算；Key 没填就用保存过的。",
 			ttsTodaySub: "今天的情况",
 			ttsToday: "BreezeBlue 念了 {breeze} 条（{breezeChars} 字），Inworld 念了 {inworld} 条（{inworldChars} 字），没念成改发文字 {failed} 条。",
-			ttsSkipping: "BreezeBlue {reason}，{time} 前直接用 Inworld。",
-			ttsSkipReset: "现在就重试 BreezeBlue",
+			ttsFallback: "最近一次 BreezeBlue 没成功、改用了 Inworld：{time}，{text}",
 			ttsLastError: "最近一次没念成：{time}，{text}",
 			ttsRefresh: "刷新",
 			ttsNeedKey: "两家都还没填全 Key 和音色 id，开了也不会发语音。",
@@ -588,7 +587,7 @@ window.__ModuleLoader__.load({
 			tab_log: "Log",
 			tab_voice: "Voice replies",
 			ttsSec: "Text to speech",
-			ttsSecHint: "Her replies can be sent as voice. BreezeBlue is tried first; if it can't be reached, errors, or runs out of today's credits, Inworld takes over. If both fail the text is sent as usual. NapCat converts the audio to QQ voice.",
+			ttsSecHint: "Her replies can be sent as voice. Every message tries BreezeBlue first; if that message fails (unreachable, error, out of credits) it uses Inworld, and the next one tries BreezeBlue again. If both fail the text is sent as usual. NapCat converts the audio to QQ voice.",
 			ttsEnabled: "Enable text to speech",
 			ttsMode: "When to use voice",
 			ttsModeHint: "\"She decides\" tells her with every message how to send voice: she starts a line with [语音]. The other two need nothing from her.",
@@ -629,8 +628,7 @@ window.__ModuleLoader__.load({
 			ttsTestUsesForm: "Uses what's on the page now, saved or not; an empty key uses the saved one.",
 			ttsTodaySub: "Today",
 			ttsToday: "BreezeBlue spoke {breeze} ({breezeChars} chars), Inworld {inworld} ({inworldChars} chars), {failed} fell back to text.",
-			ttsSkipping: "BreezeBlue: {reason}; using Inworld until {time}.",
-			ttsSkipReset: "Retry BreezeBlue now",
+			ttsFallback: "Last time BreezeBlue failed and Inworld was used: {time}, {text}",
 			ttsLastError: "Last failure: {time}, {text}",
 			ttsRefresh: "Refresh",
 			ttsNeedKey: "Neither provider has both a key and a voice ID yet, so no voice will be sent.",
@@ -1447,7 +1445,6 @@ window.__ModuleLoader__.load({
 			var stHook = React.useState(null), st = stHook[0], setSt = stHook[1];
 			var textHook = React.useState(""), text = textHook[0], setText = textHook[1];
 			function load() { napcatApi("GET", "tts/status").then(setSt, function () {}); }
-			function retry() { napcatApi("POST", "tts/reset").then(setSt, function () {}); }
 			React.useEffect(load, []);
 			var mode = state.ttsMode.text || "tag";
 			var has = function (key, voice) { return (state.secretSet[key] === true || state[key].text !== "") && state[voice].text !== ""; };
@@ -1459,9 +1456,7 @@ window.__ModuleLoader__.load({
 				state.ttsEnabled.text === "true" && !ready ? h("p", { className: "napcatb-pill napcatb-result napcatb-warn", role: "status" }, t("ttsNeedKey")) : null,
 				st ? h("div", { className: "napcatb-test" },
 					h("p", { className: "napcatb-hint" }, t("ttsTodaySub") + "：" + t("ttsToday", st.today)),
-					st.breezeSkipUntil ? h("div", { className: "napcatb-row" },
-						h("p", { className: "napcatb-pill napcatb-result napcatb-warn" }, t("ttsSkipping", { reason: st.breezeSkipReason, time: time(st.breezeSkipUntil) })),
-						h(P.Button, { size: "sm", onClick: retry }, t("ttsSkipReset"))) : null,
+					st.lastFallback ? h("p", { className: "napcatb-hint" }, t("ttsFallback", { time: time(st.lastFallback.at), text: st.lastFallback.text })) : null,
 					st.lastError ? h("p", { className: "napcatb-hint" }, t("ttsLastError", { time: time(st.lastError.at), text: st.lastError.text })) : null,
 					h("div", { className: "napcatb-testRow" }, h(P.Button, { size: "sm", onClick: load }, t("ttsRefresh")))) : null,
 				G(h(Select, Object.assign({ field: "ttsMode", label: t("ttsMode"), hint: t("ttsModeHint"), fallback: "tag", options: [{ value: "tag", label: t("ttsModeTag") }, { value: "always", label: t("ttsModeAlways") }, { value: "chance", label: t("ttsModeChance") }] }, common)),
