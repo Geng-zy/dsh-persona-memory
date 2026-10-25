@@ -148,9 +148,9 @@ dsh --version                        # 0.2.1-rc.2
 
 # 6. 两个插件（回到家目录）
 cd ~
-dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.14.1 github:Geng-zy/dsh-companion-core#v0.12.2
+dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.14.2 github:Geng-zy/dsh-companion-core#v0.12.2
 #    连不上 GitHub：到两个仓库的 Releases 下载 .tgz，传到 ~/pkgs/ 后
-#    dsh plugin --profile web add ./pkgs/dsh-napcat-bridge-0.14.1.tgz ./pkgs/dsh-companion-core-0.12.2.tgz
+#    dsh plugin --profile web add ./pkgs/dsh-napcat-bridge-0.14.2.tgz ./pkgs/dsh-companion-core-0.12.2.tgz
 #    （~/pkgs 以后不能删：dsh 的 profile 里记着它）
 
 # 7. 配置
@@ -264,7 +264,7 @@ sudo systemctl daemon-reload && sudo systemctl enable --now napcat
 ## 安装
 
 ```bash
-dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.14.1
+dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.14.2
 ```
 
 然后在 profile 的 `cordis.patch.yml` 里写配置（行 id 固定是 `napcat-bridge`）：
@@ -341,6 +341,7 @@ NapCat 那边在「网络配置」里新建一个 **WebSocket 客户端**：
 | | `adminPrivateModel` / `privateModel` / `groupModel` | `deepseek-official/deepseek-flash` | 分类型模型，`提供方/模型`；设置页里从 dsh 已配置的模型里选 |
 | | `adminPrivateReasoning` / `privateReasoning` / `groupReasoning` | `high` / `low` / `low` | 分类型思考等级，按模型支持的档来（DeepSeek：`off` / `low` / `high` / `max`；设置页下拉里只列这个模型支持的）；改了以后，那个会话下一条消息起生效（正在回复的等说完），聊天记录不变 |
 | | `silenceToken` | `[不发]` | 她的回复以这个开头时不发出去（主动唤醒时她决定不说话） |
+| | `nudgeOnEmpty` | `true` | 她一轮什么都没说出来（话只在思考里）时自动提醒她一次把话说出来 |
 | 发消息节奏 | `typingPrivate` / `typingGroup` | `true` / `true` | 私聊、群里模拟打字 |
 | | `typingCharsPerMinute` / `typingMinSeconds` / `typingMaxSeconds` | `100` / `1` / `10` | 打字速度（0 = 不等）、最少和最多等几秒 |
 | | `groupMinGapSeconds` / `groupMaxPerWindow` / `groupWindowSeconds` | `5` / `5` / `60` | 同一个群她两条之间至少隔几秒、一段时间里最多几条（0 = 不限） |

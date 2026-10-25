@@ -31,6 +31,8 @@ declare module '@deepseek-ai/dsh-llm' {
     'plugin:napcat-bridge': { kind: 'plugin:napcat-bridge' }
     /** 其他插件主动唤醒她（ctx.napcat.wake，比如定时主动聊天）；不算"人说的话" */
     'plugin:napcat-bridge-wake': { kind: 'plugin:napcat-bridge-wake' }
+    /** 她一轮什么都没说出来时，提醒她把话说出来；不算"人说的话" */
+    'plugin:napcat-bridge-nudge': { kind: 'plugin:napcat-bridge-nudge' }
   }
 }
 
@@ -113,6 +115,8 @@ export interface BridgeSettings {
   video: VideoSettings
   /** 她回复里以这个开头时不发出去（主动唤醒时她决定不说话用） */
   silenceToken: string
+  /** 一轮结束时什么都没说出来，提醒她一次 */
+  nudgeOnEmpty: boolean
   /** 发消息的节奏：打字速度、群里的发言频率（本插件新增，见 pacer.ts） */
   pace: PaceSettings
   /** 分段发送（本插件新增，见 segment.ts） */
@@ -229,6 +233,8 @@ interface Chat {
   modelKey: string
   /** 正在回复（turn/start 到 turn/end 之间），这时不换模型 */
   running: boolean
+  /** 这条消息已经提醒过她「把话说出来」了（新消息来时清掉，每条只提醒一次） */
+  nudged?: boolean
 }
 
 /** 建会话需要的 QQ 会话信息（从收到的消息来，或者从 unified_msg_origin 解析出来）。 */
@@ -458,6 +464,7 @@ export class Bridge {
     // 本插件新增：交给模型前让其他插件（记忆等）往内容里加东西
     const payload: PromptPayload = { info: chat.info, newSession: chat.fresh, message: abm, content: [...content] }
     chat.fresh = false
+    chat.nudged = false
     let timer: ReturnType<typeof setTimeout> | undefined
     try {
       await Promise.race([
@@ -666,6 +673,7 @@ export class Bridge {
     const send = (chain: MessageChain): Promise<void> => this.deps.sendBySession(session, chain)
     const chat = await this.ensureChat({ umo, session, isGroup, isUnique: false, ...(isGroup ? { groupId: id } : { userId: id }), senderId: isGroup ? '' : id, selfId, send })
     const admitted = await this.deps.media.admit(typeof content === 'string' ? [{ type: 'text', text: content }] : content)
+    chat.nudged = false
     chat.handle.agent.followup(createUserMessage({ content: admitted as never, source: { kind: 'plugin:napcat-bridge-wake' } }))
     return { sessionId: String((chat.handle.agent as Agent).session.id) }
   }
@@ -766,7 +774,21 @@ export class Bridge {
       chat.running = false
       const text = chat.lastText
       chat.lastText = ''
-      if (text.trim() === '') return
+      if (text.trim() === '') {
+        // 本插件新增：这一轮正常结束，却一句话都没说出来（DeepSeek 偶尔把要回的话只写在思考里），提醒她一次。
+        // 被 /stop 打断、出错的不提醒；同一条消息只提醒一次，免得来回打转。
+        const reason = (event.data as { reason?: { kind?: string } } | undefined)?.reason?.kind
+        if (reason === 'completed' && !chat.nudged && this.deps.settings().nudgeOnEmpty) {
+          chat.nudged = true
+          this.deps.log('info', umo + '：这一轮她什么都没说出来，提醒她把话说出来')
+          // 等这一轮在 dsh 里彻底收尾再发（turn/end 当下 agent 还算忙，这时 followup 不会开新一轮）
+          setTimeout(() => {
+            if (this.chats.get(umo) !== chat) return
+            chat.handle.agent.followup(createUserMessage({ content: [{ type: 'text', text: nudgeText(this.deps.settings().silenceToken.trim()) }] as never, source: { kind: 'plugin:napcat-bridge-nudge' } }))
+          }, NUDGE_DELAY_MS)
+        }
+        return
+      }
       // 本插件新增：她决定这次不说话（主动唤醒时）
       const token = this.deps.settings().silenceToken.trim()
       if (token !== '' && text.trim().startsWith(token)) {
@@ -814,6 +836,14 @@ export class Bridge {
     this.bySession.clear()
     await Promise.allSettled(handles.map(h => h.dispose()))
   }
+}
+
+const NUDGE_DELAY_MS = 500
+
+/** 她只想没说时的提醒（不算对方说的话，记忆插件也不把它当一轮）。 */
+export function nudgeText(silenceToken: string): string {
+  return '<system_reminder>你刚才这一轮只在心里想了，没有把要回的话说出来，对方什么都没收到。现在直接把要回复的话说出来'
+    + (silenceToken ? '；如果决定不回，就只回「' + silenceToken + '」' : '') + '。不用解释为什么刚才没说。</system_reminder>'
 }
 
 export { MessageType, sessionToString }

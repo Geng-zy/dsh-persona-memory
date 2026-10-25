@@ -66,6 +66,7 @@ export interface Config {
     videoTimeoutSeconds: number;
     ffmpegPath: string;
     silenceToken: string;
+    nudgeOnEmpty: boolean;
     typingPrivate: boolean;
     typingGroup: boolean;
     typingCharsPerMinute: number;

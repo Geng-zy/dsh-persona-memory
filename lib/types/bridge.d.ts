@@ -19,6 +19,10 @@ declare module '@deepseek-ai/dsh-llm' {
         'plugin:napcat-bridge-wake': {
             kind: 'plugin:napcat-bridge-wake';
         };
+        /** 她一轮什么都没说出来时，提醒她把话说出来；不算"人说的话" */
+        'plugin:napcat-bridge-nudge': {
+            kind: 'plugin:napcat-bridge-nudge';
+        };
     }
 }
 export interface WakeConfig {
@@ -145,6 +149,8 @@ export interface BridgeSettings {
     video: VideoSettings;
     /** 她回复里以这个开头时不发出去（主动唤醒时她决定不说话用） */
     silenceToken: string;
+    /** 一轮结束时什么都没说出来，提醒她一次 */
+    nudgeOnEmpty: boolean;
     /** 发消息的节奏：打字速度、群里的发言频率（本插件新增，见 pacer.ts） */
     pace: PaceSettings;
     /** 分段发送（本插件新增，见 segment.ts） */
@@ -284,4 +290,6 @@ export declare class Bridge {
     }>;
     dispose(): Promise<void>;
 }
+/** 她只想没说时的提醒（不算对方说的话，记忆插件也不把它当一轮）。 */
+export declare function nudgeText(silenceToken: string): string;
 export { MessageType, sessionToString };

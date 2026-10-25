@@ -21,6 +21,8 @@ window.__ModuleLoader__.load({
 		var SECTION = "napcat-bridge";
 
 		var zh = {
+			nudgeOnEmpty: "她只想没说时提醒她说出来",
+			nudgeOnEmptyHint: "思考等级高时，模型偶尔会把要回的话只写在思考里，这一轮什么都没发出去。开着时自动提醒她一次把话说出来（同一条消息只提醒一次；被 /stop 打断的不提醒）。会多一次模型调用。",
 			alertTestUsesForm: "用的是现在页面上填的（还没保存也行），记得保存。",
 			unsavedBar: "有改动还没保存：点「保存」才生效，离开这个页面会丢掉",
 			discardChanges: "放弃改动",
@@ -312,6 +314,8 @@ window.__ModuleLoader__.load({
 			saveFailed: "没有保存成功，修改已保留，请检查后重试。"
 		};
 		var en = {
+			nudgeOnEmpty: "Nudge her when she says nothing",
+			nudgeOnEmptyHint: "With high reasoning the model sometimes keeps the reply in its thinking and sends nothing. When on, she is reminded once to say it (once per message; not after /stop). Costs one more model call.",
 			alertTestUsesForm: "Uses what is on the page now (saved or not); remember to save.",
 			unsavedBar: "Unsaved changes: click Save to apply; leaving the page discards them",
 			discardChanges: "Discard",
@@ -733,6 +737,7 @@ window.__ModuleLoader__.load({
 		var STT_MODES = ["off", "command", "openai"];
 		var PUSH_SERVICES = ["off", "serverchan", "pushplus"];
 		var BOOLS = [
+			"nudgeOnEmpty",
 			"watchEnabled", "alertOnRecover", "mailEnabled",
 			"friend_message_needs_wake_prefix", "ignore_bot_self_message", "identifier", "imageToModel",
 			"whitelistEnabled", "whitelistIgnoreAdminOnGroup", "whitelistIgnoreAdminOnFriend", "whitelistLog",
@@ -1389,7 +1394,8 @@ window.__ModuleLoader__.load({
 					h(ChatModelPick, Object.assign({ modelField: "privateModel", effortField: "privateReasoning", label: t("privateModel"), effortLabel: t("privateReasoning"), effortFallback: "low", blankLabel: t("modelBlankDefault") }, common)),
 					h(ChatModelPick, Object.assign({ modelField: "groupModel", effortField: "groupReasoning", label: t("groupModel"), effortLabel: t("groupReasoning"), effortFallback: "low", blankLabel: t("modelBlankDefault") }, common)),
 					Sub(t("silenceSub")),
-					h(Value, Object.assign({ field: "silenceToken", label: t("silenceToken"), hint: t("silenceTokenHint") }, common))) : null,
+					h(Value, Object.assign({ field: "silenceToken", label: t("silenceToken"), hint: t("silenceTokenHint") }, common)),
+					h(Toggle, Object.assign({ field: "nudgeOnEmpty", label: t("nudgeOnEmpty"), hint: t("nudgeOnEmptyHint") }, common))) : null,
 				tab === "content" ? [
 					h(Section, { key: "m", title: t("model") },
 						h(Toggle, Object.assign({ field: "identifier", label: t("identifier"), hint: t("identifierHint") }, common)),

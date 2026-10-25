@@ -78,6 +78,7 @@ export interface Config {
   videoTimeoutSeconds: number
   ffmpegPath: string
   silenceToken: string
+  nudgeOnEmpty: boolean
   typingPrivate: boolean
   typingGroup: boolean
   typingCharsPerMinute: number
@@ -174,6 +175,7 @@ export const Config: z<LiveConfig> = z.object({
   videoTimeoutSeconds: z.natural().min(5).default(30).volatile().description('处理一个视频最多用几秒，超时只写 [视频]'),
   ffmpegPath: z.string().default('').volatile().description('ffmpeg 位置；留空先找插件自己装的，再找系统里的'),
   silenceToken: z.string().default('[不发]').volatile().description('她的回复以这个开头时不发出去（主动唤醒时她决定不说话用）'),
+  nudgeOnEmpty: z.boolean().default(true).volatile().description('她一轮结束时什么都没说出来（话只写在了思考里），自动提醒她一次把话说出来'),
   typingPrivate: z.boolean().default(true).volatile().description('私聊里按打字速度等一会儿再发'),
   typingGroup: z.boolean().default(true).volatile().description('群里按打字速度等一会儿再发'),
   typingCharsPerMinute: z.natural().default(100).volatile().description('打字速度：每分钟几个字（0 = 不等）'),
@@ -333,6 +335,7 @@ export function apply(ctx: Context, live: LiveConfig): void {
       stt: sttSettings(),
       video: videoSettings(),
       silenceToken: get('silenceToken') ?? '[不发]',
+      nudgeOnEmpty: get('nudgeOnEmpty') ?? true,
       pace: {
         typingPrivate: get('typingPrivate'), typingGroup: get('typingGroup'), charsPerMinute: get('typingCharsPerMinute'),
         typingMinSeconds: get('typingMinSeconds'), typingMaxSeconds: get('typingMaxSeconds'),

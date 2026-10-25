@@ -59,9 +59,16 @@ const llm = createServer((req, res) => {
     res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' })
     const ev = (type, data) => res.write('event: ' + type + '\ndata: ' + JSON.stringify({ type, ...data }) + '\n\n')
     ev('message_start', { message: { id: 'msg_e2e', type: 'message', role: 'assistant', model: json.model ?? 'e2e', content: [], usage: { input_tokens: 10, output_tokens: 0 } } })
-    ev('content_block_start', { index: 0, content_block: { type: 'text', text: '' } })
-    ev('content_block_delta', { index: 0, delta: { type: 'text_delta', text: reply } })
-    ev('content_block_stop', { index: 0 })
+    if (text.includes('THINK-ONLY')) {
+      // 模拟 DeepSeek 偶尔只在思考里打草稿、正文是空的
+      ev('content_block_start', { index: 0, content_block: { type: 'thinking', thinking: '' } })
+      ev('content_block_delta', { index: 0, delta: { type: 'thinking_delta', thinking: '草稿：我想回一句话' } })
+      ev('content_block_stop', { index: 0 })
+    } else {
+      ev('content_block_start', { index: 0, content_block: { type: 'text', text: '' } })
+      ev('content_block_delta', { index: 0, delta: { type: 'text_delta', text: reply } })
+      ev('content_block_stop', { index: 0 })
+    }
     ev('message_delta', { delta: { stop_reason: 'end_turn' }, usage: { output_tokens: 5 } })
     ev('message_stop', {})
     res.end()
@@ -338,6 +345,16 @@ if (alertTest.ok !== false || !String(alertTest.results).includes('还没填')) 
 const pushForm = await (await fetch(webBase + 'api/napcat-bridge/alert/test', { method: 'POST', headers: { cookie, 'content-type': 'application/json' }, body: JSON.stringify({ channel: 'push', form: { pushService: 'serverchan', pushKey: '' } }) })).json()
 if (pushForm.ok !== false || !String(pushForm.results).includes('还没填 Key')) await fail('提醒测试没用页面上的值：' + JSON.stringify(pushForm))
 log('掉线检测、提醒测试接口 OK')
+
+// 16. 她一轮什么都没说出来（话只写在思考里）：自动提醒她一次，她再说一遍就发出去；同一条消息只提醒一次
+const privBefore16 = sent.filter(s => s.action === 'send_private_msg').length
+const reqBefore16 = modelRequests.length
+privateMsg([text('THINK-ONLY 你在吗')])
+await waitFor(() => sent.filter(s => s.action === 'send_private_msg').slice(privBefore16).find(s => sentText(s).includes('你刚才这一轮只在心里想了')), '只想没说之后的补说')
+await new Promise(r => setTimeout(r, 1500))
+if (sent.filter(s => s.action === 'send_private_msg').slice(privBefore16).some(s => sentText(s).includes('THINK-ONLY'))) await fail('不该把思考里的东西发出去')
+if (modelRequests.length - reqBefore16 !== 2) await fail('应该正好多调一次模型（原来一次 + 提醒一次），实际 ' + (modelRequests.length - reqBefore16))
+log('只想没说时提醒一次 OK')
 
 log('全部通过')
 if (process.env.E2E_HOLD) {
