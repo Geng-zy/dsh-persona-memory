@@ -26,6 +26,8 @@ export declare function extractQuoted(message: Component[], callAction: CallActi
 /**
  * 本插件新增（AstrBot 不展开直接发来的聊天记录）：
  * 消息本身带的聊天记录（forward 段）同样展开，写成 <Forward Message>…</Forward Message>。
+ * 先用 get_msg 取这条消息本身（NapCat 在 get_msg 里会把聊天记录的内容一起带上），
+ * 没带内容再用 get_forward_msg 按 id 取。都取不到时把 NapCat 的原始返回写进 errors，方便查。
  */
-export declare function extractForwards(message: Component[], callAction: CallAction, s?: QuotedSettings): Promise<QuotedContent | null>;
+export declare function extractForwards(message: Component[], callAction: CallAction, s?: QuotedSettings, messageId?: string | number): Promise<QuotedContent | null>;
 export {};

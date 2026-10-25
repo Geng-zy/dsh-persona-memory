@@ -637,7 +637,7 @@ export class Bridge {
       }
     }
     const quoted = await safe('整理引用内容', () => extractQuoted(abm.message, callAction))
-    const forwarded = await safe('展开聊天记录', () => extractForwards(abm.message, callAction))
+    const forwarded = await safe('展开聊天记录', () => extractForwards(abm.message, callAction, undefined, abm.message_id))
     // 本插件新增：取聊天记录出错时记下来（以前悄悄失败，她只看到 [Forward Message]）
     for (const e of [...(quoted?.errors ?? []), ...(forwarded?.errors ?? [])]) this.deps.log('warn', '展开聊天记录没取到：' + e)
 

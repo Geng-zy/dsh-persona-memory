@@ -307,6 +307,20 @@ test('聊天记录段自带内容（forward.data.content）时直接展开；取
   assert.match(bad.errors[0], /get_forward_msg\(F2\)：消息已过期/)
 })
 
+test('直接发来的聊天记录：先用 get_msg 取这条消息（内容已带上）就不再 get_forward_msg；都取不到时把原始返回交给日志', async () => {
+  const { extractForwards } = await import('../lib/quoted.js')
+  const calls = []
+  const inline = { message_id: 77, message: [{ type: 'forward', data: { id: '77', content: [{ sender: { nickname: '甲' }, message: [{ type: 'text', data: { text: '带上了' } }] }] } }] }
+  const ok = await extractForwards([{ type: 'Forward', id: '77' }], async (action, p) => { calls.push(action); return action === 'get_msg' ? inline : { messages: [] } }, undefined, '77')
+  assert.equal(ok.text, '<Forward Message>\n[聊天记录]\n  甲: 带上了\n</Forward Message>')
+  assert.deepEqual(calls, ['get_msg'])
+  const empty = { message_id: 78, message: [{ type: 'forward', data: { id: '78' } }] }
+  const bad = await extractForwards([{ type: 'Forward', id: '78' }], async action => action === 'get_msg' ? empty : { messages: [] }, undefined, '78')
+  assert.equal(bad.text, '<Forward Message>\n[Forward Message]\n</Forward Message>')
+  assert.match(bad.errors.join('\n'), /get_forward_msg\(78\)：返回里没认出消息（\{"messages":\[\]\}）/)
+  assert.match(bad.errors.join('\n'), /get_msg\(78\) 里的聊天记录段：\[\{"type":"forward","data":\{"id":"78"\}\}\]/)
+})
+
 test('小黄脸名字表：新表情和旧表情都能认出来', async () => {
   const a = adapterWith({})
   const abm = await a.convertMessage(groupEvent([

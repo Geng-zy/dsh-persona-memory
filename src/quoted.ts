@@ -300,6 +300,13 @@ async function callCompat(callAction: CallAction, action: string, id: string | n
   return null
 }
 
+/** 出错时给日志看的原始数据：get_msg 返回里的聊天记录段（截短） */
+function forwardSegmentsRaw(payload: unknown): string {
+  const segs = unwrap(payload).message
+  const fw = Array.isArray(segs) ? segs.filter((x: any) => x?.type === 'forward' || x?.type === 'node' || x?.type === 'json') : segs
+  return JSON.stringify(fw ?? null).slice(0, 800)
+}
+
 /** _collect_text_and_images_from_forward_ids：逐个展开聊天记录，里面只给了 id 的记录也继续取。 */
 async function collectForwards(callAction: CallAction, ids: string[], s: QuotedSettings, errors: string[] = []): Promise<{ texts: string[]; imageRefs: string[] }> {
   const texts: string[] = []
@@ -353,6 +360,7 @@ export async function extractQuoted(message: Component[], callAction: CallAction
     if (payload) {
       direct = parseGetMsg(payload, s)
       forwards = await collectForwards(callAction, direct.forwardIds, s, errors)
+      if (direct.forwardIds.length > 0 && forwards.texts.length === 0) errors.push('get_msg(' + replyId + ') 里的聊天记录段：' + forwardSegmentsRaw(payload))
     }
     if (!(embeddedText && !isForwardPlaceholderOnly(embeddedText))) {
       const parts: string[] = []
@@ -373,12 +381,27 @@ export async function extractQuoted(message: Component[], callAction: CallAction
 /**
  * 本插件新增（AstrBot 不展开直接发来的聊天记录）：
  * 消息本身带的聊天记录（forward 段）同样展开，写成 <Forward Message>…</Forward Message>。
+ * 先用 get_msg 取这条消息本身（NapCat 在 get_msg 里会把聊天记录的内容一起带上），
+ * 没带内容再用 get_forward_msg 按 id 取。都取不到时把 NapCat 的原始返回写进 errors，方便查。
  */
-export async function extractForwards(message: Component[], callAction: CallAction, s: QuotedSettings = QUOTED_DEFAULTS): Promise<QuotedContent | null> {
+export async function extractForwards(message: Component[], callAction: CallAction, s: QuotedSettings = QUOTED_DEFAULTS, messageId?: string | number): Promise<QuotedContent | null> {
   const ids = message.filter(c => c.type === 'Forward' && c.id !== undefined && c.id !== null).map(c => String(c.id))
   if (ids.length === 0) return null
   const errors: string[] = []
+  let rawGetMsg = ''
+  if (messageId !== undefined && String(messageId).trim() !== '') {
+    const payload = await callCompat(callAction, 'get_msg', messageId, errors)
+    if (payload) {
+      const p = parseGetMsg(payload, s)
+      // 只有聊天记录都带了内容（没有剩下要按 id 取的）才算拿到了
+      if (p.forwardIds.length === 0 && p.text && !/^\s*\[聊天记录\]\s*$/.test(p.text)) {
+        return { text: '<Forward Message>\n' + p.text + '\n</Forward Message>', imageRefs: p.imageRefs }
+      }
+      rawGetMsg = forwardSegmentsRaw(payload)
+    }
+  }
   const { texts, imageRefs } = await collectForwards(callAction, ids, s, errors)
+  if (texts.length === 0 && rawGetMsg !== '') errors.push('get_msg(' + messageId + ') 里的聊天记录段：' + rawGetMsg)
   const body = texts.join('\n').trim() || '[Forward Message]'
   return { text: '<Forward Message>\n' + body + '\n</Forward Message>', imageRefs, ...(errors.length > 0 ? { errors } : {}) }
 }

@@ -1,5 +1,10 @@
 # 更新记录
 
+## 0.16.2
+
+- 聊天记录：0.16.1 部署后实测还是看不到——服务器上的 NapCat（v4.18.41）对 `get_forward_msg` 返回 `{"messages":[]}`（找到了这条消息，但里面一条都没取出来）。现在直接发来的聊天记录先用 `get_msg` 取这条消息本身（有的 NapCat 会把记录内容一起带上），不行再 `get_forward_msg`。
+- 都取不到时，日志里把 NapCat 的原始返回也写出来（`get_msg(…) 里的聊天记录段：…`），下一步按它判断是 NapCat 那边取不到还是格式没认出来。
+
 ## 0.16.1
 
 - 修：发给她的聊天记录（合并转发）她看不到，只收到 `[Forward Message]`。NapCat 的 `get_forward_msg` 把每条消息写成 `{ type: 'node', data: { nickname, message } }`，旧代码只认 `{ sender, message }`，一条都没读出来。现在两种写法都认。
