@@ -21,6 +21,53 @@ window.__ModuleLoader__.load({
 		var SECTION = "napcat-bridge";
 
 		var zh = {
+			watchSec: "掉线提醒",
+			watchSecHint: "小号被踢下线、登录失效，或者 NapCat 没连上时，用邮件或微信推送告诉你（小号掉线了没法用 QQ 提醒你）。NapCat 明确报下线时马上提醒；其他情况持续超过下面的分钟数才提醒。",
+			watchLoading: "正在读取…",
+			watchBot: "QQ 小号",
+			watchState_ok: "{who} 在线",
+			watchState_offline: "{who} 掉线了（{since} 起）",
+			watchState_disconnected: "NapCat 没连上本插件（{since} 起）",
+			watchState_unknown: "还不知道 {who} 在不在线（{since} 起）",
+			watchReason: "。原因：{reason}",
+			watchLastAlert: "上次提醒：{time} · {kind} · {results}",
+			watchKindProblem: "掉线提醒",
+			watchKindRecovered: "恢复提醒",
+			watchNoChannel: "没有设置提醒渠道",
+			watchCheckNow: "现在检查一次",
+			watchBannerHint: "多半要重新登录：打开 NapCat 网页扫码。详情在「连接和权限」标签的「掉线提醒」里。",
+			watchEnabled: "检测掉线",
+			watchEnabledHint: "看 NapCat 的下线通知和心跳，并定时主动问一次。",
+			watchInterval: "每几分钟问一次",
+			watchGrace: "持续几分钟才提醒",
+			watchGraceHint: "重启、网络抖一下不吵你。NapCat 明确报「下线」时不等。",
+			alertRepeat: "没恢复时每几小时再提醒",
+			alertRepeatHint: "0 = 只提醒一次。",
+			alertOnRecover: "恢复后再发一条「恢复了」",
+			mailSub: "邮件",
+			mailEnabled: "用邮件提醒",
+			mailPreset: "邮箱",
+			mailPresetHint: "选了自动填好发信服务器和端口。密码要填邮箱的「授权码」，不是登录密码：QQ 邮箱在「设置 → 账号 → POP3/SMTP 服务」里开启后生成。",
+			mailPresetCustom: "自定义",
+			mailGetCode: "去拿授权码 ↗",
+			smtpHost: "发信服务器（SMTP）",
+			smtpPort: "端口",
+			smtpPortHint: "465 一连上就加密；587 先连上再加密（STARTTLS）。",
+			smtpUser: "发信邮箱",
+			mailTo: "收件人",
+			mailToHint: "空着就发给自己。可以填别的邮箱。",
+			smtpPass: "授权码",
+			smtpPassHint: "不会显示出来；留空表示保持现在的。",
+			secretSet: "已设置。",
+			secretUnset: "还没设置。",
+			mailTest: "发一封测试邮件",
+			pushSub: "微信推送",
+			pushService: "推送服务",
+			pushServiceHint: "Server酱：用微信扫码登录 sct.ftqq.com 拿 SendKey，免费版每天 5 条；PushPlus：微信扫码登录 pushplus.plus 拿 token。消息会经过它们的服务器。",
+			pushOff: "不用",
+			pushGetKey: "去拿 Key ↗",
+			pushKeyHint: "不会显示出来；留空表示保持现在的。",
+			pushTest: "发一条测试推送",
 			reasoningMinimal: "最少（minimal）",
 			reasoningMedium: "中（medium）",
 			reasoningUnsupported: "（这个模型不支持）",
@@ -262,6 +309,53 @@ window.__ModuleLoader__.load({
 			saveFailed: "没有保存成功，修改已保留，请检查后重试。"
 		};
 		var en = {
+			watchSec: "Offline alerts",
+			watchSecHint: "Email or WeChat push when the QQ account goes offline or NapCat disconnects (QQ itself cannot reach you then). An explicit offline notice alerts at once; other problems after the grace minutes below.",
+			watchLoading: "Loading…",
+			watchBot: "QQ account",
+			watchState_ok: "{who} is online",
+			watchState_offline: "{who} is offline (since {since})",
+			watchState_disconnected: "NapCat is not connected (since {since})",
+			watchState_unknown: "Unknown whether {who} is online (since {since})",
+			watchReason: ". Reason: {reason}",
+			watchLastAlert: "Last alert: {time} · {kind} · {results}",
+			watchKindProblem: "offline",
+			watchKindRecovered: "recovered",
+			watchNoChannel: "no alert channel set",
+			watchCheckNow: "Check now",
+			watchBannerHint: "Usually needs a new login: scan the QR code in the NapCat web UI. Details under Connection → Offline alerts.",
+			watchEnabled: "Detect offline",
+			watchEnabledHint: "Watches NapCat's offline notices and heartbeats, and asks periodically.",
+			watchInterval: "Check every (minutes)",
+			watchGrace: "Alert after (minutes)",
+			watchGraceHint: "Ignores restarts and short blips. Explicit offline notices alert at once.",
+			alertRepeat: "Repeat every (hours)",
+			alertRepeatHint: "0 = alert once.",
+			alertOnRecover: "Send a \"recovered\" message",
+			mailSub: "Email",
+			mailEnabled: "Email alerts",
+			mailPreset: "Mailbox",
+			mailPresetHint: "Fills in the SMTP server and port. Use the mailbox's app password / authorization code, not your login password.",
+			mailPresetCustom: "Custom",
+			mailGetCode: "Get a code ↗",
+			smtpHost: "SMTP server",
+			smtpPort: "Port",
+			smtpPortHint: "465 is TLS from the start; 587 upgrades (STARTTLS).",
+			smtpUser: "Sender address",
+			mailTo: "Recipient",
+			mailToHint: "Blank sends to yourself.",
+			smtpPass: "Authorization code",
+			smtpPassHint: "Never shown; leave blank to keep the current one.",
+			secretSet: "Set.",
+			secretUnset: "Not set.",
+			mailTest: "Send a test email",
+			pushSub: "WeChat push",
+			pushService: "Push service",
+			pushServiceHint: "Server酱 (sct.ftqq.com, SendKey; free tier 5/day) or PushPlus (pushplus.plus, token). Messages pass through their servers.",
+			pushOff: "Off",
+			pushGetKey: "Get a key ↗",
+			pushKeyHint: "Never shown; leave blank to keep the current one.",
+			pushTest: "Send a test push",
 			reasoningMinimal: "Minimal",
 			reasoningMedium: "Medium",
 			reasoningUnsupported: " (not supported)",
@@ -516,6 +610,8 @@ window.__ModuleLoader__.load({
 			".napcatb-tab:focus-visible{outline:2px solid var(--dsw-alias-border-focus,var(--dsw-alias-label-tertiary));outline-offset:-2px}",
 			".napcatb-tabs + .napcatb-section,.napcatb-tabs + .napcatb-details{border-top:none;margin-top:8px}",
 			".napcatb-subtitle{color:var(--dsw-alias-label-secondary,var(--dsw-alias-label-primary));font-size:12px;font-weight:600;margin:6px 0 0}",
+			".napcatb-banner{display:grid;gap:4px;margin:0 0 12px;padding:10px 12px;border-radius:12px;border:.5px solid var(--dsw-alias-state-error-primary,#e03131);background:color-mix(in srgb,var(--dsw-alias-state-error-primary,#e03131) 12%,transparent);color:var(--dsw-alias-label-primary);font-size:13px;font-weight:600;line-height:1.5}",
+			".napcatb-banner .napcatb-hint{font-weight:400}",
 			".napcatb-modelRow{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:12px 16px;align-items:end}",
 			"@media (max-width:520px){.napcatb-modelRow{grid-template-columns:1fr}}",
 			".napcatb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px 16px;align-items:end}",
@@ -627,7 +723,9 @@ window.__ModuleLoader__.load({
 		var LOG_LEVELS = ["debug", "info", "warn", "error"];
 		var RATE_STRATEGIES = ["stall", "discard"];
 		var STT_MODES = ["off", "command", "openai"];
+		var PUSH_SERVICES = ["off", "serverchan", "pushplus"];
 		var BOOLS = [
+			"watchEnabled", "alertOnRecover", "mailEnabled",
 			"friend_message_needs_wake_prefix", "ignore_bot_self_message", "identifier", "imageToModel",
 			"whitelistEnabled", "whitelistIgnoreAdminOnGroup", "whitelistIgnoreAdminOnFriend", "whitelistLog",
 			"emptyMentionWaiting", "emptyMentionNeedReply", "uniqueSession",
@@ -638,17 +736,18 @@ window.__ModuleLoader__.load({
 			"ws_reverse_host", "id", "workspacePath", "agentPreset", "timezone",
 			"privateAgentPreset", "groupAgentPreset", "adminPrivateAgentPreset",
 			"privateModel", "groupModel", "adminPrivateModel", "adminPrivateReasoning", "privateReasoning", "groupReasoning",
-			"sttCommand", "sttApiUrl", "sttModel", "ffmpegPath", "silenceToken"
+			"sttCommand", "sttApiUrl", "sttModel", "ffmpegPath", "silenceToken", "smtpHost", "smtpUser", "mailTo"
 		];
 		/** 整数字段：[字段, 最小值] */
 		var INTS = [
 			["ws_reverse_port", 1, 65535], ["maxImages", 0], ["rateLimitCount", 0], ["rateLimitSeconds", 1],
 			["videoMaxFrames", 1], ["videoSecondsPerFrame", 1], ["videoMaxEdge", 64], ["videoMaxMB", 1],
 			["videoMaxMinutes", 1], ["videoTimeoutSeconds", 5],
-			["typingCharsPerMinute", 0], ["typingMinSeconds", 0], ["typingMaxSeconds", 0], ["groupMinGapSeconds", 0], ["groupMaxPerWindow", 0], ["groupWindowSeconds", 1], ["sendMaxWaitSeconds", 0], ["segmentMax", 1], ["segmentMaxSeconds", 1]
+			["typingCharsPerMinute", 0], ["typingMinSeconds", 0], ["typingMaxSeconds", 0], ["groupMinGapSeconds", 0], ["groupMaxPerWindow", 0], ["groupWindowSeconds", 1], ["sendMaxWaitSeconds", 0], ["segmentMax", 1], ["segmentMaxSeconds", 1],
+			["watchIntervalMinutes", 1], ["watchGraceMinutes", 0], ["alertRepeatHours", 0], ["smtpPort", 1, 65535]
 		];
 		var LISTS = ["wake_prefix", "wakeKeywords", "admins", "whitelist"];
-		var SECRETS = ["ws_reverse_token", "sttApiKey"];
+		var SECRETS = ["ws_reverse_token", "sttApiKey", "smtpPass", "pushKey"];
 		//#endregion
 
 		//#region 表单模型
@@ -656,13 +755,14 @@ window.__ModuleLoader__.load({
 			var specs = INTS.map(function (x) { return intField(x[0], x[1], x[2] === undefined ? Number.MAX_SAFE_INTEGER : x[2]); }).concat([
 				enumField("logLevel", LOG_LEVELS),
 				enumField("rateLimitStrategy", RATE_STRATEGIES),
-				enumField("sttMode", STT_MODES)
+				enumField("sttMode", STT_MODES),
+				enumField("pushService", PUSH_SERVICES)
 			], LISTS.map(listField), BOOLS.map(boolField), TEXTS.map(function (f) { return P.settingsTextField(f); }));
 			var secrets = SECRETS.map(function (field) {
 				return { field: field, write: function (text) { return scope.mutate([{ op: "set", path: [field], value: text }]); } };
 			});
 			var form = new P.SettingsFormModel(scope, specs, secrets);
-			var all = INTS.map(function (x) { return x[0]; }).concat(["logLevel", "rateLimitStrategy", "sttMode"], LISTS, BOOLS, TEXTS, SECRETS);
+			var all = INTS.map(function (x) { return x[0]; }).concat(["logLevel", "rateLimitStrategy", "sttMode", "pushService"], LISTS, BOOLS, TEXTS, SECRETS);
 			// 设置服务不把密钥发给浏览器，只告诉它有没有设置；由 refreshSecrets 向服务查询
 			var secretSet = {};
 			function compute() {
@@ -1108,6 +1208,98 @@ window.__ModuleLoader__.load({
 						opts.map(function (o) { return h("option", { key: o.id, value: o.id }, effortName(t, o.id, o.name) + (o.missing ? t("reasoningUnsupported") : "")); }))));
 		}
 		//#endregion
+
+		//#region 掉线检测和提醒
+		/** 常见邮箱的发信服务器（选了就填好服务器和端口） */
+		var MAIL_PRESETS = [
+			{ id: "qq", name: "QQ 邮箱", host: "smtp.qq.com", port: 465, keyUrl: "https://wx.mail.qq.com/" },
+			{ id: "163", name: "网易 163 邮箱", host: "smtp.163.com", port: 465, keyUrl: "https://mail.163.com/" },
+			{ id: "126", name: "网易 126 邮箱", host: "smtp.126.com", port: 465, keyUrl: "https://mail.126.com/" },
+			{ id: "outlook", name: "Outlook / Hotmail", host: "smtp-mail.outlook.com", port: 587, keyUrl: "https://account.live.com/proofs/AppPassword" },
+			{ id: "gmail", name: "Gmail", host: "smtp.gmail.com", port: 465, keyUrl: "https://myaccount.google.com/apppasswords" }
+		];
+		var PUSH_KEY_URLS = { serverchan: "https://sct.ftqq.com/sendkey", pushplus: "https://www.pushplus.plus/uc.html" };
+		function watchStateText(t, st) {
+			if (!st) return t("watchLoading");
+			var who = st.account ? (st.account.nickname ? st.account.nickname + "（" + st.account.userId + "）" : st.account.userId) : t("watchBot");
+			return t("watchState_" + st.state, { who: who, since: new Date(st.since).toLocaleString() }) + (st.reason && st.state !== "ok" ? t("watchReason", { reason: st.reason }) : "");
+		}
+		/** 设置页最上面：小号有问题时醒目地提示 */
+		function WatchBanner(props) {
+			var t = props.t;
+			var stHook = React.useState(null), st = stHook[0], setSt = stHook[1];
+			React.useEffect(function () {
+				var alive = true;
+				function load() { napcatApi("GET", "watch").then(function (r) { if (alive) setSt(r); }, function () {}); }
+				load();
+				var timer = setInterval(load, 30000);
+				return function () { alive = false; clearInterval(timer); };
+			}, []);
+			if (!st || !st.enabled || st.state === "ok" || (st.state === "unknown" && !st.lastCheck)) return null;
+			return h("div", { className: "napcatb-banner", role: "alert" }, "⚠ " + watchStateText(t, st), h("span", { className: "napcatb-hint" }, t("watchBannerHint")));
+		}
+		function AlertTest(props) {
+			var t = props.t;
+			var rHook = React.useState(null), r = rHook[0], setR = rHook[1];
+			var busyHook = React.useState(false), busy = busyHook[0], setBusy = busyHook[1];
+			function run() {
+				setBusy(true); setR(null);
+				napcatApi("POST", "alert/test", { channel: props.channel })
+					.then(function (x) { setR({ tone: x.ok ? "ok" : "error", text: (x.results || []).join("；") }); }, function (e) { setR({ tone: "error", text: t("testFailed", { error: e && e.message || String(e) }) }); })
+					.finally(function () { setBusy(false); });
+			}
+			return h("div", { className: "napcatb-test" },
+				h("div", { className: "napcatb-testRow" },
+					h(TestButton, { busy: busy, onClick: run, label: busy ? t("testing") : props.label }),
+					props.dirty ? h("span", { className: "napcatb-hint" }, t("testUsesSaved")) : null),
+				r ? h("div", null, h("p", { className: "napcatb-pill napcatb-result napcatb-" + r.tone, role: "status" }, r.text)) : null);
+		}
+		/** 掉线提醒这一块 */
+		function WatchSection(props) {
+			var t = props.t, common = props.common, state = props.state;
+			var stHook = React.useState(null), st = stHook[0], setSt = stHook[1];
+			var busyHook = React.useState(false), busy = busyHook[0], setBusy = busyHook[1];
+			function load(fresh) { setBusy(true); return napcatApi("GET", "watch" + (fresh ? "?fresh=1" : "")).then(setSt, function () {}).finally(function () { setBusy(false); }); }
+			React.useEffect(function () { load(false); }, []);
+			var host = state.smtpHost.text, preset = MAIL_PRESETS.filter(function (m) { return m.host === host; })[0];
+			var push = state.pushService.text || "off";
+			var tone = !st ? "hint" : st.state === "ok" ? "ok" : st.state === "unknown" ? "warn" : "error";
+			return h(Section, { title: t("watchSec"), hint: t("watchSecHint") },
+				h("div", { className: "napcatb-test" },
+					h("p", { className: "napcatb-pill napcatb-result napcatb-" + tone, role: "status" }, watchStateText(t, st)),
+					st && st.lastAlert ? h("p", { className: "napcatb-hint" }, t("watchLastAlert", { time: new Date(st.lastAlert.at).toLocaleString(), kind: t(st.lastAlert.kind === "problem" ? "watchKindProblem" : "watchKindRecovered"), results: (st.lastAlert.results || []).join("；") || t("watchNoChannel") })) : null,
+					h("div", { className: "napcatb-testRow" }, h(P.Button, { size: "sm", disabled: busy, onClick: function () { load(true); } }, busy ? t("testing") : t("watchCheckNow")))),
+				h(Toggle, Object.assign({ field: "watchEnabled", label: t("watchEnabled"), hint: t("watchEnabledHint") }, common)),
+				G(h(Value, Object.assign({ field: "watchIntervalMinutes", label: t("watchInterval"), numeric: true, invalidLabel: t("invalidPositive") }, common)),
+					h(Value, Object.assign({ field: "watchGraceMinutes", label: t("watchGrace"), hint: t("watchGraceHint"), numeric: true, invalidLabel: t("invalidCount") }, common)),
+					h(Value, Object.assign({ field: "alertRepeatHours", label: t("alertRepeat"), hint: t("alertRepeatHint"), numeric: true, invalidLabel: t("invalidCount") }, common))),
+				h(Toggle, Object.assign({ field: "alertOnRecover", label: t("alertOnRecover") }, common)),
+				Sub(t("mailSub")),
+				h(Toggle, Object.assign({ field: "mailEnabled", label: t("mailEnabled") }, common)),
+				h("div", { className: "napcatb-field" },
+					h("label", { className: "napcatb-label", htmlFor: "napcat-bridge-mailPreset" }, h(Label, { text: t("mailPreset"), hint: t("mailPresetHint") })),
+					h("div", { className: "napcatb-row" },
+						h("select", { id: "napcat-bridge-mailPreset", className: "napcatb-select", disabled: props.disabled, value: preset ? preset.id : "", onChange: function (e) {
+							var m = MAIL_PRESETS.filter(function (x) { return x.id === e.target.value; })[0];
+							if (m) { props.edit("smtpHost", m.host); props.edit("smtpPort", String(m.port)); }
+						} },
+							h("option", { value: "" }, t("mailPresetCustom")),
+							MAIL_PRESETS.map(function (m) { return h("option", { key: m.id, value: m.id }, m.name + "（" + m.host + "）"); })),
+						preset ? h("a", { className: "napcatb-hint napcatb-link", href: preset.keyUrl, target: "_blank", rel: "noreferrer noopener" }, t("mailGetCode")) : null)),
+				G(h(Value, Object.assign({ field: "smtpHost", label: t("smtpHost") }, common)),
+					h(Value, Object.assign({ field: "smtpPort", label: t("smtpPort"), hint: t("smtpPortHint"), numeric: true, invalidLabel: t("invalidPort") }, common)),
+					h(Value, Object.assign({ field: "smtpUser", label: t("smtpUser") }, common)),
+					h(Value, Object.assign({ field: "mailTo", label: t("mailTo"), hint: t("mailToHint") }, common))),
+				h(Secret, Object.assign({ field: "smtpPass", label: t("smtpPass"), hint: t("smtpPassHint"), setLabel: t("secretSet"), unsetLabel: t("secretUnset") }, common)),
+				h(AlertTest, { t: t, channel: "mail", label: t("mailTest"), dirty: state.dirty }),
+				Sub(t("pushSub")),
+				h("div", { className: "napcatb-row" },
+					h(Select, Object.assign({ field: "pushService", label: t("pushService"), hint: t("pushServiceHint"), fallback: "off", options: [{ value: "off", label: t("pushOff") }, { value: "serverchan", label: "Server酱" }, { value: "pushplus", label: "PushPlus" }] }, common)),
+					PUSH_KEY_URLS[push] ? h("a", { className: "napcatb-hint napcatb-link", href: PUSH_KEY_URLS[push], target: "_blank", rel: "noreferrer noopener" }, t("pushGetKey")) : null),
+				push !== "off" ? h(Secret, Object.assign({ field: "pushKey", label: push === "serverchan" ? "SendKey" : "Token", hint: t("pushKeyHint"), setLabel: t("secretSet"), unsetLabel: t("secretUnset") }, common)) : null,
+				push !== "off" ? h(AlertTest, { t: t, channel: "push", label: t("pushTest"), dirty: state.dirty }) : null);
+		}
+		//#endregion
 		function SettingsPage(props) {
 			var t = props.t;
 			if (props.view === "summary") return t("summary");
@@ -1124,6 +1316,7 @@ window.__ModuleLoader__.load({
 				onSave: props.save,
 				onDiscard: props.discard
 			},
+				h(WatchBanner, { t: t }),
 				h(Tabs, { t: t, cur: tab, onChange: setTab }),
 				tab === "conn" ? [
 					h("details", { key: "c", className: "napcatb-details" },
@@ -1148,6 +1341,7 @@ window.__ModuleLoader__.load({
 						G(h(Value, Object.assign({ field: "rateLimitCount", label: t("rateCount"), hint: t("rateCountHint"), numeric: true, invalidLabel: t("invalidCount") }, common)),
 							h(Value, Object.assign({ field: "rateLimitSeconds", label: t("rateSeconds"), hint: t("rateSecondsHint"), numeric: true, invalidLabel: t("invalidPositive") }, common)),
 							h(Select, Object.assign({ field: "rateLimitStrategy", label: t("rateStrategy"), hint: t("rateStrategyHint"), fallback: "stall", options: [{ value: "stall", label: t("rateStall") }, { value: "discard", label: t("rateDiscard") }] }, common)))),
+					h(WatchSection, { key: "w", t: t, common: common, state: state, edit: props.edit, disabled: disabled }),
 					h(Section, { key: "w", title: t("wake"), hint: t("wakeHint") },
 						G(h(Value, Object.assign({ field: "wakeKeywords", label: t("wakeKeywords"), hint: t("wakeKeywordsHint") }, common)),
 							h(Value, Object.assign({ field: "wake_prefix", label: t("wakePrefix"), hint: t("wakePrefixHint") }, common))),

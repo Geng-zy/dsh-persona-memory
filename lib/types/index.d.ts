@@ -5,6 +5,7 @@ import { AiocqhttpAdapter, AiocqhttpMessageEvent, MessageType, type AstrBotMessa
 import { type PromptPayload, type SentPayload, type SessionChange, type SessionInfo } from './bridge.js';
 import type { MessageChain } from './components.js';
 import { Media, type ModelPart } from './media.js';
+import { type PushService } from './alert.js';
 export * from './adapter.js';
 export * from './components.js';
 export type { PromptPayload, SentPayload, SessionChange, SessionInfo } from './bridge.js';
@@ -79,6 +80,19 @@ export interface Config {
     segmentGroup: boolean;
     segmentMax: number;
     segmentMaxSeconds: number;
+    watchEnabled: boolean;
+    watchIntervalMinutes: number;
+    watchGraceMinutes: number;
+    alertRepeatHours: number;
+    alertOnRecover: boolean;
+    mailEnabled: boolean;
+    smtpHost: string;
+    smtpPort: number;
+    smtpUser: string;
+    smtpPass: string;
+    mailTo: string;
+    pushService: PushService;
+    pushKey: string;
     logLevel: 'debug' | 'info' | 'warn' | 'error';
 }
 /** 插件收到的配置：每项都是可实时读取的引用（.get()），设置页保存后立即更新。 */

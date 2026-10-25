@@ -327,6 +327,15 @@ const ff = ffRes.ok ? await ffRes.json() : null
 if (!ff || !('found' in ff) || typeof ff.installSupported !== 'boolean' || ff.install?.state !== 'idle') await fail('ffmpeg 状态接口返回不对：' + ffRes.status + ' ' + JSON.stringify(ff))
 log('ffmpeg 状态接口 OK（' + (ff.found ? '找到 ' + ff.found.version : '没找到') + '）')
 
+// 15. 掉线检测：要先登录；假 NapCat 连着、小号在线时是 ok；没设置提醒渠道时测试按钮说清楚
+const anonWatch = await fetch(webBase + 'api/napcat-bridge/watch')
+if (anonWatch.status !== 401) await fail('没登录也能访问掉线检测接口：' + anonWatch.status)
+const watch = await (await fetch(webBase + 'api/napcat-bridge/watch?fresh=1', { headers: { cookie } })).json()
+if (watch.state !== 'ok' || watch.account?.userId !== String(BOT)) await fail('掉线检测状态不对：' + JSON.stringify(watch))
+const alertTest = await (await fetch(webBase + 'api/napcat-bridge/alert/test', { method: 'POST', headers: { cookie, 'content-type': 'application/json' }, body: JSON.stringify({ channel: 'mail' }) })).json()
+if (alertTest.ok !== false || !String(alertTest.results).includes('还没填')) await fail('提醒测试接口返回不对：' + JSON.stringify(alertTest))
+log('掉线检测、提醒测试接口 OK')
+
 log('全部通过')
 if (process.env.E2E_HOLD) {
   // 保留 dsh 和假 NapCat，方便在浏览器里看设置页；Ctrl-C 结束

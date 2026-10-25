@@ -1,5 +1,12 @@
 # 更新记录
 
+## 0.14.0
+
+- **QQ 小号掉线检测和提醒**（「连接和权限」标签新的「掉线提醒」一块）。三路一起看：NapCat 的下线通知（`notice.bot_offline`，被踢、登录失效时发，马上算掉线）、心跳里的 `status.online`、定时主动问（`get_status` / `get_login_info`，默认每 2 分钟）；NapCat 没连上也算。问题持续超过宽限（默认 3 分钟；明确的下线通知不等）才提醒，刚启动的头几分钟不提醒；没恢复时每 6 小时再提醒一次（可调，0 = 只一次）；恢复后发一条「恢复了」。
+- 提醒渠道：**邮件**（自己的邮箱发，SMTP，带 QQ 邮箱 / 163 / 126 / Outlook / Gmail 预设，密码填授权码）和**微信推送**（Server酱 SendKey、PushPlus token）。各有测试按钮；授权码和 Key 都标成密钥，不显示、不进日志。
+- 小号有问题时，设置页最上面显示红色提示。
+- 新设置 `watchEnabled`、`watchIntervalMinutes`、`watchGraceMinutes`、`alertRepeatHours`、`alertOnRecover`、`mailEnabled`、`smtpHost`、`smtpPort`、`smtpUser`、`smtpPass`、`mailTo`、`pushService`、`pushKey`；新接口 `GET <dsh>/api/napcat-bridge/watch`、`POST <dsh>/api/napcat-bridge/alert/test`；新依赖 nodemailer（MIT-0）。
+
 ## 0.13.0
 
 - 三类聊天（主人私聊、其他私聊、群聊）的模型改成下拉：从 dsh 里已经配置好的模型里选（按服务商分组），不用再手写 `提供方/模型`。新接口 `GET <dsh>/api/napcat-bridge/llm/dsh-models`。

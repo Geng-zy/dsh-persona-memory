@@ -148,9 +148,9 @@ dsh --version                        # 0.2.1-rc.2
 
 # 6. 两个插件（回到家目录）
 cd ~
-dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.13.0 github:Geng-zy/dsh-companion-core#v0.12.1
+dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.14.0 github:Geng-zy/dsh-companion-core#v0.12.1
 #    连不上 GitHub：到两个仓库的 Releases 下载 .tgz，传到 ~/pkgs/ 后
-#    dsh plugin --profile web add ./pkgs/dsh-napcat-bridge-0.13.0.tgz ./pkgs/dsh-companion-core-0.12.1.tgz
+#    dsh plugin --profile web add ./pkgs/dsh-napcat-bridge-0.14.0.tgz ./pkgs/dsh-companion-core-0.12.1.tgz
 #    （~/pkgs 以后不能删：dsh 的 profile 里记着它）
 
 # 7. 配置
@@ -264,7 +264,7 @@ sudo systemctl daemon-reload && sudo systemctl enable --now napcat
 ## 安装
 
 ```bash
-dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.13.0
+dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.14.0
 ```
 
 然后在 profile 的 `cordis.patch.yml` 里写配置（行 id 固定是 `napcat-bridge`）：
@@ -335,6 +335,9 @@ NapCat 那边在「网络配置」里新建一个 **WebSocket 客户端**：
 | | `uniqueSession` | `false` | 群里每人单独一个会话 |
 | | `agentPreset` | 空 | 默认预设 |
 | | `adminPrivateAgentPreset` / `privateAgentPreset` / `groupAgentPreset` | 空 | 分类型预设 |
+| | `watchEnabled` / `watchIntervalMinutes` / `watchGraceMinutes` / `alertRepeatHours` / `alertOnRecover` | `true` / `2` / `3` / `6` / `true` | 小号掉线检测：NapCat 下线通知、心跳、定时主动问；问题持续几分钟才提醒，没恢复每几小时再提醒，恢复发一条 |
+| | `mailEnabled` / `smtpHost` / `smtpPort` / `smtpUser` / `smtpPass` / `mailTo` | `false` / 空 / `465` / 空 / 空 / 空 | 邮件提醒（`smtpPass` 是邮箱授权码，密钥；`mailTo` 空 = 发给自己） |
+| | `pushService` / `pushKey` | `off` / 空 | 微信推送：`serverchan`（Server酱 SendKey）或 `pushplus`（token），Key 是密钥 |
 | | `adminPrivateModel` / `privateModel` / `groupModel` | `deepseek-official/deepseek-flash` | 分类型模型，`提供方/模型`；设置页里从 dsh 已配置的模型里选 |
 | | `adminPrivateReasoning` / `privateReasoning` / `groupReasoning` | `high` / `low` / `low` | 分类型思考等级，按模型支持的档来（DeepSeek：`off` / `low` / `high` / `max`；设置页下拉里只列这个模型支持的）；改了以后，那个会话下一条消息起生效（正在回复的等说完），聊天记录不变 |
 | | `silenceToken` | `[不发]` | 她的回复以这个开头时不发出去（主动唤醒时她决定不说话） |
