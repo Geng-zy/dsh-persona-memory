@@ -149,9 +149,9 @@ dsh --version                        # 0.2.1-rc.2
 
 # 6. 两个插件（回到家目录）
 cd ~
-dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.16.0 github:Geng-zy/dsh-companion-core#v0.12.2
+dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.16.1 github:Geng-zy/dsh-companion-core#v0.12.2
 #    连不上 GitHub：到两个仓库的 Releases 下载 .tgz，传到 ~/pkgs/ 后
-#    dsh plugin --profile web add ./pkgs/dsh-napcat-bridge-0.16.0.tgz ./pkgs/dsh-companion-core-0.12.2.tgz
+#    dsh plugin --profile web add ./pkgs/dsh-napcat-bridge-0.16.1.tgz ./pkgs/dsh-companion-core-0.12.2.tgz
 #    （~/pkgs 以后不能删：dsh 的 profile 里记着它）
 
 # 7. 配置
@@ -265,7 +265,7 @@ sudo systemctl daemon-reload && sudo systemctl enable --now napcat
 ## 安装
 
 ```bash
-dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.16.0
+dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.16.1
 ```
 
 然后在 profile 的 `cordis.patch.yml` 里写配置（行 id 固定是 `napcat-bridge`）：

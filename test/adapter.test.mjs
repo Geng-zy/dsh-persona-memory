@@ -249,7 +249,7 @@ test('引用聊天记录：get_forward_msg 逐层展开，记录里套着的记�
   const callAction = async (action, params) => api[action](params)
   const message = [{ type: 'Reply', id: '3', chain: [{ type: 'Forward', id: 'F1' }], sender_id: '42', sender_nickname: '小明', time: 0, message_str: '', text: '', qq: 0, seq: 0 }]
   const q = await extractQuoted(message, callAction)
-  assert.equal(q.text, '<Quoted Message>\n(小明): 甲: 第一层\n丙: 第二层[Image]\n</Quoted Message>')
+  assert.equal(q.text, '<Quoted Message>\n(小明): [聊天记录]\n甲: 第一层\n乙: [聊天记录]\n丙: 第二层[Image]\n</Quoted Message>')
   assert.deepEqual(q.imageRefs, ['https://img/f2'])
   assert.equal(calls.length, 2)
 })
@@ -266,6 +266,45 @@ test('直接发来的聊天记录也展开成 <Forward Message>', async () => {
   const callAction = async () => ({ messages: [{ sender: { nickname: '甲' }, message: [{ type: 'text', data: { text: '你好' } }] }] })
   const f = await extractForwards([{ type: 'Forward', id: 'F9' }], callAction)
   assert.equal(f.text, '<Forward Message>\n甲: 你好\n</Forward Message>')
+})
+
+test('NapCat 的聊天记录（node 节点、里面套着的记录写成 node 段）：每一层都展开、按层缩进', async () => {
+  const { extractForwards } = await import('../lib/quoted.js')
+  const node = (nickname, message) => ({ type: 'node', data: { user_id: 1, nickname, message, content: [] } })
+  const t = text => ({ type: 'text', data: { text } })
+  // NapCat 0.x/4.x 的 get_forward_msg：{ messages: [node…] }，套着的记录变成一个 node，它的 message 是一串 node
+  const reply = { messages: [
+    node('甲', [t('第一层')]),
+    node('乙', [node('丙', [t('第二层')]), node('丁', [node('戊', [t('第三层\n还有一行')]), node('己', [{ type: 'image', data: { url: 'https://img/deep' } }])])]),
+    node('庚', [t('回到第一层')]),
+  ] }
+  const calls = []
+  const f = await extractForwards([{ type: 'Forward', id: '7432' }], async (action, p) => { calls.push(p); return reply })
+  assert.equal(f.text, [
+    '<Forward Message>',
+    '甲: 第一层',
+    '乙: [聊天记录]',
+    '  丙: 第二层',
+    '  丁: [聊天记录]',
+    '    戊: 第三层',
+    '      还有一行',
+    '    己: [Image]',
+    '庚: 回到第一层',
+    '</Forward Message>',
+  ].join('\n'))
+  assert.deepEqual(f.imageRefs, ['https://img/deep'])
+  assert.equal(calls.length, 1, '套着的记录已经带了内容，不用再取')
+  assert.equal(f.errors, undefined)
+})
+
+test('聊天记录段自带内容（forward.data.content）时直接展开；取不到时把原因交给日志', async () => {
+  const { extractForwards } = await import('../lib/quoted.js')
+  const reply = { messages: [{ sender: { nickname: '甲', user_id: 1 }, message: [{ type: 'forward', data: { id: 'inner', content: [{ sender: { nickname: '乙' }, message: [{ type: 'text', data: { text: '里面' } }] }] } }] }] }
+  const ok = await extractForwards([{ type: 'Forward', id: 'F1' }], async () => reply)
+  assert.equal(ok.text, '<Forward Message>\n甲: [聊天记录]\n  乙: 里面\n</Forward Message>')
+  const bad = await extractForwards([{ type: 'Forward', id: 'F2' }], async () => { throw new Error('消息已过期或者为内层消息，无法获取转发消息') })
+  assert.equal(bad.text, '<Forward Message>\n[Forward Message]\n</Forward Message>')
+  assert.match(bad.errors[0], /get_forward_msg\(F2\)：消息已过期/)
 })
 
 test('小黄脸名字表：新表情和旧表情都能认出来', async () => {

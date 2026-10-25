@@ -15,6 +15,8 @@ export interface QuotedContent {
     text: string;
     /** 引用里的图片地址（含聊天记录里的） */
     imageRefs: string[];
+    /** 取聊天记录时出的错（给日志看） */
+    errors?: string[];
 }
 /**
  * 整理消息里第一个引用（AstrBot 只处理第一个）：
