@@ -334,6 +334,9 @@ const watch = await (await fetch(webBase + 'api/napcat-bridge/watch?fresh=1', { 
 if (watch.state !== 'ok' || watch.account?.userId !== String(BOT)) await fail('掉线检测状态不对：' + JSON.stringify(watch))
 const alertTest = await (await fetch(webBase + 'api/napcat-bridge/alert/test', { method: 'POST', headers: { cookie, 'content-type': 'application/json' }, body: JSON.stringify({ channel: 'mail' }) })).json()
 if (alertTest.ok !== false || !String(alertTest.results).includes('还没填')) await fail('提醒测试接口返回不对：' + JSON.stringify(alertTest))
+// 测试按钮带上页面上还没保存的值：选了 Server酱 但没填 Key，应该说「还没填 Key」而不是「没有选推送服务」
+const pushForm = await (await fetch(webBase + 'api/napcat-bridge/alert/test', { method: 'POST', headers: { cookie, 'content-type': 'application/json' }, body: JSON.stringify({ channel: 'push', form: { pushService: 'serverchan', pushKey: '' } }) })).json()
+if (pushForm.ok !== false || !String(pushForm.results).includes('还没填 Key')) await fail('提醒测试没用页面上的值：' + JSON.stringify(pushForm))
 log('掉线检测、提醒测试接口 OK')
 
 log('全部通过')

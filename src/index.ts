@@ -445,7 +445,8 @@ export function apply(ctx: Context, live: LiveConfig): void {
         body = JSON.parse(Buffer.concat(chunks).toString('utf8').slice(0, 4096) || '{}')
       } catch { return json(400, { error: 'bad json' }) }
       const channel = body.channel === 'push' ? 'push' : 'mail'
-      const results = await sendAlerts(alertMessage('test', watchdog.status()), channel)
+      const form = (body as { form?: unknown }).form
+      const results = await sendAlerts(alertMessage('test', watchdog.status()), channel, form !== null && typeof form === 'object' ? form as Record<string, unknown> : undefined)
       return json(200, { ok: results.every(r => r.endsWith('已发送')), results })
     }
     if (path.endsWith('/napcat-bridge/ffmpeg') && req.method === 'GET') return json(200, await ffmpegStatus(true))
@@ -539,9 +540,15 @@ export function apply(ctx: Context, live: LiveConfig): void {
       ].filter((x, i, a) => x !== '' || a[i - 1] !== '').join('\n'),
     }
   }
-  const sendAlerts = async (m: AlertMessage, only?: 'mail' | 'push'): Promise<string[]> => {
+  /** form：设置页测试按钮带来的、页面上现在填的值（没保存的也算）；空的用保存过的 */
+  const sendAlerts = async (m: AlertMessage, only?: 'mail' | 'push', form?: Record<string, unknown>): Promise<string[]> => {
     const results: string[] = []
-    const mail = mailSettings(), push = pushSettings()
+    const f = (k: string): string | undefined => (typeof form?.[k] === 'string' && String(form[k]).trim() !== '' ? String(form[k]).trim() : undefined)
+    const saved = mailSettings(), savedPush = pushSettings()
+    const port = Number(f('smtpPort'))
+    const mail = { ...saved, host: f('smtpHost') ?? saved.host, port: Number.isInteger(port) && port > 0 ? port : saved.port, user: f('smtpUser') ?? saved.user, to: form ? (f('mailTo') ?? '') : saved.to, pass: f('smtpPass') ?? saved.pass }
+    const svc = f('pushService')
+    const push = { service: (svc === 'serverchan' || svc === 'pushplus' || svc === 'off' ? svc : savedPush.service) as PushService, key: f('pushKey') ?? savedPush.key }
     if ((only === undefined && mail.enabled) || only === 'mail') {
       try { await sendMail(mail, m); results.push('邮件：已发送') } catch (e) { results.push('邮件：没发出去（' + errText(e) + '）') }
     }
