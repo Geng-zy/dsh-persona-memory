@@ -261,6 +261,9 @@ export declare class Bridge {
     private isAdmin;
     /** 管理员始终豁免；普通群聊/私聊分别只查对应名单。群豁免必须来自真实来信发送者。 */
     canSend(session: MessageSession, senderId?: string): boolean;
+    /** 本插件新增：存档按会话检查；群聊不继承管理员发言豁免，管理员私聊仍允许。 */
+    canArchive(session: MessageSession): boolean;
+    private checkAccess;
     /** 给其他插件代发时也检查，不能绕过群白名单。 */
     sendBySession(session: MessageSession, chain: MessageChain): Promise<void>;
     /** RateLimitStage（固定窗口）。返回 false 表示这条被丢弃。 */

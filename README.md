@@ -45,6 +45,7 @@
 | 指令 | 私聊时不带前缀也能触发 | 必须带唤醒前缀，免得聊天里说到 new 也被当成指令 |
 | 直接发来的聊天记录 | 不展开 | 展开成 `<Forward Message>` |
 | 视频 | 不交给模型 | 文字里写 `[视频]`；有 ffmpeg 时截几张画面当图片交给模型（DeepSeek 模型收不了视频原件），设置页可以一键安装 ffmpeg |
+| 消息存档权限 | 无本插件接口 | 新增 `ctx.napcat.canArchive(session)`，实时共用两份白名单；群无管理员发言豁免，管理员私聊允许；companion-core ≥ 0.13.0 收发存档与图片下载均检查 |
 | 群回复 @ / 引用 | `reply_with_mention` / `reply_with_quote` | 两个独立开关默认关闭；群聊文字和指令回复使用实际来信的发送者 / 消息 ID；分段只在首条文字附加，不装饰主动聊天或私聊 |
 | 发消息节奏 | 没有 | 模拟打字速度；群里限制发言频率（见上面第 7 条） |
 | 发语音 | 文字转语音（TTS）插件，单家服务商 | 每条先用 BreezeBlue，这条出错（含额度用完）就这条换 Inworld，两家都不行发文字；她可以自己决定哪句用语音（见「配置项 · 语音回复」） |
@@ -150,9 +151,9 @@ dsh --version                        # 0.2.1-rc.2
 
 # 6. 两个插件（回到家目录）
 cd ~
-dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.18.0 github:Geng-zy/dsh-companion-core#v0.12.2
+dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.19.0 github:Geng-zy/dsh-companion-core#v0.13.0
 #    连不上 GitHub：到两个仓库的 Releases 下载 .tgz，传到 ~/pkgs/ 后
-#    dsh plugin --profile web add ./pkgs/dsh-napcat-bridge-0.18.0.tgz ./pkgs/dsh-companion-core-0.12.2.tgz
+#    dsh plugin --profile web add ./pkgs/dsh-napcat-bridge-0.19.0.tgz ./pkgs/dsh-companion-core-0.13.0.tgz
 #    （~/pkgs 以后不能删：dsh 的 profile 里记着它）
 
 # 7. 配置
@@ -266,7 +267,7 @@ sudo systemctl daemon-reload && sudo systemctl enable --now napcat
 ## 安装
 
 ```bash
-dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.18.0
+dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.19.0
 ```
 
 然后在 profile 的 `cordis.patch.yml` 里写配置（行 id 固定是 `napcat-bridge`）：
@@ -428,3 +429,8 @@ node scripts/update-qface.mjs      # 从 QFace 重新生成小黄脸名字表
 ## 许可证
 
 AGPL-3.0-or-later。代码移植自 AstrBot（AGPL-3.0-or-later）和 aiocqhttp（MIT），署名见 [NOTICE.md](NOTICE.md)。一键安装的 ffmpeg 是运行时从 BtbN/FFmpeg-Builds 下载的 LGPL 版，不随本插件分发。
+
+
+### 消息存档权限（v0.19.0）
+
+`ctx.napcat.canArchive(session)` 返回当前 QQ 会话是否允许存档。白名单开启时群必须在群名单内（不因管理员发言放行），普通私聊须在私聊名单内，管理员私聊自动允许；白名单关闭时不限制。companion-core ≥ v0.13.0 在收发存档和图片落盘前调用此接口，不能用未唤醒消息存档开关绕过。此接口与管理员群内回复权限分开，历史存档和 dsh 自身会话日志不自动删除。

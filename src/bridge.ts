@@ -363,6 +363,15 @@ export class Bridge {
 
   /** 管理员始终豁免；普通群聊/私聊分别只查对应名单。群豁免必须来自真实来信发送者。 */
   canSend(session: MessageSession, senderId?: string): boolean {
+    return this.checkAccess(session, senderId, true)
+  }
+
+  /** 本插件新增：存档按会话检查；群聊不继承管理员发言豁免，管理员私聊仍允许。 */
+  canArchive(session: MessageSession): boolean {
+    return this.checkAccess(session, undefined, false)
+  }
+
+  private checkAccess(session: MessageSession, senderId: string | undefined, logDenied: boolean): boolean {
     const s = this.deps.settings()
     const id = String(session.session_id).trim()
     const isGroup = session.message_type === MessageType.GROUP_MESSAGE
@@ -372,7 +381,7 @@ export class Bridge {
     if (!wl.enabled) return true
     const ids = (isGroup ? wl.groupIds : wl.privateIds).map(i => String(i).trim()).filter(Boolean)
     if (ids.includes(sessionToString(session)) || ids.includes(id)) return true
-    if (wl.log) this.deps.log('info', '会话 ' + sessionToString(session) + ' 不在' + (isGroup ? '群聊' : '私聊') + '白名单里，不唤醒也不发送消息。')
+    if (logDenied && wl.log) this.deps.log('info', '会话 ' + sessionToString(session) + ' 不在' + (isGroup ? '群聊' : '私聊') + '白名单里，不唤醒也不发送消息。')
     return false
   }
 

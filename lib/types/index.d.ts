@@ -130,6 +130,8 @@ export declare const name = "dsh-napcat-bridge";
 export declare const inject: string[];
 /** 给其他插件（如记忆插件）用的服务：ctx.napcat */
 export interface NapcatService {
+    /** 是否允许消息存档；群必须在群名单内，管理员仅私聊豁免；关闭白名单时都允许。 */
+    canArchive(session: MessageSession): boolean;
     adapter: AiocqhttpAdapter;
     /** 调用任意 OneBot API */
     callAction(action: string, params?: Record<string, unknown>): Promise<any>;
