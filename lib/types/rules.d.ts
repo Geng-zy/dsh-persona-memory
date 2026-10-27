@@ -7,7 +7,15 @@ export interface NapcatSessionInfo {
     groupId?: string;
     adminPrivate: boolean;
 }
+export interface ArchiveSession {
+    platform_name: string;
+    message_type: string;
+    session_id: string;
+}
+/** 本插件新增：缺少新版 bridge 权限接口时停止 QQ 存档，不能回退为默认放行。 */
+export declare function archiveAllowed(napcat: NapcatLike | undefined, session: ArchiveSession | undefined): boolean;
 export interface NapcatLike {
+    canArchive?(session: ArchiveSession): boolean;
     sessionInfo?(sessionId: string): NapcatSessionInfo | undefined;
 }
 export type Category = 'master' | 'private' | 'group';

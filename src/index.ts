@@ -15,7 +15,7 @@ import { Archive, type ArchivedMessage } from './archive.js'
 import { TextDoc, defaultDataDir, writeAtomic } from './docs.js'
 import { applyPrompt, coreBlock, type AssemblyLike } from './prompt.js'
 import { listModels } from './models.js'
-import { archiveRule, contextRule, forgetMode, matchRule, scopeOf, type Category, type ContextMode, type ForgetMode, type NapcatLike, type RuleDefaults, type RuleRow, type Scope } from './rules.js'
+import { archiveAllowed, archiveRule, contextRule, forgetMode, matchRule, scopeOf, type ArchiveSession, type Category, type ContextMode, type ForgetMode, type NapcatLike, type RuleDefaults, type RuleRow, type Scope } from './rules.js'
 import type { BeforeCompactPayload, CompanionService, ContextPolicy } from './service.js'
 import { coreTool, personaTool, type ToolDeps } from './tools.js'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
@@ -959,14 +959,18 @@ export function apply(ctx: Context, live: LiveConfig): void {
   const EXT: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp' }
   const mimeOf = (name: string): string => Object.entries(EXT).find(([, e]) => name.endsWith('.' + e))?.[0] ?? 'image/jpeg'
   /** 收到的图片下载存好（按内容的 SHA-256 命名），在存档的消息段里记下文件名。 */
-  const saveImages = async (umo: string, messageId: string, comps: any[]): Promise<void> => {
+  const saveImages = async (umo: string, messageId: string, comps: any[], session: ArchiveSession): Promise<void> => {
+    const allowed = (): boolean => get('archiveEnabled') && archiveAllowed(napcat(), session)
     const media = (napcat() as any)?.media as { loadImage?(c: any): Promise<{ mediaType: string; data: string }> } | undefined
     if (media?.loadImage === undefined || archive === undefined) return
     let changed = false
     for (const c of comps) {
+      if (!allowed()) return
       if (c?.type !== 'Image' || c._local) continue
       try {
         const img = await media.loadImage(c)
+        // 本插件新增：下载期间移出名单或关闭存档，不写文件和数据库。
+        if (!allowed()) return
         const bytes = Buffer.from(img.data, 'base64')
         if (bytes.length > 10 * 1024 * 1024) continue
         const name = createHash('sha256').update(bytes).digest('hex') + '.' + (EXT[img.mediaType] ?? 'jpg')
@@ -979,7 +983,7 @@ export function apply(ctx: Context, live: LiveConfig): void {
         log('debug', '图片没下载下来：' + errText(e))
       }
     }
-    if (changed) archive.updateSegments(umo, messageId, JSON.stringify(comps))
+    if (changed && allowed()) archive.updateSegments(umo, messageId, JSON.stringify(comps))
   }
   const store = (m: ArchivedMessage): void => {
     if (archive === undefined || !get('archiveEnabled')) return
@@ -991,7 +995,7 @@ export function apply(ctx: Context, live: LiveConfig): void {
   }
   ctx.on('napcat/message' as never, ((abm: any, event: any, isWake: boolean) => {
     const umo = String(event?.unified_msg_origin ?? '')
-    if (umo === '') return
+    if (umo === '' || !archiveAllowed(napcat(), event?.session)) return
     const isGroup = abm?.type === 'GroupMessage'
     const info = (napcat() as any)?.sessionInfoByUmo?.(umo) as { sessionId?: string; adminPrivate?: boolean } | undefined
     const s: Scope = isGroup
@@ -1016,10 +1020,12 @@ export function apply(ctx: Context, live: LiveConfig): void {
       ...(info?.sessionId ? { sessionId: info.sessionId } : {}),
     })
     if (get('archiveImages') && get('archiveEnabled') && !notice && abm.message_id !== undefined && Array.isArray(abm.message) && abm.message.some((c: any) => c?.type === 'Image')) {
-      void saveImages(umo, String(abm.message_id), JSON.parse(segments ?? '[]'))
+      void saveImages(umo, String(abm.message_id), JSON.parse(segments ?? '[]'), event.session)
     }
   }) as never)
-  ctx.on('napcat/sent' as never, ((p: { umo: string; session: { message_type: string; session_id: string }; text: string; time: number }) => {
+  ctx.on('napcat/sent' as never, ((p: { umo: string; session: ArchiveSession; text: string; time: number }) => {
+    // 本插件新增：回复允许管理员在名单外群发言，但该群的出站消息也不存档。
+    if (!archiveAllowed(napcat(), p.session)) return
     const isGroup = p.session?.message_type === 'GroupMessage'
     const info = (napcat() as any)?.sessionInfoByUmo?.(p.umo) as { sessionId?: string; selfId?: string; type?: string; adminPrivate?: boolean } | undefined
     if (info !== undefined) organizer?.rememberCategory(p.umo, info.type === 'group' ? 'group' : info.adminPrivate ? 'master' : 'private')

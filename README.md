@@ -15,7 +15,7 @@
    - **让模型写回忆**：中文、她的第一人称（"我们聊了什么、对方的状态、约定、没聊完的话题、我的感受、重要细节"），上一份回忆会合并进新的。
    - 模型报"超出上限"时，不管设的哪种，都立刻按轮数截断再重试。
    - 默认：主人 60 轮、一次 20 轮、写回忆；其他私聊和群聊 60 轮、一次 20 轮、截断。
-5. **消息存档**：QQ 上收到和发出的每条消息（包括没唤醒她的群消息）按原样存进 SQLite（`<DSH_HOME>/companion/companion.db`，用 Node 自带的 `node:sqlite`）。
+5. **消息存档**：仅对白名单允许的 QQ 会话，将收发消息（包括允许群中没唤醒她的群消息）按原样存进 SQLite（`<DSH_HOME>/companion/companion.db`，用 Node 自带的 `node:sqlite`）。
 6. **例外规则**：按 QQ 号或群号单独设置轮数、处理方式、存档天数、存不存没唤醒的群消息、遗忘方式。
 7. **长期记忆**：
    - **归属**：主人（QQ 主人私聊和 dsh 里的会话共用）、公开、每个群、每个人的私聊。主人的会话也能想起群里的事（排名打折），群里和别人私聊想不起主人的事。
@@ -148,9 +148,9 @@ dsh --version                        # 0.2.1-rc.2
 
 # 6. 两个插件（回到家目录）
 cd ~
-dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.18.0 github:Geng-zy/dsh-companion-core#v0.12.2
+dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.19.0 github:Geng-zy/dsh-companion-core#v0.13.0
 #    连不上 GitHub：到两个仓库的 Releases 下载 .tgz，传到 ~/pkgs/ 后
-#    dsh plugin --profile web add ./pkgs/dsh-napcat-bridge-0.18.0.tgz ./pkgs/dsh-companion-core-0.12.2.tgz
+#    dsh plugin --profile web add ./pkgs/dsh-napcat-bridge-0.19.0.tgz ./pkgs/dsh-companion-core-0.13.0.tgz
 #    （~/pkgs 以后不能删：dsh 的 profile 里记着它）
 
 # 7. 配置
@@ -264,7 +264,7 @@ sudo systemctl daemon-reload && sudo systemctl enable --now napcat
 ## 安装
 
 ```bash
-dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.12.2
+dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.13.0
 ```
 
 装好后：
@@ -317,6 +317,12 @@ dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.12.2
 | 记忆列表 | 按归属、状态筛选，搜索，改、普通遗忘、彻底遗忘（页面内确认）、恢复、手动加一条 |
 | 日志 | 日志级别、最近的日志 |
 
+## 消息存档的白名单边界
+
+自 v0.13.0 起须配合 dsh-napcat-bridge ≥ v0.19.0：存档实时调用 `ctx.napcat.canArchive(session)`，不另设一份名单。设置页入口为「对话 → 消息存档」。白名单开启时，群聊必须在群聊白名单内，即使管理员在名单外群发言、她获准回复，也不存双方消息；普通私聊必须在私聊白名单内，管理员私聊自动允许。白名单关闭时全部会话允许存档，仍遵守存档总开关和是否保存未唤醒消息的设置。
+
+此限制也覆盖图片下载和 `napcat/sent` 出站存档；下载完成写文件前复查权限。旧 bridge 缺少权限接口时停止 QQ 存档，升级两个插件后恢复。升级和移出名单不会删除已有历史存档；dsh 自身的模型会话日志与插件消息存档分开管理。
+
 ## 配置项
 
 | 配置 | 默认值 | 说明 |
@@ -337,7 +343,7 @@ dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.12.2
 | `groupMaxRounds` / `groupDropRounds` / `groupMode` | `60` / `20` / `truncate` | 群聊 |
 | `summarySource` / `summaryModel` / `summaryEffort` | `follow` / 空 / `low` | 压缩用的模型：`follow` 跟随 dsh 配置（会话自己的模型）、`dsh` 选 dsh 里配置的模型（`提供方/模型`）、`api` 用自己的 Key 调别家（`summaryApiUrl` / `summaryApiKey` / `summaryApiModel`）；思考等级按模型支持的来 |
 | `rules` | `[]` | 例外规则：`{ target, kind: user|group, maxRounds?, dropRounds?, mode?, archiveDays?, archiveUnwoken?: on|off, forgetMode?: normal|purge, proactive?: on|off, note? }` |
-| `archiveEnabled` / `archiveUnwoken` | `true` / `true` | 消息存档；存没唤醒她的群消息 |
+| `archiveEnabled` / `archiveUnwoken` | `true` / `true` | 消息存档；存白名单允许群中没唤醒她的消息；不能绕过白名单 |
 | `archiveDaysMaster` / `archiveDaysOthers` | `365` / `5` | 保留天数 |
 | `recallEnabled` / `recallTopKMaster` / `recallTopK` | `true` / `10` / `6` | 每轮自动想起几条：主人的会话 / 别人的私聊和群聊（群里只想得起这个群的和公开的记忆） |
 | `keywordThreshold` / `vectorThreshold` / `keywordWeight` | `0.3` / `0.45` / `0.3` | 门槛和关键词占比 |

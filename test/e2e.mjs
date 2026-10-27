@@ -147,7 +147,8 @@ await new Promise(r => llm.listen(0, '127.0.0.1', r))
 const llmUrl = 'http://127.0.0.1:' + llm.address().port + '/anthropic'
 // 图片服务器：给假 NapCat 的图片地址用（1x1 PNG）
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')
-const imgServer = createServer((_req, res) => res.writeHead(200, { 'content-type': 'image/png' }).end(PNG))
+let imageDownloads = 0
+const imgServer = createServer((_req, res) => { imageDownloads++; res.writeHead(200, { 'content-type': 'image/png' }).end(PNG) })
 await new Promise(r => imgServer.listen(0, '127.0.0.1', r))
 const imgUrl = 'http://127.0.0.1:' + imgServer.address().port + '/a.png'
 
@@ -171,7 +172,9 @@ writeFileSync(join(profile, 'cordis.patch.yml'), `- id: napcat-bridge
     ws_reverse_token: ${TOKEN}
     workspacePath: ${workspace}
     admins: ['${MASTER}']
-    whitelistEnabled: false
+    whitelistEnabled: true
+    groupWhitelist: ['${GROUP}']
+    privateWhitelist: ['${OTHER}']
     datetimeReminder: false
     typingCharsPerMinute: 0
     groupMinGapSeconds: 0
@@ -263,9 +266,9 @@ const privateMsg = (message, user = MASTER) => event({
   post_type: 'message', message_type: 'private', sub_type: 'friend', message_id: nextMsgId++, user_id: user,
   message, raw_message: '', font: 0, sender: { user_id: user, nickname: user === MASTER ? '主人' : '别人' },
 })
-const groupMsg = message => event({
-  post_type: 'message', message_type: 'group', sub_type: 'normal', message_id: nextMsgId++, group_id: GROUP, user_id: OTHER,
-  message, raw_message: '', font: 0, sender: { user_id: OTHER, nickname: '群友', card: '群友' },
+const groupMsg = (message, group = GROUP, user = OTHER) => event({
+  post_type: 'message', message_type: 'group', sub_type: 'normal', message_id: nextMsgId++, group_id: group, user_id: user,
+  message, raw_message: '', font: 0, sender: { user_id: user, nickname: '群友', card: '群友' },
 })
 
 async function waitFor(pred, what, ms = 60_000) {
@@ -417,7 +420,23 @@ const again = await api('POST', 'memory/add', { scope: 'master', content: '主�
 if (again.json?.action !== 'blocked') await fail('彻底遗忘的内容又被加回来了：' + JSON.stringify(again))
 log('遗忘、恢复、彻底遗忘、指纹挡住回写 OK')
 
-// 8. 没唤醒的群消息也存档；收到、发出都存
+// 8a. 白名单之外的收发消息与图片不能存档；管理员仍能正常回复，但不能豁免群存档。
+const downloadsBefore = imageDownloads
+const blockedImage = { type: 'image', data: { file: 'blocked.png', url: imgUrl + '?blocked', summary: '[图片]' } }
+groupMsg([text('BLOCKED-ARCHIVE-unwoken'), blockedImage], GROUP + 10)
+groupMsg([at(BOT), text('BLOCKED-ARCHIVE-woken')], GROUP + 10)
+groupMsg([text('/help BLOCKED-ARCHIVE-command')], GROUP + 10)
+privateMsg([text('BLOCKED-ARCHIVE-private'), blockedImage], OTHER + 10)
+await say(() => groupMsg([at(BOT), text('BLOCKED-ARCHIVE-admin')], GROUP + 10, MASTER), '管理员仍能在名单外群回复')
+await new Promise(r => setTimeout(r, 700))
+const blockedDb = new DatabaseSync(join(data, 'companion.db'))
+const blockedRows = blockedDb.prepare('SELECT count(*) AS n FROM messages WHERE text LIKE ? OR group_id = ? OR user_id = ?').get('%BLOCKED-ARCHIVE%', String(GROUP + 10), String(OTHER + 10))
+blockedDb.close()
+if (blockedRows.n !== 0) await fail('名单外群或普通私聊被存档：' + blockedRows.n)
+if (imageDownloads !== downloadsBefore) await fail('名单外图片被存档下载')
+log('存档白名单 OK（名单外群含管理员收发、普通私聊、图片均未存）')
+
+// 8. 白名单内没唤醒的群消息也存档；收到、发出都存
 groupMsg([text('没有 @ 她的群消息')])
 await new Promise(r => setTimeout(r, 1500))
 const db = new DatabaseSync(join(data, 'companion.db'))

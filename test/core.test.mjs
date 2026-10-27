@@ -154,3 +154,18 @@ test('核心记忆按字数限制：主人的和公开的分开算，到了上�
   assert.equal((await run({ memory: 'private', old_text: '', new_text: '主人的可以写到二十个字这里十五个' })).ok, true, '主人的上限另算')
   assert.equal((await run({ memory: 'public', old_text: '六七八', new_text: '六' })).ok, true, '改短总是可以')
 })
+
+
+test('存档权限接口缺失、拒绝、异常均禁止；允许时使用实时会话权限', async () => {
+  const { archiveAllowed } = await import('../lib/rules.js')
+  const session = { platform_name: 'napcat', message_type: 'GroupMessage', session_id: '555' }
+  assert.equal(archiveAllowed(undefined, session), false)
+  assert.equal(archiveAllowed({}, session), false)
+  assert.equal(archiveAllowed({ canArchive: () => true }, undefined), false)
+  assert.equal(archiveAllowed({ canArchive: () => { throw new Error('not ready') } }, session), false)
+  let allowed = false
+  const service = { canArchive: s => { assert.equal(s, session); return allowed } }
+  assert.equal(archiveAllowed(service, session), false)
+  allowed = true
+  assert.equal(archiveAllowed(service, session), true)
+})
