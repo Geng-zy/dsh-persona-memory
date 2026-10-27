@@ -247,8 +247,14 @@ export declare class Bridge {
     /** unified_msg_origin；开了 unique_session 时群里按 QQ号_群号 分会话（同 AstrBot）。 */
     private umoOf;
     private isAdmin;
-    /** WhitelistCheckStage；另外私聊时也认发送者的 QQ 号（AstrBot 只认完整会话标识）。 */
-    private allowed;
+    /**
+     * 本插件改动：群白名单对所有发送入口生效，管理员也不能绕过；名单清空时禁止所有群。
+     * 私聊保留 AstrBot 的空名单放行、管理员豁免，并额外认 QQ 号。
+     * ignoreAdminOnGroup 只保留旧配置兼容，不再用于判断。
+     */
+    canSend(session: MessageSession): boolean;
+    /** 给其他插件代发时也检查，不能绕过群白名单。 */
+    sendBySession(session: MessageSession, chain: MessageChain): Promise<void>;
     /** RateLimitStage（固定窗口）。返回 false 表示这条被丢弃。 */
     private rateLimit;
     /** 适配器 handle_msg 的去处。 */

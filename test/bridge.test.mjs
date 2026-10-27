@@ -21,7 +21,7 @@ function settings(over = {}) {
     wake: { wakePrefix: ['/'], ignoreBotSelfMessage: false, friendMessageNeedsWakePrefix: false },
     identifier: true, imageToModel: false, maxImages: 0,
     admins: [ADMIN],
-    whitelist: { enabled: true, ids: [], ignoreAdminOnGroup: true, ignoreAdminOnFriend: true, log: false },
+    whitelist: { enabled: false, ids: [], ignoreAdminOnGroup: true, ignoreAdminOnFriend: true, log: false },
     rateLimit: { count: 0, seconds: 60, strategy: 'stall' },
     emptyMention: { waiting: true, needReply: true },
     uniqueSession: false,
@@ -100,6 +100,7 @@ function harness(over = {}, api = {}, hooks = {}) {
     store: new SessionStore(join(mkdtempSync(join(tmpdir(), 'napcat-store-')), 'sessions.json')),
     log: () => {},
     tts: hooks.tts,
+    sleep: hooks.sleep,
   })
   let id = 100
   const send = async (ev) => {
@@ -121,7 +122,7 @@ const text = t => ({ type: 'text', data: { text: t } })
 const at = qq => ({ type: 'at', data: { qq: String(qq) } })
 const memberInfo = { get_group_member_info: p => ({ card: p.user_id === BOT ? '鱼' : '' }), get_stranger_info: () => ({ nickname: '路人' }) }
 
-test('白名单：不在名单的群和私聊不交给模型；管理员不受限制；私聊可以写 QQ 号', async () => {
+test('白名单：群必须在名单里（管理员也一样）；管理员私聊可豁免；私聊可以写 QQ 号', async () => {
   const h = harness({ whitelist: { enabled: true, ids: ['555', '77'], ignoreAdminOnGroup: true, ignoreAdminOnFriend: true, log: false } }, memberInfo)
   await h.groupMsg(9, 666, [at(BOT), text('不在名单')])
   await h.privateMsg(8, [text('不在名单')])
@@ -130,13 +131,82 @@ test('白名单：不在名单的群和私聊不交给模型；管理员不受�
   await h.privateMsg(77, [text('在名单的私聊')])
   await h.privateMsg(Number(ADMIN), [text('管理员私聊')])
   await h.groupMsg(Number(ADMIN), 666, [at(BOT), text('管理员在别的群')])
-  assert.equal(h.followups.length, 4)
+  assert.equal(h.followups.length, 3)
 })
 
-test('白名单为空或关闭时不检查', async () => {
+test('白名单关闭时不检查', async () => {
   const h = harness({}, memberInfo)
   await h.privateMsg(8, [text('谁都行')])
   assert.equal(h.followups.length, 1)
+})
+
+test('群白名单：关键词、@、引用和指令都不能绕过；旧管理员豁免配置也无效', async () => {
+  const h = harness({
+    wake: { wakePrefix: ['/'], wakeKeywords: ['大肥鱼'] },
+    whitelist: { enabled: true, ids: ['555'], ignoreAdminOnGroup: true, ignoreAdminOnFriend: true },
+  }, { ...memberInfo, get_msg: () => ({ sender: { user_id: BOT }, message: [text('上一句')] }) })
+  for (const user of [9, Number(ADMIN)]) {
+    for (const message of [[text('大肥鱼在吗')], [at(BOT), text('在吗')], [{ type: 'reply', data: { id: '1' } }, text('继续')], [text('/help')], [at(BOT)]]) {
+      await h.groupMsg(user, 666, message)
+    }
+  }
+  assert.equal(h.followups.length, 0)
+  assert.equal(h.created.length, 0)
+  assert.equal(h.sent.length, 0)
+  await h.groupMsg(Number(ADMIN), 555, [at(BOT), text('允许')])
+  assert.equal(h.followups.length, 1)
+})
+
+test('群白名单清空时群全部禁用；私聊保留旧规则；完整会话标识也能放行群', async () => {
+  const wl = { enabled: true, ids: [], ignoreAdminOnGroup: true, ignoreAdminOnFriend: true }
+  const h = harness({ whitelist: wl }, memberInfo)
+  await h.groupMsg(Number(ADMIN), 555, [at(BOT), text('不能回')])
+  assert.equal(h.followups.length, 0)
+  await h.privateMsg(8, [text('私聊照旧')])
+  assert.equal(h.followups.length, 1)
+  h.set({ whitelist: { ...wl, ids: ['napcat:GroupMessage:555'] }, uniqueSession: true })
+  await h.groupMsg(9, 555, [at(BOT), text('按完整标识放行')])
+  assert.equal(h.followups.length, 2)
+})
+
+test('移出白名单后：主动唤醒、插件代发和已经生成的回复都不能发到群里', async () => {
+  const wl = { enabled: true, ids: ['555'], ignoreAdminOnGroup: true, ignoreAdminOnFriend: true }
+  const h = harness({ whitelist: wl }, memberInfo)
+  await h.groupMsg(9, 555, [at(BOT), text('先聊一次')])
+  const id = String(h.created[0].sessionId)
+  h.set({ whitelist: { ...wl, ids: [] } })
+  await assert.rejects(h.bridge.wake('napcat:GroupMessage:555', '看看群里'), /白名单/)
+  await assert.rejects(h.bridge.sendBySession({ platform_name: 'napcat', message_type: 'GroupMessage', session_id: '555' }, { chain: [{ type: 'Plain', text: '代发' }] }), /白名单/)
+  h.turn(id, '已经生成但不该发的回复')
+  await new Promise(r => setTimeout(r, 20))
+  assert.equal(h.sent.length, 0)
+  assert.equal(h.events.sent.length, 0)
+  assert.equal(h.followups.length, 1)
+})
+
+test('排队等打字时移出群白名单：待发消息丢弃，不广播已发送事件', async () => {
+  let release, started
+  const waiting = new Promise(r => { started = r })
+  const wl = { enabled: true, ids: ['555'], ignoreAdminOnGroup: true, ignoreAdminOnFriend: true }
+  const h = harness({ whitelist: wl, pace: { ...settings().pace, typingGroup: true, charsPerMinute: 60, typingMinSeconds: 1, typingMaxSeconds: 1 } }, memberInfo, {
+    sleep: () => new Promise(r => { release = r; started() }),
+  })
+  await h.groupMsg(9, 555, [at(BOT), text('在吗')])
+  h.turn(String(h.created[0].sessionId), '排队的回复')
+  await waiting
+  h.set({ whitelist: { ...wl, ids: [] } })
+  release()
+  await new Promise(r => setTimeout(r, 20))
+  assert.equal(h.sent.length, 0)
+  assert.equal(h.events.sent.length, 0)
+})
+
+test('媒体和提示扩展处理期间移出白名单：不再交给模型', async () => {
+  const wl = { enabled: true, ids: ['555'], ignoreAdminOnGroup: true, ignoreAdminOnFriend: true }
+  let h
+  h = harness({ whitelist: wl }, memberInfo, { prompt: () => h.set({ whitelist: { ...wl, ids: [] } }) })
+  await h.groupMsg(9, 555, [at(BOT), text('在吗')])
+  assert.equal(h.followups.length, 0)
 })
 
 test('指令：/help /sid 回复，不交给模型；/new 换新会话', async () => {

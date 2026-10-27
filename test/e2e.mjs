@@ -101,6 +101,9 @@ writeFileSync(join(profile, 'cordis.patch.yml'), `- id: napcat-bridge
     ws_reverse_port: ${WS_PORT}
     ws_reverse_token: ${TOKEN}
     workspacePath: ${workspace}
+    admins: ['${USER}']
+    whitelist: ['${GROUP}', '${USER}']
+    whitelistIgnoreAdminOnGroup: true
     logLevel: debug
     typingCharsPerMinute: 6000
     typingMinSeconds: 1
@@ -192,8 +195,8 @@ const privateMsg = (message, user = USER) => event({
   post_type: 'message', message_type: 'private', sub_type: 'friend', message_id: nextMsgId++, user_id: user,
   message, raw_message: '', font: 0, sender: { user_id: user, nickname: '主人' },
 })
-const groupMsg = message => event({
-  post_type: 'message', message_type: 'group', sub_type: 'normal', message_id: nextMsgId++, group_id: GROUP, user_id: USER,
+const groupMsg = (message, group = GROUP) => event({
+  post_type: 'message', message_type: 'group', sub_type: 'normal', message_id: nextMsgId++, group_id: group, user_id: USER,
   message, raw_message: '', font: 0, sender: { user_id: USER, nickname: '主人', card: '群名片' },
 })
 const text = t => ({ type: 'text', data: { text: t } })
@@ -225,6 +228,14 @@ await new Promise(r => setTimeout(r, 3000))
 if (modelRequests.length !== before) await fail('群里没 @ 也交给了模型')
 if (sent.some(s => s.action === 'send_group_msg')) await fail('群里没 @ 也回复了')
 log('群里不 @ 不回 OK')
+
+// 群白名单优先于管理员、关键词、@ 和指令；故意保留旧豁免配置 true。
+groupMsg([at(BOT), text('白名单外的艾特')], GROUP + 1)
+groupMsg([text('大肥鱼，白名单外的关键词')], GROUP + 1)
+groupMsg([text('/help')], GROUP + 1)
+await new Promise(r => setTimeout(r, 1000))
+if (modelRequests.length !== before || sent.some(s => s.params.group_id === GROUP + 1)) await fail('管理员在白名单外的群触发了回复')
+log('群白名单挡住管理员 @、关键词和指令 OK')
 
 // 3. 群里 @ 机器人：唤醒；第一个 @ 机器人不进文字
 groupMsg([at(BOT), text(' 在吗')])

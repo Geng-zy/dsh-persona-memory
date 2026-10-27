@@ -348,18 +348,28 @@ export class Bridge {
     return s.admins.includes(event.getSenderId())
   }
 
-  /** WhitelistCheckStage；另外私聊时也认发送者的 QQ 号（AstrBot 只认完整会话标识）。 */
-  private allowed(event: AiocqhttpMessageEvent, admin: boolean, s: BridgeSettings): boolean {
+  /**
+   * 本插件改动：群白名单对所有发送入口生效，管理员也不能绕过；名单清空时禁止所有群。
+   * 私聊保留 AstrBot 的空名单放行、管理员豁免，并额外认 QQ 号。
+   * ignoreAdminOnGroup 只保留旧配置兼容，不再用于判断。
+   */
+  canSend(session: MessageSession): boolean {
+    const s = this.deps.settings()
     const wl = s.whitelist
     const ids = wl.ids.map(i => String(i).trim()).filter(i => i !== '')
-    if (!wl.enabled || ids.length === 0) return true
-    const isGroup = event.message_obj.type === MessageType.GROUP_MESSAGE
-    if (admin && isGroup && wl.ignoreAdminOnGroup) return true
-    if (admin && !isGroup && wl.ignoreAdminOnFriend) return true
-    if (ids.includes(event.unified_msg_origin) || ids.includes(String(event.getGroupId()).trim())) return true
-    if (!isGroup && ids.includes(event.getSenderId())) return true
-    if (wl.log) this.deps.log('info', '会话 ' + event.unified_msg_origin + ' 不在白名单里，消息没有交给模型。需要的话在设置页「访问控制」里把群号或 QQ 号加进白名单。')
+    if (!wl.enabled) return true
+    const isGroup = session.message_type === MessageType.GROUP_MESSAGE
+    const id = String(session.session_id).trim()
+    if (!isGroup && (ids.length === 0 || (s.admins.includes(id) && wl.ignoreAdminOnFriend))) return true
+    if (ids.includes(sessionToString(session)) || ids.includes(id)) return true
+    if (wl.log) this.deps.log('info', '会话 ' + sessionToString(session) + ' 不在白名单里，不唤醒也不发送消息。需要的话在设置页「访问控制」里把群号或 QQ 号加进白名单。')
     return false
+  }
+
+  /** 给其他插件代发时也检查，不能绕过群白名单。 */
+  async sendBySession(session: MessageSession, chain: MessageChain): Promise<void> {
+    if (!this.canSend(session)) throw new Error('会话 ' + sessionToString(session) + ' 不在白名单里，禁止发送')
+    await this.deps.sendBySession(session, chain)
   }
 
   /** RateLimitStage（固定窗口）。返回 false 表示这条被丢弃。 */
@@ -414,7 +424,7 @@ export class Bridge {
     // 只有消息事件交给模型；通知/请求只广播
     if (!isMessage) return
     const admin = this.isAdmin(event, s)
-    if (!this.allowed(event, admin, s)) return
+    if (!this.canSend(event.session)) return
 
     if (s.commands.enabled && prefixUsed && await this.command(messageStr, event, umo, admin, s)) return
 
@@ -465,6 +475,7 @@ export class Bridge {
 
   private async dispatch(event: AiocqhttpMessageEvent, umo: string, abm: AstrBotMessage, content: ModelPart[]): Promise<void> {
     const target = this.targetOf(event, umo)
+    if (!this.canSend(target.session)) return
     const chat = await this.ensureChat(target)
     chat.send = target.send
     // 本插件新增：交给模型前让其他插件（记忆等）往内容里加东西
@@ -487,6 +498,8 @@ export class Bridge {
     }
     const parts = Array.isArray(payload.content) ? [...payload.content] : content
     const admitted = await this.deps.media.admit(parts)
+    // 媒体转换、提示扩展或限频等待期间，用户可能已经移除了这个群。
+    if (!this.canSend(target.session)) return
     chat.handle.agent.followup(createUserMessage({
       content: admitted as never,
       source: { kind: 'plugin:napcat-bridge' },
@@ -497,7 +510,7 @@ export class Bridge {
   private async command(messageStr: string, event: AiocqhttpMessageEvent, umo: string, admin: boolean, s: BridgeSettings): Promise<boolean> {
     const name = messageStr.trim().split(/\s+/)[0]?.toLowerCase() ?? ''
     if (!['help', 'sid', 'new', 'reset', 'stop'].includes(name)) return false
-    const reply = (text: string): Promise<void> => event.send({ chain: [Plain(text)] }).catch(e => {
+    const reply = (text: string): Promise<void> => (this.canSend(event.session) ? event.send({ chain: [Plain(text)] }) : Promise.resolve()).catch(e => {
       this.deps.log('error', '发送指令回复失败: ' + errText(e))
     })
     const isGroup = event.message_obj.type === MessageType.GROUP_MESSAGE
@@ -719,9 +732,11 @@ export class Bridge {
     if (selfId === undefined) throw new Error('NapCat 还没连上')
     const isGroup = type === MessageType.GROUP_MESSAGE
     const session: MessageSession = { platform_name: platform, message_type: type as MessageType, session_id: id }
-    const send = (chain: MessageChain): Promise<void> => this.deps.sendBySession(session, chain)
+    if (!this.canSend(session)) throw new Error('会话 ' + umo + ' 不在白名单里，禁止主动唤醒')
+    const send = (chain: MessageChain): Promise<void> => this.sendBySession(session, chain)
     const chat = await this.ensureChat({ umo, session, isGroup, isUnique: false, ...(isGroup ? { groupId: id } : { userId: id }), senderId: isGroup ? '' : id, selfId, send })
     const admitted = await this.deps.media.admit(typeof content === 'string' ? [{ type: 'text', text: content }] : content)
+    if (!this.canSend(session)) throw new Error('会话 ' + umo + ' 不在白名单里，禁止主动唤醒')
     chat.nudged = false
     chat.handle.agent.followup(createUserMessage({ content: admitted as never, source: { kind: 'plugin:napcat-bridge-wake' } }))
     return { sessionId: String((chat.handle.agent as Agent).session.id) }
@@ -823,6 +838,8 @@ export class Bridge {
       chat.running = false
       const text = chat.lastText
       chat.lastText = ''
+      // 群被移出后，正在生成的回复也不发、不再补唤醒。
+      if (!this.canSend(chat.session)) return
       if (text.trim() === '') {
         // 本插件新增：这一轮正常结束，却一句话都没说出来（DeepSeek 偶尔把要回的话只写在思考里），提醒她一次。
         // 被 /stop 打断、出错的不提醒；同一条消息只提醒一次，免得来回打转。
@@ -832,7 +849,7 @@ export class Bridge {
           this.deps.log('info', umo + '：这一轮她什么都没说出来，提醒她把话说出来')
           // 等这一轮在 dsh 里彻底收尾再发（turn/end 当下 agent 还算忙，这时 followup 不会开新一轮）
           setTimeout(() => {
-            if (this.chats.get(umo) !== chat) return
+            if (this.chats.get(umo) !== chat || !this.canSend(chat.session)) return
             chat.handle.agent.followup(createUserMessage({ content: [{ type: 'text', text: nudgeText(this.deps.settings().silenceToken.trim()) }] as never, source: { kind: 'plugin:napcat-bridge-nudge' } }))
           }, NUDGE_DELAY_MS)
         }
@@ -863,9 +880,11 @@ export class Bridge {
         const textChain: MessageChain = { chain: [Plain(piece.text)] }
         void this.pacer.run(umo, isGroup, piece.text, async () => {
           const voice = await speech
+          // 等打字、排队或合成语音后再读一次当前白名单，false 表示这条实际没有发出。
+          if (!this.canSend(chat.session)) return false
           if (voice === undefined) return chat.send(textChain)
           await chat.send({ chain: [make('Record', { file: 'base64://' + voice.audio.toString('base64') })] })
-          if (settings.tts.alsoText) await chat.send(textChain)
+          if (settings.tts.alsoText && this.canSend(chat.session)) await chat.send(textChain)
         }, typing[i]).then(result => {
           if (result === 'dropped') return
           this.notifySent({ umo, session: chat.session, text: piece.text, chain: textChain, source: 'reply', time: Date.now() })

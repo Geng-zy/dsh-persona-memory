@@ -30,6 +30,14 @@ function fakeClock() {
   return { now: () => t, sleep: async ms => { waits.push(ms); t += ms }, waits, advance: ms => { t += ms } }
 }
 
+test('发送前权限撤销：返回 dropped，不占用群发言额度', async () => {
+  const c = fakeClock()
+  const p = new Pacer({ settings: () => ({ ...S, typingGroup: false }), log: () => {}, now: c.now, sleep: c.sleep })
+  assert.equal(await p.run('g', true, '撤销', async () => false), 'dropped')
+  assert.equal(await p.run('g', true, '允许', async () => {}), 'sent')
+  assert.deepEqual(c.waits, [], '未发出的消息不导致下一条等待群限频')
+})
+
 test('排队：同一个群按顺序发，守频率；等太久就不发；私聊不受群频率限制', async () => {
   const c = fakeClock()
   const logs = []

@@ -74,7 +74,7 @@ export class Pacer {
    * 排进这个会话的队列，等打字、守频率，然后发。返回发了没有。
    * typingMs：分段发送时由调用方给出这一段分到的打字时间（整条回复算一次，按长度分给各段）。
    */
-  run(umo: string, isGroup: boolean, text: string, send: () => Promise<void>, typingMs?: number): Promise<'sent' | 'dropped'> {
+  run(umo: string, isGroup: boolean, text: string, send: () => Promise<void | boolean>, typingMs?: number): Promise<'sent' | 'dropped'> {
     const prev = this.queues.get(umo) ?? Promise.resolve()
     const job = prev.catch(() => undefined).then(() => this.one(umo, isGroup, text, send, typingMs))
     this.queues.set(umo, job)
@@ -82,7 +82,7 @@ export class Pacer {
     return job
   }
 
-  private async one(umo: string, isGroup: boolean, text: string, send: () => Promise<void>, typingMs?: number): Promise<'sent' | 'dropped'> {
+  private async one(umo: string, isGroup: boolean, text: string, send: () => Promise<void | boolean>, typingMs?: number): Promise<'sent' | 'dropped'> {
     const s = this.deps.settings()
     const start = this.now()
     const typing = typingMs ?? typingDelay(text, isGroup, s)
@@ -100,7 +100,8 @@ export class Pacer {
         await this.sleep(wait)
       }
     }
-    await send()
+    // 本插件新增：发送前权限复查没有通过时，不记为已发送，也不占用群发言额度。
+    if (await send() === false) return 'dropped'
     if (isGroup) {
       const windowMs = Math.max(1, s.groupWindowSeconds, s.groupMinGapSeconds) * 1000
       const now = this.now()
