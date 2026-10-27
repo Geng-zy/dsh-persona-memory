@@ -33,6 +33,7 @@ function settings(over = {}) {
     stt: { mode: 'off', command: '', apiUrl: '', apiKey: '', model: '' },
     video: { enabled: true, maxFrames: 4, secondsPerFrame: 5, maxEdge: 1024, maxMB: 100, maxMinutes: 10, timeoutSeconds: 30, ffmpegPath: '/nonexistent/ffmpeg' },
     silenceToken: '[不发]',
+    groupReply: { mention: false, quote: false },
     segment: { adminPrivate: false, private: false, group: false, maxSegments: 10, maxSecondsPerSegment: 3 },
     pace: { typingPrivate: false, typingGroup: false, charsPerMinute: 0, typingMinSeconds: 0, typingMaxSeconds: 0, groupMinGapSeconds: 0, groupMaxPerWindow: 0, groupWindowSeconds: 60, maxWaitSeconds: 120 },
     tts: { enabled: false, mode: 'tag', chance: 30, adminPrivate: true, private: false, group: false, maxChars: 150, alsoText: false, stripParens: true, speed: 100, timezone: 'Asia/Shanghai', breeze: { key: '', voiceId: '', model: '', language: '' }, inworld: { key: '', voiceId: '', model: '' } },
@@ -47,6 +48,7 @@ function settings(over = {}) {
 /** 搭一个桥：假的 agent 注册表记下每次 followup，假的 NapCat 记下发出的消息。 */
 function harness(over = {}, api = {}, hooks = {}) {
   const followups = []
+  const pending = new Map()
   const created = []
   const sent = []
   const events = { prompt: [], sent: [], changed: [] }
@@ -59,7 +61,7 @@ function harness(over = {}, api = {}, hooks = {}) {
       return {
         agent: {
           session: { id: sessionId },
-          followup: m => followups.push({ sessionId, text: m.content.map(c => c.text ?? '').filter(t => t !== '').join('\n'), images: m.content.filter(c => c.type === 'image').length }),
+          followup: m => { pending.set(sessionId, [...(pending.get(sessionId) ?? []), m]); return followups.push({ sessionId, text: m.content.map(c => c.text ?? '').filter(t => t !== '').join('\n'), images: m.content.filter(c => c.type === 'image').length }) },
           cancel: () => followups.push({ sessionId, cancelled: true }),
         },
         dispose: async () => {},
@@ -72,7 +74,7 @@ function harness(over = {}, api = {}, hooks = {}) {
   const adapter = new AiocqhttpAdapter({ id: 'napcat', ws_reverse_host: '127.0.0.1', ws_reverse_port: 0, log: () => {}, onMessage: (abm, ev) => bridge.handle(abm, ev) })
   adapter.bot.callAction = async (action, params) => {
     if (action === 'send_private_msg' || action === 'send_group_msg') {
-      sent.push({ action, text: params.message.map(m => m.type === 'record' ? '[语音:' + Buffer.from(String(m.data.file).replace('base64://', ''), 'base64').toString() + ']' : m.data.text ?? '').join('') })
+      sent.push({ action, message: params.message, text: params.message.map(m => m.type === 'record' ? '[语音:' + Buffer.from(String(m.data.file).replace('base64://', ''), 'base64').toString() + ']' : m.data.text ?? '').join('') })
       return { message_id: 1 }
     }
     if (action in api) return api[action](params)
@@ -113,11 +115,14 @@ function harness(over = {}, api = {}, hooks = {}) {
   }
   const privateMsg = (user, message) => send({ post_type: 'message', message_type: 'private', user_id: user, sender: { user_id: user, nickname: 'n' + user }, message })
   const groupMsg = (user, group, message, role = 'member') => send({ post_type: 'message', message_type: 'group', group_id: group, group_name: '测试群', user_id: user, sender: { user_id: user, nickname: 'n' + user, card: '', role }, message })
-  const turn = (sessionId, reply) => {
+  const turn = (sessionId, reply, reason) => {
     const session = { id: sessionId }
     sessionListener(session, { type: 'turn/start' })
+    for (const message of pending.get(sessionId) ?? []) sessionListener(session, { type: 'user/message', data: message })
+    pending.delete(sessionId)
+    sessionListener(session, { type: 'user/message', data: { source: { kind: 'runtime-context' } } })
     sessionListener(session, { type: 'assistant/message', data: { message: { content: [{ type: 'text', text: reply }] } } })
-    sessionListener(session, { type: 'turn/end' })
+    sessionListener(session, { type: 'turn/end', data: { reason: { kind: reason } } })
   }
   const startTurn = sessionId => sessionListener({ id: sessionId }, { type: 'turn/start' })
   return { followups, created, sent, events, bridge, turn, startTurn, privateMsg, groupMsg, set: next => { s = settings({ ...over, ...next }) } }
@@ -640,4 +645,113 @@ test('旧名单迁移：完整标识按类型分，裸号码保留旧匹配含�
   const old = ['555', 'napcat:GroupMessage:666', 'napcat:FriendMessage:77', '  ']
   assert.deepEqual(legacyWhitelistFor(old, 'GroupMessage'), ['555', 'napcat:GroupMessage:666'])
   assert.deepEqual(legacyWhitelistFor(old, 'FriendMessage'), ['555', 'napcat:FriendMessage:77'])
+})
+
+// 本插件新增：检查真正交给 OneBot 的消息段，而不只检查正文。
+const flush = () => new Promise(r => setTimeout(r, 30))
+const groupReplyOn = { groupReply: { mention: true, quote: true } }
+function assertReplyTarget(message, user, id) {
+  assert.deepEqual(message.slice(0, 2).map(m => m.type), ['reply', 'at'])
+  assert.equal(message[0].data.id, String(id))
+  assert.equal(message[1].data.qq, String(user))
+}
+for (const [mention, quote] of [[false, false], [true, false], [false, true], [true, true]]) {
+  test(`群回复装饰：mention=${mention} quote=${quote}，对象取来信`, async () => {
+    const h = harness({ groupReply: { mention, quote } }, memberInfo)
+    await h.groupMsg(9, 555, [at(BOT), text('在吗')])
+    h.turn(String(h.created[0].sessionId), '在的')
+    await flush()
+    const message = h.sent[0].message
+    assert.deepEqual(message.filter(m => !['text'].includes(m.type)).map(m => m.type), [...(quote ? ['reply'] : []), ...(mention ? ['at'] : [])])
+    if (quote) assert.equal(message.find(m => m.type === 'reply').data.id, '100')
+    if (mention) assert.equal(message.find(m => m.type === 'at').data.qq, '9')
+    assert.equal(message.at(-1).data.text, '在的')
+    await h.bridge.dispose()
+  })
+}
+test('群回复装饰不改变私聊；群指令使用同一设置', async () => {
+  const h = harness(groupReplyOn, memberInfo)
+  await h.privateMsg(9, [text('你好')])
+  h.turn(String(h.created[0].sessionId), '你好呀')
+  await flush()
+  assert.deepEqual(h.sent[0].message.map(m => m.type), ['text'])
+  await h.groupMsg(8, 555, [text('/help')])
+  assertReplyTarget(h.sent[1].message, 8, 101)
+  await h.bridge.dispose()
+})
+test('分段群回复只在首条文字 @ 和引用', async () => {
+  const h = harness({ ...groupReplyOn, segment: { ...settings().segment, group: true } }, memberInfo)
+  await h.groupMsg(9, 555, [at(BOT), text('在吗')])
+  h.turn(String(h.created[0].sessionId), '在的\n刚睡醒\n你呢')
+  await flush()
+  assert.equal(h.sent.length, 3)
+  assertReplyTarget(h.sent[0].message, 9, 100)
+  for (const m of h.sent.slice(1)) assert.deepEqual(m.message.map(m => m.type), ['text'])
+  await h.bridge.dispose()
+})
+test('排队期间新来信不改变上一轮回复对象；下一轮使用新来信', async () => {
+  let release, started
+  const waiting = new Promise(r => { started = r })
+  const h = harness({ ...groupReplyOn, pace: { ...settings().pace, typingGroup: true, charsPerMinute: 60, typingMinSeconds: 1, typingMaxSeconds: 1 } }, memberInfo, {
+    sleep: () => new Promise(r => { release = r; started() }),
+  })
+  await h.groupMsg(9, 555, [at(BOT), text('第一人')])
+  const id = String(h.created[0].sessionId)
+  h.turn(id, '回复第一人')
+  await waiting
+  await h.groupMsg(8, 555, [at(BOT), text('第二人')])
+  release()
+  await flush()
+  assertReplyTarget(h.sent[0].message, 9, 100)
+  h.set({ pace: settings().pace })
+  h.turn(id, '回复第二人')
+  await flush()
+  assertReplyTarget(h.sent[1].message, 8, 101)
+  await h.bridge.dispose()
+})
+test('收到引用消息时，回复当前来信，不引用来信里嵌套的旧消息', async () => {
+  const h = harness(groupReplyOn, { ...memberInfo, get_msg: () => ({ message_type: 'group', group_id: 555, user_id: BOT, self_id: BOT, message_id: 4242, sender: { user_id: BOT, nickname: '鱼' }, message: [text('旧话')] }) })
+  await h.groupMsg(9, 555, [{ type: 'reply', data: { id: '4242' } }, text('接着说')])
+  h.turn(String(h.created[0].sessionId), '接着说吧')
+  await flush()
+  assertReplyTarget(h.sent[0].message, 9, 100)
+  await h.bridge.dispose()
+})
+test('群主动聊天不继承上一轮 @ 和引用', async () => {
+  const h = harness(groupReplyOn, memberInfo)
+  await h.groupMsg(9, 555, [at(BOT), text('在吗')])
+  const id = String(h.created[0].sessionId)
+  h.turn(id, '在的')
+  await flush()
+  await h.bridge.wake('napcat:GroupMessage:555', '主动聊聊')
+  h.turn(id, '晚上好')
+  await flush()
+  assert.deepEqual(h.sent[1].message.map(m => m.type), ['text'])
+  await h.bridge.dispose()
+})
+test('语音独立发送，随附文字才加 @ 和引用；合成失败回退文字也附加', async () => {
+  for (const [alsoText, fail] of [[false, false], [true, false], [false, true]]) {
+    const h = harness({ ...groupReplyOn, tts: { ...settings().tts, enabled: true, mode: 'always', group: true, alsoText } }, memberInfo, {
+      tts: { speak: async () => { if (fail) throw new Error('fake failure'); return { audio: Buffer.from('audio') } } },
+    })
+    await h.groupMsg(9, 555, [at(BOT), text('在吗')])
+    h.turn(String(h.created[0].sessionId), '在的')
+    await flush()
+    if (!fail) assert.deepEqual(h.sent[0].message.map(m => m.type), ['record'])
+    if (alsoText || fail) assertReplyTarget(h.sent.at(-1).message, 9, 100)
+    else assert.equal(h.sent.length, 1)
+    await h.bridge.dispose()
+  }
+})
+test('空回复提醒保留原消息的 @ 和引用对象', async () => {
+  const h = harness({ ...groupReplyOn, nudgeOnEmpty: true }, memberInfo)
+  await h.groupMsg(9, 555, [at(BOT), text('在吗')])
+  const id = String(h.created[0].sessionId)
+  h.turn(id, '', 'completed')
+  await new Promise(r => setTimeout(r, 550))
+  assert.equal(h.followups.length, 2)
+  h.turn(id, '在的')
+  await flush()
+  assertReplyTarget(h.sent[0].message, 9, 100)
+  await h.bridge.dispose()
 })

@@ -92,6 +92,8 @@ export interface Config {
   groupMaxPerWindow: number
   groupWindowSeconds: number
   sendMaxWaitSeconds: number
+  groupReplyMention: boolean
+  groupReplyQuote: boolean
   segmentAdminPrivate: boolean
   segmentPrivate: boolean
   segmentGroup: boolean
@@ -209,6 +211,9 @@ export const Config: z<LiveConfig> = z.object({
   groupMaxPerWindow: z.natural().default(5).volatile().description('同一个群一段时间里她最多发几条（0 = 不限）'),
   groupWindowSeconds: z.natural().min(1).default(60).volatile().description('上面那段时间是几秒'),
   sendMaxWaitSeconds: z.natural().default(120).volatile().description('为了守发言频率最多等几秒，超过就不发了'),
+  // 本插件新增：群聊回复对象；两个开关默认都关闭。
+  groupReplyMention: z.boolean().default(false).volatile().description('群聊回复时 @ 触发本轮的消息发送者；分段只加在首条文字'),
+  groupReplyQuote: z.boolean().default(false).volatile().description('群聊回复时引用触发本轮的原消息；分段只加在首条文字'),
   segmentAdminPrivate: z.boolean().default(true).volatile().description('分段发送：管理员私聊里把一次回复按行拆成几条发'),
   segmentPrivate: z.boolean().default(false).volatile().description('分段发送：其他私聊'),
   segmentGroup: z.boolean().default(false).volatile().description('分段发送：群聊'),
@@ -392,6 +397,7 @@ export function apply(ctx: Context, live: LiveConfig): void {
         groupMinGapSeconds: get('groupMinGapSeconds'), groupMaxPerWindow: get('groupMaxPerWindow'), groupWindowSeconds: get('groupWindowSeconds'),
         maxWaitSeconds: get('sendMaxWaitSeconds'),
       },
+      groupReply: { mention: get('groupReplyMention'), quote: get('groupReplyQuote') },
       segment: { adminPrivate: get('segmentAdminPrivate'), private: get('segmentPrivate'), group: get('segmentGroup'), maxSegments: get('segmentMax'), maxSecondsPerSegment: get('segmentMaxSeconds') },
       tts: ttsSettings(),
     }),

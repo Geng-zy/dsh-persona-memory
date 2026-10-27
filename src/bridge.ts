@@ -15,7 +15,7 @@ import {
   AiocqhttpMessageEvent, MessageType, sessionToString,
   type AstrBotMessage, type MessageSession,
 } from './adapter.js'
-import { Plain, make, type Component, type MessageChain } from './components.js'
+import { At, Plain, make, type Component, type MessageChain } from './components.js'
 import type { VideoSettings } from './ffmpeg.js'
 import type { Media, ModelPart } from './media.js'
 import { extractForwards, extractQuoted } from './quoted.js'
@@ -27,14 +27,16 @@ import { planPieces, ttsActive, ttsHint, type Speech, type TtsSettings } from '.
 import type { Logger } from './onebot/server.js'
 import { TtlCache } from './cache.js'
 
+interface GroupReplyTarget { userId: string; messageId: string }
+
 declare module '@deepseek-ai/dsh-llm' {
   interface MessageSourceMap {
     /** 从 QQ（NapCat）来的用户消息 */
-    'plugin:napcat-bridge': { kind: 'plugin:napcat-bridge' }
+    'plugin:napcat-bridge': { kind: 'plugin:napcat-bridge'; replyTo?: GroupReplyTarget }
     /** 其他插件主动唤醒她（ctx.napcat.wake，比如定时主动聊天）；不算"人说的话" */
     'plugin:napcat-bridge-wake': { kind: 'plugin:napcat-bridge-wake' }
     /** 她一轮什么都没说出来时，提醒她把话说出来；不算"人说的话" */
-    'plugin:napcat-bridge-nudge': { kind: 'plugin:napcat-bridge-nudge' }
+    'plugin:napcat-bridge-nudge': { kind: 'plugin:napcat-bridge-nudge'; replyTo?: GroupReplyTarget }
   }
 }
 
@@ -124,6 +126,8 @@ export interface BridgeSettings {
   /** 发消息的节奏：打字速度、群里的发言频率（本插件新增，见 pacer.ts） */
   pace: PaceSettings
   /** 分段发送（本插件新增，见 segment.ts） */
+  /** 本插件新增：群聊回复首条文字可 @ 来信人、引用来信；默认均关闭。 */
+  groupReply: { mention: boolean; quote: boolean }
   segment: SegmentSettings
   /** 文字转语音（本插件新增，见 tts.ts） */
   tts: TtsSettings
@@ -243,6 +247,8 @@ interface Chat {
   nudged?: boolean
   /** 本轮真实来信的发送者；发送时逐条快照，管理员身份不遗留给下一轮。 */
   replySenders: Set<string>
+  /** 本插件新增：从本轮真正消费的用户消息中取对象，不能用最近收到的消息代替。 */
+  replyTarget?: GroupReplyTarget
 }
 
 /** 建会话需要的 QQ 会话信息（从收到的消息来，或者从 unified_msg_origin 解析出来）。 */
@@ -507,7 +513,7 @@ export class Bridge {
     chat.replySenders.add(target.senderId)
     chat.handle.agent.followup(createUserMessage({
       content: admitted as never,
-      source: { kind: 'plugin:napcat-bridge' },
+      source: { kind: 'plugin:napcat-bridge', ...(target.isGroup ? { replyTo: { userId: target.senderId, messageId: abm.message_id } } : {}) },
     }))
   }
 
@@ -515,7 +521,7 @@ export class Bridge {
   private async command(messageStr: string, event: AiocqhttpMessageEvent, umo: string, admin: boolean, s: BridgeSettings): Promise<boolean> {
     const name = messageStr.trim().split(/\s+/)[0]?.toLowerCase() ?? ''
     if (!['help', 'sid', 'new', 'reset', 'stop'].includes(name)) return false
-    const reply = (text: string): Promise<void> => (this.canSend(event.session, event.getSenderId()) ? event.send({ chain: [Plain(text)] }) : Promise.resolve()).catch(e => {
+    const reply = (text: string): Promise<void> => (this.canSend(event.session, event.getSenderId()) ? event.send(this.groupReplyChain(text, event.message_obj.type === MessageType.GROUP_MESSAGE ? { userId: event.getSenderId(), messageId: event.message_obj.message_id } : undefined, s)) : Promise.resolve()).catch(e => {
       this.deps.log('error', '发送指令回复失败: ' + errText(e))
     })
     const isGroup = event.message_obj.type === MessageType.GROUP_MESSAGE
@@ -832,7 +838,14 @@ export class Bridge {
     if (chat === undefined) return
     if (event.type === 'turn/start') {
       chat.lastText = ''
+      chat.replyTarget = undefined
       chat.running = true
+    } else if (event.type === 'user/message') {
+      const source = event.data.source
+      // 本插件新增：只关联实际进入这一轮的 QQ 来信；主动唤醒不沿用上一轮的对象。
+      if (source?.kind === 'plugin:napcat-bridge' || source?.kind === 'plugin:napcat-bridge-nudge') chat.replyTarget = source.replyTo
+      else if (source?.kind === 'plugin:napcat-bridge-wake') chat.replyTarget = undefined
+      // dsh 会追加 runtime-context 用户消息，不可因此擦掉真实来信对象。
     } else if (event.type === 'assistant/message') {
       const text = (event.data.message.content as ReadonlyArray<{ type: string; text?: string }>)
         .filter(b => b.type === 'text')
@@ -843,6 +856,8 @@ export class Bridge {
       chat.running = false
       const text = chat.lastText
       chat.lastText = ''
+      const replyTarget = chat.replyTarget
+      chat.replyTarget = undefined
       const senders = [...chat.replySenders]
       chat.replySenders.clear()
       // 权限按这一轮真实发送者快照复查；不能借用上一次管理员发言的权限。
@@ -860,7 +875,7 @@ export class Bridge {
           setTimeout(() => {
             if (this.chats.get(umo) !== chat || !canReply()) return
             for (const id of senders) chat.replySenders.add(id)
-            chat.handle.agent.followup(createUserMessage({ content: [{ type: 'text', text: nudgeText(this.deps.settings().silenceToken.trim()) }] as never, source: { kind: 'plugin:napcat-bridge-nudge' } }))
+            chat.handle.agent.followup(createUserMessage({ content: [{ type: 'text', text: nudgeText(this.deps.settings().silenceToken.trim()) }] as never, source: { kind: 'plugin:napcat-bridge-nudge', ...(replyTarget ? { replyTo: replyTarget } : {}) } }))
           }, NUDGE_DELAY_MS)
         }
         return
@@ -882,6 +897,7 @@ export class Bridge {
       const active = this.deps.tts !== undefined && ttsActive(settings.tts, { group: isGroup, adminPrivate: chat.info.adminPrivate })
       const pieces = planPieces(segments, settings.tts, active)
       const typing = pieces.length > 1 ? splitTyping(pieces.map(p => p.text), isGroup, settings.pace, settings.segment.maxSecondsPerSegment) : [undefined]
+      let headerSent = false
       pieces.forEach((piece, i) => {
         const speech = piece.voice ? this.deps.tts!.speak(piece.text).catch((e: unknown) => {
           this.deps.log('warn', umo + '：语音没合成出来，改发文字：' + errText(e))
@@ -892,9 +908,15 @@ export class Bridge {
           const voice = await speech
           // 等打字、排队或合成语音后再读一次当前白名单，false 表示这条实际没有发出。
           if (!canReply()) return false
-          if (voice === undefined) return chat.send(textChain)
+          // 本插件新增：分段只装饰首条实际发送的文字；语音独立发，不混入 reply/at 段。
+          const sendText = async (): Promise<void> => {
+            textChain.chain = this.groupReplyChain(piece.text, isGroup && !headerSent ? replyTarget : undefined, this.deps.settings()).chain
+            await chat.send(textChain)
+            headerSent = true
+          }
+          if (voice === undefined) return sendText()
           await chat.send({ chain: [make('Record', { file: 'base64://' + voice.audio.toString('base64') })] })
-          if (settings.tts.alsoText && canReply()) await chat.send(textChain)
+          if (settings.tts.alsoText && canReply()) await sendText()
         }, typing[i], adminSender() !== undefined || (!isGroup && settings.admins.includes(chat.session.session_id))).then(result => {
           if (result === 'dropped') return
           this.notifySent({ umo, session: chat.session, text: piece.text, chain: textChain, source: 'reply', time: Date.now() })
@@ -903,6 +925,17 @@ export class Bridge {
         })
       })
     }
+  }
+
+  /** 本插件新增：OneBot 引用在最前；对象来自来信元数据，不让模型猜 QQ 或消息 ID。 */
+  private groupReplyChain(text: string, target: GroupReplyTarget | undefined, settings: BridgeSettings): MessageChain {
+    const chain: Component[] = []
+    if (target !== undefined) {
+      if (settings.groupReply.quote && target.messageId) chain.push({ type: 'Reply', id: target.messageId })
+      if (settings.groupReply.mention && target.userId) chain.push(At({ qq: target.userId }))
+    }
+    chain.push(Plain(text))
+    return { chain }
   }
 
   /** 发 'napcat/sent'；监听器出错不影响发送。 */

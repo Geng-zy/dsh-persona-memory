@@ -10,11 +10,16 @@ import { type PaceSettings } from './pacer.js';
 import { type SegmentSettings } from './segment.js';
 import { type Speech, type TtsSettings } from './tts.js';
 import type { Logger } from './onebot/server.js';
+interface GroupReplyTarget {
+    userId: string;
+    messageId: string;
+}
 declare module '@deepseek-ai/dsh-llm' {
     interface MessageSourceMap {
         /** 从 QQ（NapCat）来的用户消息 */
         'plugin:napcat-bridge': {
             kind: 'plugin:napcat-bridge';
+            replyTo?: GroupReplyTarget;
         };
         /** 其他插件主动唤醒她（ctx.napcat.wake，比如定时主动聊天）；不算"人说的话" */
         'plugin:napcat-bridge-wake': {
@@ -23,6 +28,7 @@ declare module '@deepseek-ai/dsh-llm' {
         /** 她一轮什么都没说出来时，提醒她把话说出来；不算"人说的话" */
         'plugin:napcat-bridge-nudge': {
             kind: 'plugin:napcat-bridge-nudge';
+            replyTo?: GroupReplyTarget;
         };
     }
 }
@@ -159,6 +165,11 @@ export interface BridgeSettings {
     /** 发消息的节奏：打字速度、群里的发言频率（本插件新增，见 pacer.ts） */
     pace: PaceSettings;
     /** 分段发送（本插件新增，见 segment.ts） */
+    /** 本插件新增：群聊回复首条文字可 @ 来信人、引用来信；默认均关闭。 */
+    groupReply: {
+        mention: boolean;
+        quote: boolean;
+    };
     segment: SegmentSettings;
     /** 文字转语音（本插件新增，见 tts.ts） */
     tts: TtsSettings;
@@ -302,6 +313,8 @@ export declare class Bridge {
     private modelFor;
     private createChat;
     private onSessionEvent;
+    /** 本插件新增：OneBot 引用在最前；对象来自来信元数据，不让模型猜 QQ 或消息 ID。 */
+    private groupReplyChain;
     /** 发 'napcat/sent'；监听器出错不影响发送。 */
     notifySent(payload: SentPayload): void;
     /** 已建立的会话（unified_msg_origin → dsh 会话 id）。 */

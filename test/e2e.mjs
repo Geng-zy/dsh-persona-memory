@@ -19,6 +19,7 @@ import WebSocket from 'ws'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const TOKEN = 'e2e-token'
+const GROUP_REPLY = process.env.E2E_GROUP_REPLY === '1'
 const USER = 123450001
 const BOT = 123450009
 const GROUP = 888000001
@@ -110,7 +111,7 @@ writeFileSync(join(profile, 'cordis.patch.yml'), `- id: napcat-bridge
     typingMinSeconds: 1
     typingMaxSeconds: 1
     groupMinGapSeconds: 0
-`)
+${GROUP_REPLY ? '    groupReplyMention: true\n    groupReplyQuote: true\n' : ''}`)
 
 const dsh = spawn(process.env.DSH_BIN ?? 'dsh', ['web', '--host', '127.0.0.1', '--port', process.env.E2E_WEB_PORT ?? '0', '--no-open'], {
   env: { ...process.env, DSH_HOME: home, DEEPSEEK_API_KEY: 'sk-e2e-fake', DEEPSEEK_BASE_URL: llmUrl, DSH_TELEMETRY_DISABLED: '1' },
@@ -191,7 +192,7 @@ ws.on('message', raw => {
   ws.send(JSON.stringify({ status: data === null && (req.action === 'get_msg' || req.action === 'get_forward_msg') ? 'failed' : 'ok', retcode: 0, data, echo: req.echo }))
 })
 
-const event = e => ws.send(JSON.stringify({ time: Math.floor(Date.now() / 1000), self_id: BOT, ...e }))
+const event = e => { ws.send(JSON.stringify({ time: Math.floor(Date.now() / 1000), self_id: BOT, ...e })); return e.message_id }
 const privateMsg = (message, user = USER) => event({
   post_type: 'message', message_type: 'private', sub_type: 'friend', message_id: nextMsgId++, user_id: user,
   message, raw_message: '', font: 0, sender: { user_id: user, nickname: '主人' },
@@ -241,11 +242,16 @@ if (modelRequests.length !== before || sent.some(s => s.params.group_id === GROU
 log('普通群成员和私聊使用各自白名单 OK')
 
 // 3. 群里 @ 机器人：唤醒；第一个 @ 机器人不进文字
-groupMsg([at(BOT), text(' 在吗')])
+const replyMessageId = groupMsg([at(BOT), text(' 在吗')])
 const r3 = await waitFor(() => sent.find(s => s.action === 'send_group_msg'), '群 @ 回复')
 if (r3.params.group_id !== GROUP) await fail('群回复发错群：' + JSON.stringify(r3.params))
-if (sentText(r3) !== '回复:[群名片(' + USER + ')] 在吗') await fail('群 @ 回复内容不对（应带发送者前缀）：' + sentText(r3))
+if (sentText(r3).trimStart() !== '回复:[群名片(' + USER + ')] 在吗') await fail('群 @ 回复内容不对（应带发送者前缀）：' + sentText(r3))
 if (!calls.some(c => c.action === 'get_group_member_info' && c.params.user_id === BOT)) await fail('@ 没有查群名片')
+const replyHeaders = r3.params.message.filter(m => m.type === 'reply' || m.type === 'at')
+if (GROUP_REPLY) {
+  if (replyHeaders.map(m => m.type).join(',') !== 'reply,at' || String(replyHeaders[0].data.id) !== String(replyMessageId) || String(replyHeaders[1].data.qq) !== String(USER)) await fail('群回复引用或 @ 对象不正确：' + JSON.stringify({ replyHeaders, replyMessageId }))
+} else if (replyHeaders.length) await fail('群回复 @ 和引用应默认关闭')
+log('群回复 @ / 引用 ' + (GROUP_REPLY ? '开启' : '默认关闭') + ' OK')
 log('群 @ OK（带发送者前缀）：' + sentText(r3))
 
 // 4. 唤醒前缀 / 被去掉；@ 别人（名片为空）时查 get_stranger_info，文字里写成 @昵称(QQ)

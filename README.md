@@ -45,6 +45,7 @@
 | 指令 | 私聊时不带前缀也能触发 | 必须带唤醒前缀，免得聊天里说到 new 也被当成指令 |
 | 直接发来的聊天记录 | 不展开 | 展开成 `<Forward Message>` |
 | 视频 | 不交给模型 | 文字里写 `[视频]`；有 ffmpeg 时截几张画面当图片交给模型（DeepSeek 模型收不了视频原件），设置页可以一键安装 ffmpeg |
+| 群回复 @ / 引用 | `reply_with_mention` / `reply_with_quote` | 两个独立开关默认关闭；群聊文字和指令回复使用实际来信的发送者 / 消息 ID；分段只在首条文字附加，不装饰主动聊天或私聊 |
 | 发消息节奏 | 没有 | 模拟打字速度；群里限制发言频率（见上面第 7 条） |
 | 发语音 | 文字转语音（TTS）插件，单家服务商 | 每条先用 BreezeBlue，这条出错（含额度用完）就这条换 Inworld，两家都不行发文字；她可以自己决定哪句用语音（见「配置项 · 语音回复」） |
 | 给其他插件的接口 | — | 交给模型前的 `napcat/prompt`、发出后的 `napcat/sent`、会话信息、换会话、媒体转换（见「给其他插件用」） |
@@ -149,9 +150,9 @@ dsh --version                        # 0.2.1-rc.2
 
 # 6. 两个插件（回到家目录）
 cd ~
-dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.17.0 github:Geng-zy/dsh-companion-core#v0.12.2
+dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.18.0 github:Geng-zy/dsh-companion-core#v0.12.2
 #    连不上 GitHub：到两个仓库的 Releases 下载 .tgz，传到 ~/pkgs/ 后
-#    dsh plugin --profile web add ./pkgs/dsh-napcat-bridge-0.17.0.tgz ./pkgs/dsh-companion-core-0.12.2.tgz
+#    dsh plugin --profile web add ./pkgs/dsh-napcat-bridge-0.18.0.tgz ./pkgs/dsh-companion-core-0.12.2.tgz
 #    （~/pkgs 以后不能删：dsh 的 profile 里记着它）
 
 # 7. 配置
@@ -265,7 +266,7 @@ sudo systemctl daemon-reload && sudo systemctl enable --now napcat
 ## 安装
 
 ```bash
-dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.17.0
+dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.18.0
 ```
 
 然后在 profile 的 `cordis.patch.yml` 里写配置（行 id 固定是 `napcat-bridge`）：
@@ -350,6 +351,7 @@ NapCat 那边在「网络配置」里新建一个 **WebSocket 客户端**：
 | | `typingCharsPerMinute` / `typingMinSeconds` / `typingMaxSeconds` | `100` / `1` / `10` | 打字速度（0 = 不等）、最少和最多等几秒 |
 | | `groupMinGapSeconds` / `groupMaxPerWindow` / `groupWindowSeconds` | `5` / `5` / `60` | 同一个群她两条之间至少隔几秒、一段时间里最多几条（0 = 不限） |
 | | `sendMaxWaitSeconds` | `120` | 为了守频率最多排队几秒，超过就不发 |
+| 群聊回复对象 | `groupReplyMention` / `groupReplyQuote` | `false` / `false` | 设置页「发消息 → 群聊回复对象」：回复时 @ 对方 / 引用原消息，可独立启用。只加在首条实际发送的文字；引用触发本轮的来信，不是来信里引用的旧消息。群指令也生效；私聊、主动聊天、纯语音不附加，语音随附文字或失败回退文字时生效。多条来信进入同一轮时使用本轮最后实际消费的一条；排队期间新来信不改变已生成回复的对象 |
 | 分段发送 | `segmentAdminPrivate` / `segmentPrivate` / `segmentGroup` | `true` / `false` / `false` | 把一次回复按行拆成几条发（代码块不拆）；每条按自己的字数等打字，但每条最多 `segmentMaxSeconds` 秒 |
 | | `segmentMax` / `segmentMaxSeconds` | `10` / `3` | 一次最多拆成几条（多出来的并进最后一条）；拆开时每条最多等几秒打字 |
 | 语音回复 | `ttsEnabled` | `false` | 文字转语音：她的回复可以用语音发（mp3 交给 NapCat 转成 QQ 语音） |

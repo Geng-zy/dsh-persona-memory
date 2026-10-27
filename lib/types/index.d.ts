@@ -80,6 +80,8 @@ export interface Config {
     groupMaxPerWindow: number;
     groupWindowSeconds: number;
     sendMaxWaitSeconds: number;
+    groupReplyMention: boolean;
+    groupReplyQuote: boolean;
     segmentAdminPrivate: boolean;
     segmentPrivate: boolean;
     segmentGroup: boolean;
