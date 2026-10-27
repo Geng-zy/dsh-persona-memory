@@ -148,9 +148,9 @@ dsh --version                        # 0.2.1-rc.2
 
 # 6. 两个插件（回到家目录）
 cd ~
-dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.16.4 github:Geng-zy/dsh-companion-core#v0.12.2
+dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.17.0 github:Geng-zy/dsh-companion-core#v0.12.2
 #    连不上 GitHub：到两个仓库的 Releases 下载 .tgz，传到 ~/pkgs/ 后
-#    dsh plugin --profile web add ./pkgs/dsh-napcat-bridge-0.16.4.tgz ./pkgs/dsh-companion-core-0.12.2.tgz
+#    dsh plugin --profile web add ./pkgs/dsh-napcat-bridge-0.17.0.tgz ./pkgs/dsh-companion-core-0.12.2.tgz
 #    （~/pkgs 以后不能删：dsh 的 profile 里记着它）
 
 # 7. 配置
@@ -247,7 +247,7 @@ sudo systemctl daemon-reload && sudo systemctl enable --now napcat
 2. 网页里「设置 → 模型」填 DeepSeek API Key。想用 **DeepSeek 账号登录**的话，dsh 只允许在 `localhost` 地址上登录账号，要按上面的 SSH 隧道方式打开网页再登录。
 3. 扫码登录 QQ 小号：二维码在 `~/Napcat/opt/QQ/resources/app/app_launcher/napcat/cache/qrcode.png`，或者打开 NapCat 网页 `http://<服务器>:6099/webui/`（Token 在同目录 `config/webui.json`，登录后记得改掉）。
 4. 换服务器搬家：旧机器在 dsh-companion-core 设置页「现在备份并下载」，新机器装好后「导入备份包」，人格、记忆、日记和两个插件的设置都会恢复（Key 和 Token 不在包里，要重新填）。
-5. 在 dsh-napcat-bridge 设置页「连接和权限 → 访问控制」添加允许的群号和私聊 QQ 号（v0.16.4 起两者规则完全相同，管理员和主动聊天也不能绕过；空名单全部禁止）。其余设置（唤醒词、人格、核心记忆、向量 Key……）都在 dsh 网页侧栏「插件」里两个插件的设置页。
+5. 在 dsh-napcat-bridge 设置页「连接和权限 → 访问控制」分别填写群聊和其他人私聊的白名单（v0.17.0 起管理员自动豁免，无需列入；普通会话使用各自名单，群主动聊天仍按群名单检查）。其余设置（唤醒词、人格、核心记忆、向量 Key……）都在 dsh 网页侧栏「插件」里两个插件的设置页。
 
 #### 几个容易踩的坑
 
