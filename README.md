@@ -20,7 +20,7 @@
 3. 每条消息都会发出 dsh 事件 `napcat/message`，给其他插件用。
 4. 照 AstrBot 流水线的顺序过一遍：唤醒 → 白名单 → 指令 → 只 @ 不说话时等下一条 → 频率限制 → 语音转文字（视频截图是本插件新增）。唤醒规则同 AstrBot 默认：
    - **私聊**：都交给模型。
-   - **群聊**：@ 机器人、引用机器人的消息、或以唤醒前缀（默认 `/`）开头时才交给模型，唤醒前缀会去掉。
+   - **群聊**：正文包含唤醒词、@机器人、引用机器人的消息，或以唤醒前缀（默认 `/`）开头时交给模型，唤醒前缀会去掉。关键词不匹配 @其他人的昵称。
 5. 每个会话对应一个 dsh 会话（发 /new 或 /reset 换新的），新会话按"管理员私聊 > 私聊/群聊 > 默认"选预设和模型。会话标识按 AstrBot 的 `平台ID:消息类型:会话ID` 来分，群聊的会话 ID 是群号，私聊的是对方 QQ 号。
 6. 交给模型的内容：群消息前面加 `[昵称(QQ号)]`；`<system_reminder>` 里写当前时间、群名、发送者是不是管理员；有引用时接上 `<Quoted Message>(昵称): 内容</Quoted Message>`，引用的是聊天记录会逐层展开；直接发来的聊天记录写成 `<Forward Message>`；图片（包括商城表情、引用和聊天记录里的图片）作为附件一起交给模型；视频在文字里写 `[视频]`，有 ffmpeg 时另外截几张画面当图片给模型。交给模型前先发 `napcat/prompt`，其他插件（例如记忆）可以往里加内容。
 7. 模型一轮结束后，把最后一条回复的文字发回去：私聊用 `send_private_msg`，群聊用 `send_group_msg`，然后发 `napcat/sent`。发之前按「发消息节奏」像真人一样等一会儿：按打字速度（默认每分钟 100 字，也就是每个字 0.6 秒，最少 1 秒、最多 10 秒）；群里两条之间至少隔 5 秒、一分钟最多 5 条，超出就排队，排队超过 2 分钟这条就不发。同一个会话的消息按顺序发。分段发送（默认只在管理员私聊里开）会把一次回复按行拆成几条，一句一条地发。
@@ -151,9 +151,9 @@ dsh --version                        # 0.2.1-rc.2
 
 # 6. 两个插件（回到家目录）
 cd ~
-dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.19.0 github:Geng-zy/dsh-companion-core#v0.13.0
+dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.19.1 github:Geng-zy/dsh-companion-core#v0.13.0
 #    连不上 GitHub：到两个仓库的 Releases 下载 .tgz，传到 ~/pkgs/ 后
-#    dsh plugin --profile web add ./pkgs/dsh-napcat-bridge-0.19.0.tgz ./pkgs/dsh-companion-core-0.13.0.tgz
+#    dsh plugin --profile web add ./pkgs/dsh-napcat-bridge-0.19.1.tgz ./pkgs/dsh-companion-core-0.13.0.tgz
 #    （~/pkgs 以后不能删：dsh 的 profile 里记着它）
 
 # 7. 配置
@@ -267,7 +267,7 @@ sudo systemctl daemon-reload && sudo systemctl enable --now napcat
 ## 安装
 
 ```bash
-dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.19.0
+dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.19.1
 ```
 
 然后在 profile 的 `cordis.patch.yml` 里写配置（行 id 固定是 `napcat-bridge`）：
@@ -434,3 +434,8 @@ AGPL-3.0-or-later。代码移植自 AstrBot（AGPL-3.0-or-later）和 aiocqhttp�
 ### 消息存档权限（v0.19.0）
 
 `ctx.napcat.canArchive(session)` 返回当前 QQ 会话是否允许存档。白名单开启时群必须在群名单内（不因管理员发言放行），普通私聊须在私聊名单内，管理员私聊自动允许；白名单关闭时不限制。companion-core ≥ v0.13.0 在收发存档和图片落盘前调用此接口，不能用未唤醒消息存档开关绕过。此接口与管理员群内回复权限分开，历史存档和 dsh 自身会话日志不自动删除。
+
+
+### 关键词唤醒与 @ 他人（v0.19.1）
+
+关键词只在收到的正文（Plain 消息段）中匹配，不匹配 @ 对象的群昵称、名称或QQ号，也不会跨非正文段拼接词语。正文确实提到唤醒词、真实 @机器人、引用机器人和原有前缀唤醒仍按原规则处理；交给模型的消息保留 @对象信息。

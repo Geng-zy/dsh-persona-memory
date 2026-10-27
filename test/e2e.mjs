@@ -179,7 +179,7 @@ ws.on('message', raw => {
     sent.push(req)
     data = { message_id: nextMsgId++ }
   } else if (req.action === 'get_group_member_info') {
-    data = { user_id: req.params.user_id, card: req.params.user_id === BOT ? '大肥鱼' : '', nickname: 'nick' + req.params.user_id }
+    data = { user_id: req.params.user_id, card: req.params.user_id === BOT ? '大肥鱼' : req.params.user_id === 556 ? '大肥鱼 FISH 群友' : '', nickname: 'nick' + req.params.user_id }
   } else if (req.action === 'get_stranger_info') {
     data = { user_id: req.params.user_id, nickname: '陌生人' + req.params.user_id }
   } else if (req.action === 'get_msg') {
@@ -253,6 +253,17 @@ if (GROUP_REPLY) {
 } else if (replyHeaders.length) await fail('群回复 @ 和引用应默认关闭')
 log('群回复 @ / 引用 ' + (GROUP_REPLY ? '开启' : '默认关闭') + ' OK')
 log('群 @ OK（带发送者前缀）：' + sentText(r3))
+
+// 3b. @别人时其昵称含唤醒词不能误触发；真正的正文关键词仍能唤醒。
+const keywordRequestsBefore = modelRequests.length
+const keywordSendsBefore = sent.length
+groupMsg([at(556), text('你在吗')])
+await new Promise(r => setTimeout(r, 1200))
+if (modelRequests.length !== keywordRequestsBefore || sent.length !== keywordSendsBefore) await fail('@别人昵称含唤醒词误触发了回复')
+groupMsg([at(556), text('大肥鱼也来看看')])
+await waitFor(() => sent.length > keywordSendsBefore, '正文关键词唤醒')
+if (!modelRequests.slice(keywordRequestsBefore).some(t => t.includes('@大肥鱼 FISH 群友(556)') && t.includes('大肥鱼也来看看'))) await fail('正文关键词或@对象信息丢失')
+log('@别人昵称含唤醒词不误触发，正文关键词仍唤醒 OK')
 
 // 4. 唤醒前缀 / 被去掉；@ 别人（名片为空）时查 get_stranger_info，文字里写成 @昵称(QQ)
 const groupSentBefore = sent.filter(s => s.action === 'send_group_msg').length

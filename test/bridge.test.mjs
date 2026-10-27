@@ -776,3 +776,30 @@ test('存档白名单：群不继承管理员豁免，普通私聊受限，管�
   assert.equal(h.bridge.canArchive(friend('88')), true)
   await h.bridge.dispose()
 })
+
+
+test('关键词唤醒只匹配正文，@其他人的昵称含唤醒词不能叫醒她', async () => {
+  const h = harness({ wake: { wakePrefix: ['/'], wakeKeywords: ['大肥鱼', 'Fish'] } }, {
+    ...memberInfo, get_group_member_info: p => ({ card: p.user_id === BOT ? '机器人' : '大肥鱼 FISH 群友' }),
+  })
+  await h.groupMsg(9, 555, [at(77), text('你在吗')])
+  await h.groupMsg(9, 555, [text('今天有空吗'), at(77)])
+  await h.groupMsg(9, 555, [at(77)])
+  assert.equal(h.followups.length, 0)
+  await h.groupMsg(9, 555, [at(77), text('大肥鱼也来看看')])
+  assert.equal(h.followups.length, 1, '正文真正提到唤醒词仍然唤醒')
+  assert.match(h.followups[0].text, /@大肥鱼 FISH 群友\(77\)/, '@对象仍原样交给模型')
+  await h.groupMsg(9, 555, [at(77), at(BOT), text('在吗')])
+  assert.equal(h.followups.length, 2, '真实 @ 机器人不受影响')
+  await h.bridge.dispose()
+})
+
+test('关键词不会跨 @ 等非正文消息段拼接，也不会匹配@全体的名称', async () => {
+  const h = harness({ wake: { wakePrefix: ['/'], wakeKeywords: ['大肥鱼', '全体成员'] } }, memberInfo)
+  await h.groupMsg(9, 555, [text('大肥'), at(77), text('鱼')])
+  await h.groupMsg(9, 555, [at('all'), text('晚上好')])
+  assert.equal(h.followups.length, 0)
+  await h.groupMsg(9, 555, [text('晚上好，大肥鱼')])
+  assert.equal(h.followups.length, 1)
+  await h.bridge.dispose()
+})
