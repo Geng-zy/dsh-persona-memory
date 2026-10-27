@@ -101,9 +101,10 @@ writeFileSync(join(profile, 'cordis.patch.yml'), `- id: napcat-bridge
     ws_reverse_port: ${WS_PORT}
     ws_reverse_token: ${TOKEN}
     workspacePath: ${workspace}
-    admins: ['${USER}']
+    admins: ['${USER}', '${USER + 1}']
     whitelist: ['${GROUP}', '${USER}']
     whitelistIgnoreAdminOnGroup: true
+    whitelistIgnoreAdminOnFriend: true
     logLevel: debug
     typingCharsPerMinute: 6000
     typingMinSeconds: 1
@@ -233,9 +234,11 @@ log('群里不 @ 不回 OK')
 groupMsg([at(BOT), text('白名单外的艾特')], GROUP + 1)
 groupMsg([text('大肥鱼，白名单外的关键词')], GROUP + 1)
 groupMsg([text('/help')], GROUP + 1)
+privateMsg([text('白名单外的管理员私聊')], USER + 1)
+privateMsg([text('/help')], USER + 1)
 await new Promise(r => setTimeout(r, 1000))
-if (modelRequests.length !== before || sent.some(s => s.params.group_id === GROUP + 1)) await fail('管理员在白名单外的群触发了回复')
-log('群白名单挡住管理员 @、关键词和指令 OK')
+if (modelRequests.length !== before || sent.some(s => s.params.group_id === GROUP + 1 || s.params.user_id === USER + 1)) await fail('管理员绕过了群聊或私聊白名单')
+log('群聊和私聊白名单挡住管理员消息、@、关键词和指令 OK')
 
 // 3. 群里 @ 机器人：唤醒；第一个 @ 机器人不进文字
 groupMsg([at(BOT), text(' 在吗')])

@@ -102,8 +102,6 @@ export interface BridgeSettings {
     whitelist: {
         enabled: boolean;
         ids: string[];
-        ignoreAdminOnGroup: boolean;
-        ignoreAdminOnFriend: boolean;
         log: boolean;
     };
     /** AstrBot rate_limit：time 秒内最多 count 条；strategy stall=排队 discard=丢弃；count 0 = 不限 */
@@ -248,9 +246,8 @@ export declare class Bridge {
     private umoOf;
     private isAdmin;
     /**
-     * 本插件改动：群白名单对所有发送入口生效，管理员也不能绕过；名单清空时禁止所有群。
-     * 私聊保留 AstrBot 的空名单放行、管理员豁免，并额外认 QQ 号。
-     * ignoreAdminOnGroup 只保留旧配置兼容，不再用于判断。
+     * 本插件改动：群聊和私聊使用同一白名单规则，管理员不能绕过；名单清空时全部禁止。
+     * QQ 号 / 群号或完整会话标识均可放行，旧的管理员豁免设置不再用于判断。
      */
     canSend(session: MessageSession): boolean;
     /** 给其他插件代发时也检查，不能绕过群白名单。 */

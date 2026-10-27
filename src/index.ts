@@ -148,10 +148,10 @@ export const Config: z<LiveConfig> = z.object({
   maxImages: z.natural().default(0).volatile().description('一条消息最多交给模型几张图片；0 = 不限'),
   // 访问控制（AstrBot platform_settings / admins_id）
   admins: z.array(z.string()).default([]).volatile().description('管理员 QQ 号'),
-  whitelistEnabled: z.boolean().default(true).volatile().description('启用白名单；群必须在名单里，名单为空时禁止所有群；私聊保留空名单放行'),
+  whitelistEnabled: z.boolean().default(true).volatile().description('启用白名单；群聊和私聊都必须在名单里，管理员也不例外；空名单全部禁止'),
   whitelist: z.array(z.string()).default([]).volatile().description('白名单：群号、QQ 号（私聊）或完整会话标识'),
   whitelistIgnoreAdminOnGroup: z.boolean().default(false).volatile().description('旧配置兼容项，已停用：群白名单对管理员也生效'),
-  whitelistIgnoreAdminOnFriend: z.boolean().default(true).volatile().description('私聊管理员不受白名单限制'),
+  whitelistIgnoreAdminOnFriend: z.boolean().default(false).volatile().description('旧配置兼容项，已停用：私聊白名单对管理员也生效'),
   whitelistLog: z.boolean().default(true).volatile().description('不在白名单时记日志'),
   rateLimitCount: z.natural().default(30).volatile().description('频率限制：时间窗口内最多处理几条（0 = 不限）'),
   rateLimitSeconds: z.natural().min(1).default(60).volatile().description('频率限制：时间窗口（秒）'),
@@ -367,8 +367,6 @@ export function apply(ctx: Context, live: LiveConfig): void {
       whitelist: {
         enabled: get('whitelistEnabled'),
         ids: get('whitelist').map(String),
-        ignoreAdminOnGroup: get('whitelistIgnoreAdminOnGroup'),
-        ignoreAdminOnFriend: get('whitelistIgnoreAdminOnFriend'),
         log: get('whitelistLog'),
       },
       rateLimit: { count: get('rateLimitCount'), seconds: get('rateLimitSeconds'), strategy: get('rateLimitStrategy') },

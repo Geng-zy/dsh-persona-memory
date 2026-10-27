@@ -98,7 +98,7 @@ export interface BridgeSettings {
   /** AstrBot admins_id：管理员 QQ 号 */
   admins: string[]
   /** AstrBot enable_id_white_list / id_whitelist / wl_ignore_admin_* / id_whitelist_log */
-  whitelist: { enabled: boolean; ids: string[]; ignoreAdminOnGroup: boolean; ignoreAdminOnFriend: boolean; log: boolean }
+  whitelist: { enabled: boolean; ids: string[]; log: boolean }
   /** AstrBot rate_limit：time 秒内最多 count 条；strategy stall=排队 discard=丢弃；count 0 = 不限 */
   rateLimit: { count: number; seconds: number; strategy: 'stall' | 'discard' }
   /** AstrBot empty_mention_waiting / empty_mention_waiting_need_reply */
@@ -349,18 +349,15 @@ export class Bridge {
   }
 
   /**
-   * 本插件改动：群白名单对所有发送入口生效，管理员也不能绕过；名单清空时禁止所有群。
-   * 私聊保留 AstrBot 的空名单放行、管理员豁免，并额外认 QQ 号。
-   * ignoreAdminOnGroup 只保留旧配置兼容，不再用于判断。
+   * 本插件改动：群聊和私聊使用同一白名单规则，管理员不能绕过；名单清空时全部禁止。
+   * QQ 号 / 群号或完整会话标识均可放行，旧的管理员豁免设置不再用于判断。
    */
   canSend(session: MessageSession): boolean {
     const s = this.deps.settings()
     const wl = s.whitelist
     const ids = wl.ids.map(i => String(i).trim()).filter(i => i !== '')
     if (!wl.enabled) return true
-    const isGroup = session.message_type === MessageType.GROUP_MESSAGE
     const id = String(session.session_id).trim()
-    if (!isGroup && (ids.length === 0 || (s.admins.includes(id) && wl.ignoreAdminOnFriend))) return true
     if (ids.includes(sessionToString(session)) || ids.includes(id)) return true
     if (wl.log) this.deps.log('info', '会话 ' + sessionToString(session) + ' 不在白名单里，不唤醒也不发送消息。需要的话在设置页「访问控制」里把群号或 QQ 号加进白名单。')
     return false

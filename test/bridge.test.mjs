@@ -122,7 +122,7 @@ const text = t => ({ type: 'text', data: { text: t } })
 const at = qq => ({ type: 'at', data: { qq: String(qq) } })
 const memberInfo = { get_group_member_info: p => ({ card: p.user_id === BOT ? '鱼' : '' }), get_stranger_info: () => ({ nickname: '路人' }) }
 
-test('白名单：群必须在名单里（管理员也一样）；管理员私聊可豁免；私聊可以写 QQ 号', async () => {
+test('白名单：群聊和私聊统一检查，管理员也必须在名单里；私聊可以写 QQ 号', async () => {
   const h = harness({ whitelist: { enabled: true, ids: ['555', '77'], ignoreAdminOnGroup: true, ignoreAdminOnFriend: true, log: false } }, memberInfo)
   await h.groupMsg(9, 666, [at(BOT), text('不在名单')])
   await h.privateMsg(8, [text('不在名单')])
@@ -131,7 +131,7 @@ test('白名单：群必须在名单里（管理员也一样）；管理员私�
   await h.privateMsg(77, [text('在名单的私聊')])
   await h.privateMsg(Number(ADMIN), [text('管理员私聊')])
   await h.groupMsg(Number(ADMIN), 666, [at(BOT), text('管理员在别的群')])
-  assert.equal(h.followups.length, 3)
+  assert.equal(h.followups.length, 2)
 })
 
 test('白名单关闭时不检查', async () => {
@@ -157,15 +157,19 @@ test('群白名单：关键词、@、引用和指令都不能绕过；旧管理�
   assert.equal(h.followups.length, 1)
 })
 
-test('群白名单清空时群全部禁用；私聊保留旧规则；完整会话标识也能放行群', async () => {
+test('白名单清空时群聊和私聊全部禁用；完整会话标识也能放行', async () => {
   const wl = { enabled: true, ids: [], ignoreAdminOnGroup: true, ignoreAdminOnFriend: true }
   const h = harness({ whitelist: wl }, memberInfo)
   await h.groupMsg(Number(ADMIN), 555, [at(BOT), text('不能回')])
   assert.equal(h.followups.length, 0)
-  await h.privateMsg(8, [text('私聊照旧')])
-  assert.equal(h.followups.length, 1)
+  await h.privateMsg(8, [text('普通私聊不能回')])
+  await h.privateMsg(Number(ADMIN), [text('管理员私聊也不能回')])
+  assert.equal(h.followups.length, 0)
   h.set({ whitelist: { ...wl, ids: ['napcat:GroupMessage:555'] }, uniqueSession: true })
   await h.groupMsg(9, 555, [at(BOT), text('按完整标识放行')])
+  assert.equal(h.followups.length, 1)
+  h.set({ whitelist: { ...wl, ids: ['napcat:FriendMessage:' + ADMIN] } })
+  await h.privateMsg(Number(ADMIN), [text('完整私聊标识放行')])
   assert.equal(h.followups.length, 2)
 })
 
@@ -541,4 +545,30 @@ test('文字转语音：合成失败、太长就发文字；不能发语音的�
   h.turn(String(h.created[1].sessionId), '[语音]你好呀')
   await new Promise(r => setTimeout(r, 40))
   assert.equal(h.sent.at(-1).text, '你好呀')
+})
+
+
+test('管理员私聊移出白名单：消息、指令、主动唤醒、代发和排队回复都禁止；重新加回恢复', async () => {
+  let release, started
+  const waiting = new Promise(r => { started = r })
+  const wl = { enabled: true, ids: [ADMIN], ignoreAdminOnGroup: true, ignoreAdminOnFriend: true }
+  const h = harness({ whitelist: wl, pace: { ...settings().pace, typingPrivate: true, charsPerMinute: 60, typingMinSeconds: 1, typingMaxSeconds: 1 } }, memberInfo, {
+    sleep: () => new Promise(r => { release = r; started() }),
+  })
+  await h.privateMsg(Number(ADMIN), [text('在名单里')])
+  h.turn(String(h.created[0].sessionId), '等待打字的回复')
+  await waiting
+  h.set({ whitelist: { ...wl, ids: ['555'] } })
+  await h.privateMsg(Number(ADMIN), [text('不在名单里')])
+  await h.privateMsg(Number(ADMIN), [text('/help')])
+  await assert.rejects(h.bridge.wake('napcat:FriendMessage:' + ADMIN, '主动找主人'), /白名单/)
+  await assert.rejects(h.bridge.sendBySession({ platform_name: 'napcat', message_type: 'FriendMessage', session_id: ADMIN }, { chain: [{ type: 'Plain', text: '代发' }] }), /白名单/)
+  release()
+  await new Promise(r => setTimeout(r, 20))
+  assert.equal(h.followups.length, 1)
+  assert.equal(h.sent.length, 0)
+  assert.equal(h.events.sent.length, 0)
+  h.set({ whitelist: wl })
+  await h.privateMsg(Number(ADMIN), [text('加回后恢复')])
+  assert.equal(h.followups.length, 2)
 })
