@@ -1,13 +1,13 @@
 {
   "说明": "插件当前对齐的上游版本。scripts/check-upstreams.mjs 拿最新版本和这里比较；跟进完某个上游后，把对应的 aligned 改成新版本并一起提交。",
-  "checkedAt": "2026-10-24",
+  "checkedAt": "2026-10-27",
   "upstreams": {
     "dsh": {
       "aligned": "0.2.1-rc.2",
       "source": "npm @deepseek-ai/dsh 的 latest 标签。要核对：dsh-compaction-basic 的 BasicCompactionEngine（本插件继承它）、system-prompt/assemble、agent/created、dsh-tools 的 defineTool、dsh-web-app/presets/standard.patch.yml（陪伴模式预设照抄它的工具行）"
     },
     "napcat-bridge": {
-      "aligned": "v0.11.0",
+      "aligned": "v0.16.3",
       "source": "GitHub Geng-zy/dsh-napcat-bridge 最新标签（插件一）；本插件用它的 napcat/message、napcat/sent、ctx.napcat.sessionInfo、ctx.napcat.wake（主动聊天）"
     },
     "node": {
