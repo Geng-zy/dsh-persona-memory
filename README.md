@@ -39,7 +39,7 @@
 | 群里谁在说话 | 默认不告诉模型 | 群消息前面加 `[昵称(QQ号)]`（`identifier`） |
 | 图片 | 由 AstrBot 流水线另外处理 | 作为 dsh 附件交给模型（`imageToModel`），模型要支持看图，如 deepseek-flash |
 | 引用 | 流水线整理成 `<Quoted Message>`，展开引用的聊天记录 | 照搬同样的做法 |
-| 白名单 | 空名单放行，可豁免群内管理员 | 群聊和私聊都必须在名单里，管理员也不能绕过；空名单全部禁止；主动唤醒、插件代发和实际发送前都检查 |
+| 白名单 | 旧混合名单、管理员豁免可配置 | 群聊和普通私聊使用两份独立名单；管理员始终豁免，无额外开关；主动唤醒、代发和发送前复查，群主动聊天不能继承管理员发言权限 |
 | 只 @ 不说话时等下一条 | 等这个会话里任何人的下一条 | 只等那个人的下一条 |
 | 管理员身份 | 不告诉模型 | 可以写进 `<system_reminder>` |
 | 指令 | 私聊时不带前缀也能触发 | 必须带唤醒前缀，免得聊天里说到 new 也被当成指令 |
@@ -149,9 +149,9 @@ dsh --version                        # 0.2.1-rc.2
 
 # 6. 两个插件（回到家目录）
 cd ~
-dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.16.4 github:Geng-zy/dsh-companion-core#v0.12.2
+dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.17.0 github:Geng-zy/dsh-companion-core#v0.12.2
 #    连不上 GitHub：到两个仓库的 Releases 下载 .tgz，传到 ~/pkgs/ 后
-#    dsh plugin --profile web add ./pkgs/dsh-napcat-bridge-0.16.4.tgz ./pkgs/dsh-companion-core-0.12.2.tgz
+#    dsh plugin --profile web add ./pkgs/dsh-napcat-bridge-0.17.0.tgz ./pkgs/dsh-companion-core-0.12.2.tgz
 #    （~/pkgs 以后不能删：dsh 的 profile 里记着它）
 
 # 7. 配置
@@ -248,7 +248,7 @@ sudo systemctl daemon-reload && sudo systemctl enable --now napcat
 2. 网页里「设置 → 模型」填 DeepSeek API Key。想用 **DeepSeek 账号登录**的话，dsh 只允许在 `localhost` 地址上登录账号，要按上面的 SSH 隧道方式打开网页再登录。
 3. 扫码登录 QQ 小号：二维码在 `~/Napcat/opt/QQ/resources/app/app_launcher/napcat/cache/qrcode.png`，或者打开 NapCat 网页 `http://<服务器>:6099/webui/`（Token 在同目录 `config/webui.json`，登录后记得改掉）。
 4. 换服务器搬家：旧机器在 dsh-companion-core 设置页「现在备份并下载」，新机器装好后「导入备份包」，人格、记忆、日记和两个插件的设置都会恢复（Key 和 Token 不在包里，要重新填）。
-5. 在插件设置页「连接和权限 → 访问控制」添加允许的群号和私聊 QQ 号（白名单默认开启，管理员也必须显式添加）。其余设置（唤醒词、人格、核心记忆、向量 Key……）都在 dsh 网页侧栏「插件」里两个插件的设置页。
+5. 在插件设置页「连接和权限 → 访问控制」分别填写「群聊白名单」和「其他人私聊白名单」（默认开启；管理员无需加入，始终不受白名单和消息限频限制）。其余设置（唤醒词、人格、核心记忆、向量 Key……）都在 dsh 网页侧栏「插件」里两个插件的设置页。
 
 #### 几个容易踩的坑
 
@@ -265,7 +265,7 @@ sudo systemctl daemon-reload && sudo systemctl enable --now napcat
 ## 安装
 
 ```bash
-dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.16.4
+dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.17.0
 ```
 
 然后在 profile 的 `cordis.patch.yml` 里写配置（行 id 固定是 `napcat-bridge`）：
@@ -307,10 +307,11 @@ NapCat 那边在「网络配置」里新建一个 **WebSocket 客户端**：
 | | `ws_reverse_token` | 不设 | 连接 Token，不设则不校验 |
 | | `id` | `napcat` | 平台 ID，会话标识的第一段 |
 | 访问控制 | `admins` | `[]` | 管理员 QQ 号 |
-| | `whitelistEnabled` | `true` | 启用白名单；群号 / 私聊 QQ 号都必须列入名单，管理员也不例外；空名单全部禁止，关闭才不检查白名单 |
-| | `whitelist` | `[]` | 群号、QQ 号（私聊）或完整会话标识 |
-| | `whitelistIgnoreAdminOnFriend` | `false` | 旧配置兼容项，已停用；即使旧配置为 `true`，管理员私聊也必须在白名单里 |
-| | `whitelistIgnoreAdminOnGroup` | `false` | 旧配置兼容项，已停用；即使旧配置为 `true`，群仍须在白名单里 |
+| | `whitelistEnabled` | `true` | 同时启用群聊和普通私聊白名单；空名单禁止对应普通会话，管理员始终豁免 |
+| | `groupWhitelist` | 空 | 群号或完整群会话标识；只限制普通群成员、群主动聊天和无来信身份的群代发 |
+| | `privateWhitelist` | 空 | 其他人的 QQ 号或完整私聊标识；管理员不用添加 |
+| | `whitelist` | `[]` | 旧混合名单，仅供首次迁移；完整标识按类型拆分，裸号码保留旧版双重匹配含义、分别复制到两份名单，迁移后清空旧字段；之后两份名单独立编辑 |
+| | `whitelistIgnoreAdminOnGroup` / `whitelistIgnoreAdminOnFriend` | `false` | 两个旧字段都忽略且不显示，管理员自动拥有权限，不需要豁免开关 |
 | | `whitelistLog` | `true` | 不在白名单时记日志 |
 | | `rateLimitCount` / `rateLimitSeconds` / `rateLimitStrategy` | `30` / `60` / `stall` | 频率限制，0 = 不限；stall 排队，discard 丢弃 |
 | 唤醒 | `wakeKeywords` | `["大肥鱼", "肥鱼"]` | 群消息里出现这些词也唤醒（不用 @，本插件新增） |
@@ -363,7 +364,9 @@ NapCat 那边在「网络配置」里新建一个 **WebSocket 客户端**：
 
 ## QQ 指令
 
-白名单开启时，群聊和私聊使用同一规则：只有名单里的群号、QQ 号或完整会话标识能触发回复，包括管理员；关键词、@、引用、指令和主动聊天都不能绕过。移除群或私聊 QQ 后，正在生成或排队等待的回复也会在发送前被拦住；已经发出的消息不会撤回。未唤醒的群消息仍按原有存档设置保存。
+白名单开启时，普通群成员查「群聊白名单」，其他人的私聊查「其他人私聊白名单」，两份名单互不影响；对应名单为空时禁止对应普通会话。管理员私聊及管理员在群内发言始终允许，不用列入名单，也不受入口/群发送限频约束；群内仍按 @、关键词等正常唤醒方式触发，打字和分段设置照常使用。
+
+普通会话被移出对应名单后，生成中或排队的回复仍会在发送前复查。管理员群内豁免只跟随这一轮真实来信，不会留给下一条普通成员消息，也不能放行群主动聊天。群里仍不提供主人私聊的私密记忆或改人格权限；管理员发言的豁免不会改变会话记忆隔离。未唤醒的群消息仍按存档设置保存。
 
 以唤醒前缀开头：`/help`、`/sid`（查看会话标识，加白名单时用）、`/new`、`/reset`（换一个新的 dsh 会话）、`/stop`（停止她正在进行的回复）。群里 `/new`、`/reset` 只有管理员、群主、群管理能用。
 

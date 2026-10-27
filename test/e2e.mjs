@@ -102,9 +102,9 @@ writeFileSync(join(profile, 'cordis.patch.yml'), `- id: napcat-bridge
     ws_reverse_token: ${TOKEN}
     workspacePath: ${workspace}
     admins: ['${USER}', '${USER + 1}']
-    whitelist: ['${GROUP}', '${USER}']
-    whitelistIgnoreAdminOnGroup: true
-    whitelistIgnoreAdminOnFriend: true
+    whitelist: ['napcat:GroupMessage:${GROUP}', 'napcat:FriendMessage:${USER + 2}']
+    whitelistIgnoreAdminOnGroup: false
+    whitelistIgnoreAdminOnFriend: false
     logLevel: debug
     typingCharsPerMinute: 6000
     typingMinSeconds: 1
@@ -196,9 +196,9 @@ const privateMsg = (message, user = USER) => event({
   post_type: 'message', message_type: 'private', sub_type: 'friend', message_id: nextMsgId++, user_id: user,
   message, raw_message: '', font: 0, sender: { user_id: user, nickname: '主人' },
 })
-const groupMsg = (message, group = GROUP) => event({
-  post_type: 'message', message_type: 'group', sub_type: 'normal', message_id: nextMsgId++, group_id: group, user_id: USER,
-  message, raw_message: '', font: 0, sender: { user_id: USER, nickname: '主人', card: '群名片' },
+const groupMsg = (message, group = GROUP, user = USER) => event({
+  post_type: 'message', message_type: 'group', sub_type: 'normal', message_id: nextMsgId++, group_id: group, user_id: user,
+  message, raw_message: '', font: 0, sender: { user_id: user, nickname: '主人', card: '群名片' },
 })
 const text = t => ({ type: 'text', data: { text: t } })
 const at = qq => ({ type: 'at', data: { qq: String(qq) } })
@@ -230,15 +230,15 @@ if (modelRequests.length !== before) await fail('群里没 @ 也交给了模型'
 if (sent.some(s => s.action === 'send_group_msg')) await fail('群里没 @ 也回复了')
 log('群里不 @ 不回 OK')
 
-// 群白名单优先于管理员、关键词、@ 和指令；故意保留旧豁免配置 true。
-groupMsg([at(BOT), text('白名单外的艾特')], GROUP + 1)
-groupMsg([text('大肥鱼，白名单外的关键词')], GROUP + 1)
-groupMsg([text('/help')], GROUP + 1)
-privateMsg([text('白名单外的管理员私聊')], USER + 1)
-privateMsg([text('/help')], USER + 1)
+// 普通成员和私聊分别受对应名单限制；管理员另测默认豁免。
+groupMsg([at(BOT), text('白名单外的艾特')], GROUP + 1, USER + 3)
+groupMsg([text('大肥鱼，白名单外的关键词')], GROUP + 1, USER + 3)
+groupMsg([text('/help')], GROUP + 1, USER + 3)
+privateMsg([text('白名单外的普通私聊')], USER + 3)
+privateMsg([text('/help')], USER + 3)
 await new Promise(r => setTimeout(r, 1000))
-if (modelRequests.length !== before || sent.some(s => s.params.group_id === GROUP + 1 || s.params.user_id === USER + 1)) await fail('管理员绕过了群聊或私聊白名单')
-log('群聊和私聊白名单挡住管理员消息、@、关键词和指令 OK')
+if (modelRequests.length !== before || sent.some(s => s.params.group_id === GROUP + 1 || s.params.user_id === USER + 3)) await fail('普通用户绕过了群聊或私聊白名单')
+log('普通群成员和私聊使用各自白名单 OK')
 
 // 3. 群里 @ 机器人：唤醒；第一个 @ 机器人不进文字
 groupMsg([at(BOT), text(' 在吗')])
@@ -378,6 +378,20 @@ await new Promise(r => setTimeout(r, 1500))
 if (sent.filter(s => s.action === 'send_private_msg').slice(privBefore16).some(s => sentText(s).includes('THINK-ONLY'))) await fail('不该把思考里的东西发出去')
 if (modelRequests.length - reqBefore16 !== 2) await fail('应该正好多调一次模型（原来一次 + 提醒一次），实际 ' + (modelRequests.length - reqBefore16))
 log('只想没说时提醒一次 OK')
+
+// 17. 两份名单独立迁移，管理员在名单之外也能私聊和群聊；普通人不能继承管理员权限。
+privateMsg([text('管理员默认豁免私聊')], USER + 1)
+await waitFor(() => sent.find(s => s.params.user_id === USER + 1 && sentText(s).includes('管理员默认豁免私聊')), '管理员私聊默认豁免')
+groupMsg([at(BOT), text('管理员默认豁免群聊')], GROUP + 1, USER + 1)
+await waitFor(() => sent.find(s => s.params.group_id === GROUP + 1 && sentText(s).includes('管理员默认豁免群聊')), '管理员群内默认豁免')
+privateMsg([text('迁移后的普通私聊白名单')], USER + 2)
+await waitFor(() => sent.find(s => s.params.user_id === USER + 2 && sentText(s).includes('迁移后的普通私聊白名单')), '旧私聊标识迁入独立名单')
+const afterAdmin = modelRequests.length
+const sentAfterAdmin = sent.length
+groupMsg([at(BOT), text('不能继承管理员豁免')], GROUP + 1, USER + 3)
+await new Promise(r => setTimeout(r, 1000))
+if (modelRequests.length !== afterAdmin || sent.length !== sentAfterAdmin) await fail('普通群成员继承了管理员豁免')
+log('管理员私聊/群聊默认豁免、旧名单迁移、普通人不继承权限 OK')
 
 log('全部通过')
 if (process.env.E2E_HOLD) {

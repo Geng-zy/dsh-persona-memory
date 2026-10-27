@@ -80,3 +80,14 @@ test('分段的打字时间：每段按自己的字数等，每段最多 maxSegm
   assert.deepEqual(splitTyping(lines, false, s, 3), [1_200, 3_000, 3_000, 1_000])
   assert.deepEqual(splitTyping(['a', 'b'], true, { ...s, typingGroup: false }, 3), [0, 0], '关掉打字就不等')
 })
+
+
+test('管理员回复不受群发言限频约束，也不占普通回复额度', async () => {
+  const c = fakeClock()
+  const p = new Pacer({ settings: () => ({ ...S, typingGroup: false }), log: () => {}, now: c.now, sleep: c.sleep })
+  await p.run('g', true, '普通回复', async () => {})
+  await p.run('g', true, '管理员回复', async () => {}, undefined, true)
+  assert.deepEqual(c.waits, [])
+  await p.run('g', true, '下一条普通回复', async () => {})
+  assert.deepEqual(c.waits, [5000])
+})

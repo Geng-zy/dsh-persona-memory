@@ -39,6 +39,6 @@ export declare class Pacer {
      * 排进这个会话的队列，等打字、守频率，然后发。返回发了没有。
      * typingMs：分段发送时由调用方给出这一段分到的打字时间（整条回复算一次，按长度分给各段）。
      */
-    run(umo: string, isGroup: boolean, text: string, send: () => Promise<void | boolean>, typingMs?: number): Promise<'sent' | 'dropped'>;
+    run(umo: string, isGroup: boolean, text: string, send: () => Promise<void | boolean>, typingMs?: number, bypassRateLimit?: boolean): Promise<'sent' | 'dropped'>;
     private one;
 }

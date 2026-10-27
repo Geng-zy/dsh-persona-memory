@@ -29,6 +29,8 @@ export interface Config {
     admins: string[];
     whitelistEnabled: boolean;
     whitelist: string[];
+    groupWhitelist: string[] | undefined;
+    privateWhitelist: string[] | undefined;
     whitelistIgnoreAdminOnGroup: boolean;
     whitelistIgnoreAdminOnFriend: boolean;
     whitelistLog: boolean;

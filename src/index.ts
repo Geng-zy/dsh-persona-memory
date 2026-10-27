@@ -5,7 +5,7 @@ import type { Context as CordisContext } from '@deepseek-ai/cordis'
 import type { AgentRegistry } from '@deepseek-ai/dsh-agent'
 import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
 import { AiocqhttpAdapter, AiocqhttpMessageEvent, MessageType, sessionToString, type AstrBotMessage, type MessageSession } from './adapter.js'
-import { Bridge, type PromptPayload, type SentPayload, type SessionChange, type SessionInfo } from './bridge.js'
+import { Bridge, legacyWhitelistFor, type PromptPayload, type SentPayload, type SessionChange, type SessionInfo } from './bridge.js'
 import type { MessageChain } from './components.js'
 import { listModels } from './models.js'
 import { findFfmpeg, installFfmpeg, platformTag, type InstallState } from './ffmpeg.js'
@@ -41,6 +41,8 @@ export interface Config {
   admins: string[]
   whitelistEnabled: boolean
   whitelist: string[]
+  groupWhitelist: string[] | undefined
+  privateWhitelist: string[] | undefined
   whitelistIgnoreAdminOnGroup: boolean
   whitelistIgnoreAdminOnFriend: boolean
   whitelistLog: boolean
@@ -148,10 +150,12 @@ export const Config: z<LiveConfig> = z.object({
   maxImages: z.natural().default(0).volatile().description('一条消息最多交给模型几张图片；0 = 不限'),
   // 访问控制（AstrBot platform_settings / admins_id）
   admins: z.array(z.string()).default([]).volatile().description('管理员 QQ 号'),
-  whitelistEnabled: z.boolean().default(true).volatile().description('启用白名单；群聊和私聊都必须在名单里，管理员也不例外；空名单全部禁止'),
-  whitelist: z.array(z.string()).default([]).volatile().description('白名单：群号、QQ 号（私聊）或完整会话标识'),
-  whitelistIgnoreAdminOnGroup: z.boolean().default(false).volatile().description('旧配置兼容项，已停用：群白名单对管理员也生效'),
-  whitelistIgnoreAdminOnFriend: z.boolean().default(false).volatile().description('旧配置兼容项，已停用：私聊白名单对管理员也生效'),
+  whitelistEnabled: z.boolean().default(true).volatile().description('启用群聊和普通私聊白名单；管理员始终不受限制，空名单禁止对应普通会话'),
+  whitelist: z.array(z.string()).default([]).volatile().hidden().description('旧混合名单，仅用于首次迁移'),
+  groupWhitelist: z.array(z.string()).volatile().description('群聊白名单：群号或完整群会话标识；管理员发言始终豁免'),
+  privateWhitelist: z.array(z.string()).volatile().description('其他人私聊白名单：QQ 号或完整私聊标识；管理员不用添加'),
+  whitelistIgnoreAdminOnGroup: z.boolean().default(false).volatile().hidden().description('旧配置兼容项，已忽略：管理员默认拥有最高权限'),
+  whitelistIgnoreAdminOnFriend: z.boolean().default(false).volatile().hidden().description('旧配置兼容项，已忽略：管理员默认拥有最高权限'),
   whitelistLog: z.boolean().default(true).volatile().description('不在白名单时记日志'),
   rateLimitCount: z.natural().default(30).volatile().description('频率限制：时间窗口内最多处理几条（0 = 不限）'),
   rateLimitSeconds: z.natural().min(1).default(60).volatile().description('频率限制：时间窗口（秒）'),
@@ -366,7 +370,8 @@ export function apply(ctx: Context, live: LiveConfig): void {
       admins: get('admins').map(String),
       whitelist: {
         enabled: get('whitelistEnabled'),
-        ids: get('whitelist').map(String),
+        groupIds: get('groupWhitelist') ?? legacyWhitelistFor(get('whitelist'), MessageType.GROUP_MESSAGE),
+        privateIds: get('privateWhitelist') ?? legacyWhitelistFor(get('whitelist'), MessageType.FRIEND_MESSAGE),
         log: get('whitelistLog'),
       },
       rateLimit: { count: get('rateLimitCount'), seconds: get('rateLimitSeconds'), strategy: get('rateLimitStrategy') },
@@ -653,9 +658,27 @@ export function apply(ctx: Context, live: LiveConfig): void {
   }, 'napcat-bridge: watchdog')
   //#endregion
 
+  const migrateWhitelists = async (): Promise<void> => {
+    // settings.describe() 只列 state=2 的实例；要等 Loader 完成挂载，不能在 apply 期间查自己的表单。
+    await (ctx.root as unknown as { loader: { await(): Promise<unknown> } }).loader.await()
+    if (ctx.fiber.state !== 2) throw new Error('插件已停止，取消白名单迁移')
+    const svc = ctx.get('settings' as never) as { describe(o: { redactSecrets: boolean }): Array<{ ns: string; value?: Record<string, unknown>; user?: Record<string, unknown> }>; mutate(ns: string, ops: unknown[]): Promise<void> } | undefined
+    const form = svc?.describe({ redactSecrets: true }).find(f => 'ws_reverse_host' in (f.value ?? {}) && 'wakeKeywords' in (f.value ?? {}))
+    if (svc === undefined || form === undefined) throw new Error('没有找到本插件设置，无法迁移旧白名单')
+    // 以 user 层是否显式设置为准，宿主可能把缺省数组解析为 []，不能仅靠 get() 判断。
+    const ops: Array<{ op: string; path: string[]; value: string[] }> = (['groupWhitelist', 'privateWhitelist'] as const)
+      .filter(k => !Array.isArray(form.user?.[k]))
+      .map(k => ({ op: 'set', path: [k], value: legacyWhitelistFor(get('whitelist'), k === 'groupWhitelist' ? MessageType.GROUP_MESSAGE : MessageType.FRIEND_MESSAGE) }))
+    // 迁移后清空旧字段，之后重置或清空新名单不会重新启用旧号码。
+    if (get('whitelist').length > 0) ops.push({ op: 'set', path: ['whitelist'], value: [] })
+    if (ops.length === 0) return
+    await svc.mutate(form.ns, ops)
+    log('info', '旧白名单已迁移为群聊和私聊两份名单，之后分别保存、互不影响')
+  }
+
   ctx.effect(() => {
     let address = get('ws_reverse_host') + ':' + get('ws_reverse_port')
-    let switching: Promise<void> = adapter.run().then(
+    let switching: Promise<void> = migrateWhitelists().then(() => adapter.run()).then(
       () => log('info', '反向 WebSocket 已监听 ' + address),
       (error: unknown) => log('error', '启动反向 WebSocket 失败: ' + errText(error)),
     )

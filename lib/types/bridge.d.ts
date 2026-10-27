@@ -101,7 +101,8 @@ export interface BridgeSettings {
     /** AstrBot enable_id_white_list / id_whitelist / wl_ignore_admin_* / id_whitelist_log */
     whitelist: {
         enabled: boolean;
-        ids: string[];
+        groupIds: string[];
+        privateIds: string[];
         log: boolean;
     };
     /** AstrBot rate_limit：time 秒内最多 count 条；strategy stall=排队 discard=丢弃；count 0 = 不限 */
@@ -228,6 +229,8 @@ export declare function wakingCheck(event: AiocqhttpMessageEvent, wake: WakeConf
     stop: boolean;
     prefixUsed: boolean;
 };
+/** 旧混合名单迁移：完整标识按类型分开，裸号码保留旧版两种匹配含义。 */
+export declare function legacyWhitelistFor(ids: readonly string[], type: MessageType): string[];
 export declare class Bridge {
     private readonly deps;
     private readonly chats;
@@ -245,11 +248,8 @@ export declare class Bridge {
     /** unified_msg_origin；开了 unique_session 时群里按 QQ号_群号 分会话（同 AstrBot）。 */
     private umoOf;
     private isAdmin;
-    /**
-     * 本插件改动：群聊和私聊使用同一白名单规则，管理员不能绕过；名单清空时全部禁止。
-     * QQ 号 / 群号或完整会话标识均可放行，旧的管理员豁免设置不再用于判断。
-     */
-    canSend(session: MessageSession): boolean;
+    /** 管理员始终豁免；普通群聊/私聊分别只查对应名单。群豁免必须来自真实来信发送者。 */
+    canSend(session: MessageSession, senderId?: string): boolean;
     /** 给其他插件代发时也检查，不能绕过群白名单。 */
     sendBySession(session: MessageSession, chain: MessageChain): Promise<void>;
     /** RateLimitStage（固定窗口）。返回 false 表示这条被丢弃。 */
