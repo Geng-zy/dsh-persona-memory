@@ -52,7 +52,7 @@ test('顺着关系想起来：聊「咪咪」能想起没出现「咪咪」的�
   assert.ok(withGraph.some(r => r.memory.id === vet.id), '加上图那一路就想起来了')
   assert.ok(withGraph.length <= SETTINGS.topK)
   assert.equal(graphScores(graph, MASTER, q, 0).get(vet.id), undefined, '走 0 步时只有直接提到的')
-  assert.equal(graphScores(graph, { category: 'group', qq: true, umo: 'napcat:GroupMessage:5', groupId: '5' }, q, 1).size, 0, '群里看不到主人的关系网')
+  assert.equal(graphScores(graph, { category: 'group', qq: true, umo: 'snowluma:GroupMessage:5', groupId: '5' }, q, 1).size, 0, '群里看不到主人的关系网')
   assert.deepEqual(graph.counts(), { memories: 3, done: 3, entities: 5, relations: 4 })
 })
 
@@ -74,7 +74,7 @@ test('后台补抽：批量调模型、进度、改内容会重抽、删掉的�
   assert.ok(!llm.calls[0].includes('今天很开心'), '日记不抽')
   assert.equal(builder.state().state, 'done')
   assert.deepEqual(builder.state().counts, { memories: 2, done: 2, entities: 4, relations: 2 })
-  assert.ok(graphScores(graph, { category: 'private', qq: true, umo: 'napcat:FriendMessage:7', userId: '7' }, '旺财今天乖不乖', 1).has(b.id))
+  assert.ok(graphScores(graph, { category: 'private', qq: true, umo: 'snowluma:FriendMessage:7', userId: '7' }, '旺财今天乖不乖', 1).has(b.id))
 
   // 改内容：指纹变了，重抽，旧关系去掉
   store.edit(a.id, '主人换到上海上班了')

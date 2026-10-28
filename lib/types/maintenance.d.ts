@@ -16,7 +16,7 @@ export interface MaintenanceSettings {
     /** 这个会话的存档保留天数 */
     archiveDays(scope: Scope): number;
 }
-export interface NapcatRotate {
+export interface SnowlumaRotate {
     rotateSession?(umo: string): Promise<{
         oldSessionId: string;
         newSessionId: string;
@@ -44,7 +44,7 @@ export interface MaintenanceDeps {
     llm(): LlmLike | undefined;
     target(): ModelTarget | undefined;
     settings(): MaintenanceSettings;
-    napcat(): NapcatRotate | undefined;
+    snowluma(): SnowlumaRotate | undefined;
     registry(): WorkspaceRegistryLike | undefined;
     persistence(): PersistenceLike | undefined;
     /** 这个 dsh 会话还在跑吗（在跑的不能删） */
@@ -94,7 +94,7 @@ export declare class Maintenance {
     /**
      * 删一个已归档的旧会话（dsh 没有删除接口，这是我们自己的做法，端到端测试验证过）：
      * 确认不在跑 → 从工作区移除 → 删掉会话文件夹 → 从归档列表去掉 → 确认 dsh 查不到它了、列表还正常。
-     * 只删插件一建的 QQ 会话（id 以 napcat- 开头），文件夹必须在 <DSH_HOME>/sessions 里。
+     * 只删插件一建的 QQ 会话（id 以 snowluma- 开头），文件夹必须在 <DSH_HOME>/sessions 里。
      */
     deleteSession(id: string): Promise<void>;
     /** 删掉没被存档引用的图片，返回删了几个。 */

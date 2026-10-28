@@ -1,4 +1,4 @@
-/** 算"人说的话"的消息来源：dsh 里输入的（user）、QQ 来的（plugin:napcat-bridge）。其他（压缩摘要、运行信息、技能等）不算一轮。 */
+/** 算"人说的话"的消息来源：dsh 里输入的（user）、QQ 来的（plugin:snowluma-bridge）。其他（压缩摘要、运行信息、技能等）不算一轮。 */
 export declare const HUMAN_SOURCES: Set<string>;
 /** 只用到会话的这几样东西（真实的 dsh Session 都有）。 */
 export interface SurfaceLike {

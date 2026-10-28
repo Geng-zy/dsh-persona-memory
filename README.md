@@ -1,6 +1,6 @@
 # dsh-companion-core
 
-给 [dsh](https://www.npmjs.com/package/@deepseek-ai/dsh)（DeepSeek Harness）用的陪伴插件：让一个角色的人格和记忆放在会话外面，换会话、换电脑都还是她。为 QQ 陪伴 AI「大肥鱼」写，配合它的搭档 [dsh-napcat-bridge](https://github.com/Geng-zy/dsh-napcat-bridge)（插件一，负责 QQ 收发）使用；不装它也能用，只是没有 QQ。**两个一起从零部署的步骤和一键脚本见下面「部署」。**
+给 [dsh](https://www.npmjs.com/package/@deepseek-ai/dsh)（DeepSeek Harness）用的陪伴插件：让一个角色的人格和记忆放在会话外面，换会话、换电脑都还是她。为 QQ 陪伴 AI「大肥鱼」写，配合它的搭档 [dsh-snowluma-bridge](https://github.com/Geng-zy/dsh-snowluma-bridge)（插件一，负责 QQ 收发）使用；不装它也能用，只是没有 QQ。**两个一起从零部署的步骤和一键脚本见下面「部署」。**
 
 设计方案已全部做完：人格、核心记忆、上下文管理、消息存档、长期记忆（整理、召回、主动记忆工具、两级遗忘、向量检索、图记忆双路检索）、群聊上下文、日记和月度总览、存档到期和会话轮换、主动聊天、记忆自动清理和定期整合、备份与迁移。
 
@@ -24,14 +24,14 @@
    - **主动记忆**：`memory_search`（回忆）、`memory_save`（记住）、`memory_forget`（遗忘），每个会话只碰得到自己能看到的那部分。
    - **遗忘**：普通遗忘可恢复；彻底遗忘删原文、只留指纹，同样的内容不会再被写回来。主人记忆可以让模型挑出可删的，你勾选确认。
    - **向量检索**：OpenAI 兼容的 `/embeddings`（默认硅基流动 `BAAI/bge-m3`），没填 Key 不启用；换模型自动重建，可以暂停、继续、取消、手动重建。
-8. **群聊上下文**：她在群里被 @ 时，把群里最近 10 条消息（含她自己说的，不含正在回的这条）一起给她，里面的图片全给、不限张数（收到时下载好的图片优先，其他用 dsh-napcat-bridge 的媒体服务转换）。
+8. **群聊上下文**：她在群里被 @ 时，把群里最近 10 条消息（含她自己说的，不含正在回的这条）一起给她，里面的图片全给、不限张数（收到时下载好的图片优先，其他用 dsh-snowluma-bridge 的媒体服务转换）。
 9. **日记**：每天定时（默认 01:30，按凌晨 4 点分界）用第一人称写一篇只关于主人的日记，每月写月度总览，永久保留并写进记忆库。主人开新会话时第一轮自动先读最近 30 篇日记和 12 个月总览（不超过模型上限的 20%）。
 10. **存档到期**：每天写完日记后，按保留天数先整理再删到期存档；会话用满保留期就换新会话（新会话开头带上个会话最后几条），旧会话归档；其他人的旧会话最后一条也过期后删除（主人的永不删）。
 11. **主动聊天**：每个 QQ 会话按随机间隔唤醒她一次，让她自己决定要不要说话（不想说就只回「[不发]」，插件一不会发出去）。
     - 主人私聊默认每 1～4 小时、别人的私聊和群聊每 2～4 小时（各自在范围里均匀随机）；别人和群只找最近 7 天里聊过的；
     - 她 30 分钟内在这个会话里说过话就不触发，从她最后一句起再等一个间隔（只是别人说话不算）；免打扰 01:00–09:00 不触发，顺延；
     - 群里主动说话时带上最近 15 条群消息（含她自己说的，图片不限张数）当上下文；
-    - 例外规则可以给某个 QQ 号或群单独开/关。需要 dsh-napcat-bridge ≥ 0.7.0 的唤醒接口。
+    - 例外规则可以给某个 QQ 号或群单独开/关。需要 dsh-snowluma-bridge ≥ 0.7.0 的唤醒接口。
 12. **记忆保养**（默认每 7 天一次，跟着每天的任务）：
     - **自动清理**：超过 90 天没被想起、而且重要程度（衰减后）低于 0.2 的记忆，按那个会话的遗忘方式遗忘；可选把普通遗忘超过 180 天的彻底遗忘。日记永远不清理。
     - **定期整合**：把很像的零散记忆（同一归属、相近程度 ≥ 0.5）让模型合成一两条更精炼的，原来的标成「已被取代」；最近一次可以撤销，下一次整合时才真正删（彻底遗忘的会话）。
@@ -42,229 +42,33 @@
 
 | 会话 | 算作 |
 |---|---|
-| dsh-napcat-bridge 登记的主人私聊（管理员 QQ 号的私聊） | 主人 |
+| dsh-snowluma-bridge 登记的主人私聊（管理员 QQ 号的私聊） | 主人 |
 | 其他 QQ 私聊 | 其他私聊 |
 | QQ 群 | 群聊 |
 | dsh 里直接开的会话（只有主人能打开 dsh） | 主人 |
-| id 是 `napcat-…` 但插件一没登记的会话（例如在 dsh 网页里打开了一个 QQ 会话） | 按 id 归到群聊或其他私聊，**不当主人** |
+| id 是 `snowluma-…` 但插件一没登记的会话（例如在 dsh 网页里打开了一个 QQ 会话） | 按 id 归到群聊或其他私聊，**不当主人** |
 
-## 部署：从零装好整套 QQ 陪伴 AI
+## 部署
 
-本插件和 [dsh-napcat-bridge](https://github.com/Geng-zy/dsh-napcat-bridge) 是一套，互相补充：**dsh-napcat-bridge** 负责连 NapCat、收发 QQ 消息、发消息节奏；**dsh-companion-core** 负责人格、核心记忆、长期记忆、日记、主动聊天、备份迁移。只装本插件也能在 dsh 网页里用（人格、记忆照样生效），但没有 QQ；一键部署脚本就在本仓库的 `deploy/` 里，会把两个插件一起装好。
+本项目使用 SnowLuma OneBot v11。由 `ubuntu` 管理 Docker Compose 和 QQ 登录数据，由无 sudo 权限的 `dafeiyu` 运行 dsh 与陪伴插件。
 
-需要：一台 Ubuntu 22.04 / 24.04 服务器（建议 2 核 4G，NapCat 里的 QQ 要占 1G 左右内存）、一个能 sudo 的普通用户（比如云服务器自带的 `ubuntu`）、一个 QQ 小号、一个 DeepSeek API Key。
+1. 安装 Node.js 24、pnpm 和 dsh，并以服务用户创建 web profile。
+2. 安装两个插件：
 
-### 用户和目录怎么分
-
-| 用户 | 有没有 sudo | 干什么 |
-|---|---|---|
-| `root` | — | 不直接用 |
-| `ubuntu`（能 sudo 的普通用户） | 有 | 装系统软件（ffmpeg、Node、pnpm）、建用户、写开机服务；NapCat 也装在它下面、用它运行 |
-| `dafeiyu`（新建，名字可以换） | **没有** | 专门跑 dsh：dsh 和两个插件都装在她的家目录 `/home/dafeiyu` 里 |
-
-为什么这样分：dsh 会执行模型想执行的命令，官方安全说明要求只给最小权限、最好在专用环境里运行；让它跑在没有 sudo 的用户下，出事最多影响 `/home/dafeiyu`。NapCat 不装在 `dafeiyu` 下，她就读不到 QQ 的登录数据和连接 Token。
-
-### 方式一：一键脚本（推荐）
-
-一键脚本只有一份，放在 dsh-companion-core 仓库的 `deploy/` 里，**两个插件（dsh-napcat-bridge 和 dsh-companion-core）都由它一起装**，不用分别去两个仓库下载：脚本会从两个仓库的 Releases 各取最新版。
-
-服务器**连得上 GitHub**，就用 `ubuntu` 在服务器上：
-
-```bash
-curl -fsSLO https://raw.githubusercontent.com/Geng-zy/dsh-companion-core/main/deploy/install-server.sh
-bash install-server.sh --admin <你的 QQ 号> --bot-qq <小号 QQ 号>
+```sh
+dsh plugin --profile web add github:Geng-zy/dsh-snowluma-bridge#v0.21.0 github:Geng-zy/dsh-companion-core#v0.18.0
 ```
 
-服务器**连不上 GitHub**（国内云服务器常见），就在自己电脑上（Mac / Linux，要有 curl、python3、ssh）：
+3. 按 [SnowLuma 部署指南](https://github.com/Geng-zy/dsh-snowluma-bridge/blob/main/docs/SNOWLUMA.md)配置 Compose、持久化目录及反向 WebSocket。
+4. 默认平台 ID 为 `snowluma`，在桥接设置中填写管理员 QQ、白名单、预设及模型。设置页检查连接后，由账号本人扫码登录 QQ。
+5. 为 dsh 配置 `User=dafeiyu` 的 systemd 服务；QQ 协议端由 Docker 的重启策略管理。
 
-```bash
-git clone https://github.com/Geng-zy/dsh-companion-core
-dsh-companion-core/deploy/deploy.sh ubuntu@<服务器 IP> --admin <你的 QQ 号> --bot-qq <小号 QQ 号>
-```
-
-`deploy.sh` 先在你电脑上下好两个插件的最新版、NapCat 和它的安装脚本（核对 GitHub 给的 SHA-256），传到服务器，再运行同一个 `install-server.sh`。Node 从国内镜像（npmmirror）下载并和 nodejs.org 的校验值核对，不走 GitHub。
-
-脚本做的事和下面「方式二」完全一样（可以重复跑，装过的跳过，已有的配置不覆盖），另外会**随机生成两边的连接 Token、同时写进插件和 NapCat，不打印**。
-
-### 方式二：手动安装
-
-#### 总表
-
-| # | 装什么 | 用哪个用户 | 在哪个目录运行 | 要不要 sudo | 装到哪 |
-|---|---|---|---|---|---|
-| 1 | 系统软件：ffmpeg、curl、xz-utils | `ubuntu` | 任意 | **要** | `/usr/bin` 等系统目录 |
-| 2 | Node 24（系统软件） | `ubuntu` | 任意 | **要** | `/usr/local/bin/node`，所有用户共用 |
-| 3 | pnpm（系统软件，dsh 装插件要用） | `ubuntu` | 任意 | **要** | `/usr/local/bin/pnpm` |
-| 4 | 建用户 dafeiyu 和她的家目录 | `ubuntu` | 任意 | **要** | `/home/dafeiyu` |
-| 5 | dsh | `dafeiyu` | **必须在** `~/.local/dsh` | 不要 | `/home/dafeiyu/.local/dsh` |
-| 6 | 两个插件 | `dafeiyu` | **在** `~` | 不要 | `/home/dafeiyu/.dsh/profiles/web/` |
-| 7 | dsh 配置 | `dafeiyu` | `~/.dsh/profiles/web/` | 不要 | `cordis.patch.yml` |
-| 8 | dsh 开机服务 | `ubuntu` | 任意 | **要** | `/etc/systemd/system/dsh.service` |
-| 9 | NapCat | `ubuntu` | `~/napcat-install` | **命令前不加**（脚本装依赖时自己要） | `/home/ubuntu/Napcat` |
-| 10 | NapCat 连接配置 | `ubuntu` | NapCat 的 config 目录 | 不要 | `onebot11.json` |
-| 11 | NapCat 开机服务 | `ubuntu` | 任意 | **要** | `/etc/systemd/system/napcat.service` |
-
-第 5、6 步的目录有讲究：第 5 步不是全局安装，dsh 会装进**当前目录**的 `node_modules`；第 6 步命令里的 `./pkgs/…` 按当前目录算。其他步骤在哪个目录运行都一样。
-
-#### 第 1～4 步：用 `ubuntu`，要 sudo
-
-```bash
-# 1. 系统软件
-sudo apt update && sudo apt install -y ffmpeg curl xz-utils ca-certificates
-
-# 2. Node 24：官方二进制包解压到 /usr/local（国内用 npmmirror 镜像；能连 nodejs.org 的话换成 https://nodejs.org/dist）
-#    arm64 服务器把 x64 换成 arm64
-cd /tmp
-curl -fLO https://npmmirror.com/mirrors/node/v24.22.1/node-v24.22.1-linux-x64.tar.xz
-curl -fLO https://npmmirror.com/mirrors/node/v24.22.1/SHASUMS256.txt
-grep " node-v24.22.1-linux-x64.tar.xz\$" SHASUMS256.txt | sha256sum -c
-sudo tar -xJf node-v24.22.1-linux-x64.tar.xz -C /usr/local --strip-components=1 --no-same-owner \
-  --exclude='*/CHANGELOG.md' --exclude='*/LICENSE' --exclude='*/README.md'
-node --version                       # v24.22.1
-sudo npm config set registry https://registry.npmmirror.com/ --location=global   # 国内源，所有用户都用
-
-# 3. pnpm
-sudo npm install -g pnpm@11.28.5     # 装到 /usr/local/bin/pnpm
-
-# 4. dafeiyu 和她专属的家目录
-sudo useradd -m -s /bin/bash dafeiyu # -m 建家目录 /home/dafeiyu
-sudo passwd -l dafeiyu               # 锁密码，只能从 ubuntu 用 sudo 切进去
-sudo chmod 750 /home/dafeiyu         # 别的用户看不到她家目录里的东西
-```
-
-Node 也可以用 NodeSource 的 apt 源装（同样装进系统、所有用户共用），服务器连得上 `deb.nodesource.com` 就行。Ubuntu 自带的 `apt install nodejs` 版本太老（24.04 是 Node 18），dsh 用不了。
-
-#### 第 5～7 步：切成 dafeiyu，不用 sudo
-
-```bash
-sudo -iu dafeiyu                     # 一定要带 -i：HOME、PATH 换成她的，当前目录变成 /home/dafeiyu
-
-# 5. dsh（固定版本，装在她自己的目录；必须先进 ~/.local/dsh）
-mkdir -p ~/.local/dsh && cd ~/.local/dsh
-echo '{"private":true}' > package.json
-pnpm add @deepseek-ai/dsh@0.2.1-rc.2 --dangerously-allow-all-builds
-echo 'export PATH="$HOME/.local/dsh/node_modules/.bin:$PATH"' >> ~/.profile && . ~/.profile
-dsh --version                        # 0.2.1-rc.2
-
-# 6. 两个插件（回到家目录）
-cd ~
-dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.20.4 github:Geng-zy/dsh-companion-core#v0.17.1
-#    连不上 GitHub：到两个仓库的 Releases 下载 .tgz，传到 ~/pkgs/ 后
-#    dsh plugin --profile web add ./pkgs/dsh-napcat-bridge-0.19.1.tgz ./pkgs/dsh-companion-core-0.13.0.tgz
-#    （~/pkgs 以后不能删：dsh 的 profile 里记着它）
-
-# 7. 配置
-mkdir -p ~/workspace                 # QQ 会话的工作目录
-nano ~/.dsh/profiles/web/cordis.patch.yml
-chmod 600 ~/.dsh/profiles/web/cordis.patch.yml   # 里面有连接 Token，只给她自己读
-exit                                 # 回到 ubuntu
-```
-
-`cordis.patch.yml` 的内容（Token 用 `openssl rand -hex 32` 生成一个，或者装好后在插件设置页点「随机生成 Token」）：
-
-```yaml
-- id: connection
-  name: '@deepseek-ai/dsh-client-connection'
-  config:
-    cookieMaxAgeDays: 365                  # 浏览器登录记住 365 天
-    trustedHosts: [ '<公网 IP>:3080' ]     # 用公网 IP 打开网页时要信任它
-- id: napcat-bridge
-  config:
-    ws_reverse_port: 6199
-    ws_reverse_token: <随机 Token>
-    admins: [ '<你的 QQ 号>' ]
-    workspacePath: /home/dafeiyu/workspace
-```
-
-#### 第 8 步：dsh 开机服务（`ubuntu`，要 sudo）
-
-`sudo nano /etc/systemd/system/dsh.service`：
-
-```ini
-[Unit]
-Description=DeepSeek Harness（dafeiyu）
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-User=dafeiyu
-Group=dafeiyu
-WorkingDirectory=/home/dafeiyu
-# 开机服务不读 ~/.profile，PATH 要写在这里
-Environment=PATH=/home/dafeiyu/.local/dsh/node_modules/.bin:/usr/local/bin:/usr/bin:/bin
-# dsh 默认只听 127.0.0.1，也不接受 0.0.0.0；要从公网打开就绑服务器的内网 IP（ip -4 route get 1.1.1.1 能看到）
-ExecStart=/home/dafeiyu/.local/dsh/node_modules/.bin/dsh web --host <内网 IP> --port 3080 --no-open
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-```
-
-```bash
-sudo systemctl daemon-reload && sudo systemctl enable --now dsh
-```
-
-#### 第 9～11 步：NapCat（`ubuntu`）
-
-```bash
-# 9. 用 NapCat 官方安装脚本（NapNeko/NapCat-Installer 的 script/install.sh）装到 ~/Napcat。命令前不加 sudo
-mkdir -p ~/napcat-install && cd ~/napcat-install
-curl -fsSLO https://raw.githubusercontent.com/NapNeko/NapCat-Installer/main/script/install.sh
-bash install.sh --docker n --cli n --github-proxy 0
-#    连不上 GitHub：在自己电脑上下好 install.sh 和 NapCat Release 里的 NapCat.Shell.zip，一起传到 ~/napcat-install 再运行（脚本看到 zip 就不下载了）
-```
-
-10. 编辑 `~/Napcat/opt/QQ/resources/app/app_launcher/napcat/config/onebot11.json`（新登录的账号默认用这份），在 `network.websocketClients` 里加一条：`url` 填 `ws://127.0.0.1:6199/ws`、`token` 和第 7 步一样、`messagePostFormat` 填 `array`；改完 `chmod 600`。也可以等扫码登录后在 NapCat 网页（端口 6099）的「网络配置」里新建「WebSocket 客户端」。
-
-11. `sudo nano /etc/systemd/system/napcat.service`：
-
-```ini
-[Unit]
-Description=NapCat（ubuntu）
-After=network-online.target
-
-[Service]
-User=ubuntu
-Group=ubuntu
-WorkingDirectory=/home/ubuntu
-ExecStart=/usr/bin/xvfb-run -a /home/ubuntu/Napcat/opt/QQ/qq --no-sandbox -q <小号 QQ 号>
-Restart=always
-RestartSec=10
-MemoryMax=1500M
-
-[Install]
-WantedBy=multi-user.target
-```
-
-```bash
-sudo systemctl daemon-reload && sudo systemctl enable --now napcat
-```
-
-### 装完以后
-
-1. 云服务器安全组放行 3080（建议只放行自己的 IP）。取登录链接：`sudo journalctl -u dsh -b -o cat | grep token=`，把里面的地址换成公网 IP 打开（浏览器记住 365 天）。不想开端口就走 SSH 隧道：`ssh -L 3080:<内网 IP>:3080 ubuntu@<服务器>`，再打开 `http://localhost:3080/?token=…`。
-2. 网页里「设置 → 模型」填 DeepSeek API Key。想用 **DeepSeek 账号登录**的话，dsh 只允许在 `localhost` 地址上登录账号，要按上面的 SSH 隧道方式打开网页再登录。
-3. 扫码登录 QQ 小号：二维码在 `~/Napcat/opt/QQ/resources/app/app_launcher/napcat/cache/qrcode.png`，或者打开 NapCat 网页 `http://<服务器>:6099/webui/`（Token 在同目录 `config/webui.json`，登录后记得改掉）。
-4. 换服务器搬家：旧机器在 dsh-companion-core 设置页「现在备份并下载」，新机器装好后「导入备份包」，人格、记忆、日记和两个插件的设置都会恢复（Key 和 Token 不在包里，要重新填）。
-5. 在 dsh-napcat-bridge 设置页「连接和权限 → 访问控制」分别填写群聊和其他人私聊的白名单（v0.17.0 起管理员自动豁免，无需列入；普通会话使用各自名单，群主动聊天仍按群名单检查）。其余设置（唤醒词、人格、核心记忆、向量 Key……）都在 dsh 网页侧栏「插件」里两个插件的设置页。
-
-#### 几个容易踩的坑
-
-- 管 dsh 的命令一律先 `sudo -iu dafeiyu`。用 `ubuntu` 直接运行 `dsh`，读的是 `/home/ubuntu/.dsh`，一份空的配置，看起来像插件全没了。
-- 不带 `-i`（`sudo -u dafeiyu`）时 HOME、PATH、当前目录还是原来用户的，常见「找不到 dsh」或进不了目录。
-- NapCat 安装脚本别用 root 运行：会装到 `/root/Napcat`，脚本自己也提示不推荐。
-
-| 端口 | 谁 | 要不要在安全组放行 |
-|---|---|---|
-| 3080 | dsh 网页（含两个插件的设置页） | 想从公网直接打开就放行；否则用 SSH 隧道 |
-| 6199 | dsh-napcat-bridge，NapCat 连进来 | 不用（同一台机器走本机） |
-| 6099 | NapCat 网页（扫码、改设置） | 自己定；用完可以关 |
+数据迁移涉及会话 ID、OneBot 消息归属和持久化日志，须在 dsh 停止时统一处理；不要只改平台 ID 后直接使用旧会话目录。
 
 ## 安装
 
 ```bash
-dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.17.1
+dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.18.0
 ```
 
 装好后：
@@ -282,7 +86,7 @@ dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.17.1
 | 预设里的 `dsh-persona` 行，普通模式（内置的标准、PTC、创造模式） | 能 |
 | 预设里的 `dsh-persona` 开了 `complete: true`（内置的极简模式） | **不能**：dsh 在组装之后会把它原样恢复。请把这个预设加进「不生效的预设」 |
 
-装上本插件后，dsh 的默认预设就是「陪伴模式」（id `companion`）：新开的 dsh 会话、没单独设预设的 QQ 会话（dsh-napcat-bridge ≥ 0.9.1）都用它；你在 dsh 网页里另选了默认预设时以你选的为准。
+装上本插件后，dsh 的默认预设就是「陪伴模式」（id `companion`）：新开的 dsh 会话、没单独设预设的 QQ 会话（dsh-snowluma-bridge ≥ 0.9.1）都用它；你在 dsh 网页里另选了默认预设时以你选的为准。
 
 **只有「生效的预设」（`personaPresets`，默认只有 `companion`）的会话才会被套上人格、核心记忆、召回和上下文管理。** 别的插件带来的预设（写代码的、翻译的……）保持它们自己的样子，不会变成你的角色；想让所有预设都套就填 `*`。另有「不生效的预设」可以单独排除。
 
@@ -294,7 +98,7 @@ dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.17.1
 
 | 分组 | 内容 |
 |---|---|
-| 状态 | 有没有检测到 dsh-napcat-bridge、存档条数、数据目录 |
+| 状态 | 有没有检测到 dsh-snowluma-bridge、存档条数、数据目录 |
 | 生效范围 | 不生效的预设、只用人格 |
 | 人格 | 人格编辑器（单独的「保存人格」按钮）、历史版本（查看、页面内确认后回退）、让她自己改、保留几份历史 |
 | 改人格的限制 | 开关、模型审核、一次最多加几个字、人格最多几个字、「可以写」「不许写」两张清单（一行一条） |
@@ -319,9 +123,9 @@ dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.17.1
 
 ## 消息存档的白名单边界
 
-自 v0.13.0 起须配合 dsh-napcat-bridge ≥ v0.19.0：存档实时调用 `ctx.napcat.canArchive(session)`，不另设一份名单。设置页入口为「对话 → 消息存档」。白名单开启时，群聊必须在群聊白名单内，即使管理员在名单外群发言、她获准回复，也不存双方消息；普通私聊必须在私聊白名单内，管理员私聊自动允许。白名单关闭时全部会话允许存档，仍遵守存档总开关和是否保存未唤醒消息的设置。
+自 v0.13.0 起须配合 dsh-snowluma-bridge ≥ v0.19.0：存档实时调用 `ctx.snowluma.canArchive(session)`，不另设一份名单。设置页入口为「对话 → 消息存档」。白名单开启时，群聊必须在群聊白名单内，即使管理员在名单外群发言、她获准回复，也不存双方消息；普通私聊必须在私聊白名单内，管理员私聊自动允许。白名单关闭时全部会话允许存档，仍遵守存档总开关和是否保存未唤醒消息的设置。
 
-此限制也覆盖图片下载和 `napcat/sent` 出站存档；下载完成写文件前复查权限。旧 bridge 缺少权限接口时停止 QQ 存档，升级两个插件后恢复。升级和移出名单不会删除已有历史存档；dsh 自身的模型会话日志与插件消息存档分开管理。
+此限制也覆盖图片下载和 `snowluma/sent` 出站存档；下载完成写文件前复查权限。旧 bridge 缺少权限接口时停止 QQ 存档，升级两个插件后恢复。升级和移出名单不会删除已有历史存档；dsh 自身的模型会话日志与插件消息存档分开管理。
 
 ## 配置项
 
@@ -355,7 +159,7 @@ dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.17.1
 | `cleanupEnabled` / `cleanupAutoPurge` | `false` / `false` | 主人记忆的模型清理 |
 | `embedApiUrl` / `embedApiKey` / `embedModel` / `embedBatch` | 硅基流动 / 不设 / `BAAI/bge-m3` / `16` | 向量检索 |
 | `graphEnabled` / `graphBatch` / `graphHops` | `false` / `8` / `1` | 图记忆 |
-| `diaryEffort` | `high` | 写日记和月度总览的思考等级；模型固定用和主人私聊的那个（dsh-napcat-bridge 的「管理员私聊用的模型」→「私聊用的模型」→ dsh 默认模型） |
+| `diaryEffort` | `high` | 写日记和月度总览的思考等级；模型固定用和主人私聊的那个（dsh-snowluma-bridge 的「管理员私聊用的模型」→「私聊用的模型」→ dsh 默认模型） |
 | `graphSource` / `graphModel` / `graphEffort` / `graphApi*` | `follow` / 空 / `low` | 抽关系用的模型：`follow` 和整理用的模型一样，其余同上 |
 | `groupContextCount` | `10` | 群聊上下文：附上最近几条（图片不限） |
 | `diaryEnabled` / `diaryTime` / `dayBoundaryHour` / `timezone` / `monthlyEnabled` | `true` / `01:30` / `4` / `Asia/Shanghai` / `true` | 日记 |
@@ -429,11 +233,11 @@ ctx.on('companion/before-compact', async ({ sessionId, scope, mode, reason, tran
 
 ```bash
 scripts/setup-test-env.sh          # 装官方 Node 和 dsh 到 .cache/test-env
-scripts/check.sh                   # 安装依赖、编译、单元测试、端到端测试（真实 dsh + dsh-napcat-bridge + 假模型 + 假 NapCat）、扫描密钥
-node scripts/check-upstreams.mjs   # 看 dsh、dsh-napcat-bridge、Node 有没有新版本（对照 upstreams.json）
+scripts/check.sh                   # 安装依赖、编译、单元测试、端到端测试（真实 dsh + dsh-snowluma-bridge + 假模型 + 假 SnowLuma）、扫描密钥
+node scripts/check-upstreams.mjs   # 看 dsh、dsh-snowluma-bridge、Node 有没有新版本（对照 upstreams.json）
 ```
 
-端到端测试要用旁边文件夹的 dsh-napcat-bridge（`../dsh-napcat-bridge`，或用 `BRIDGE_DIR` 指定），先在那里编译好。`lib/` 是编译产物，要提交进仓库。
+端到端测试要用旁边文件夹的 dsh-snowluma-bridge（`../dsh-snowluma-bridge`，或用 `BRIDGE_DIR` 指定），先在那里编译好。`lib/` 是编译产物，要提交进仓库。
 
 ## 许可证
 
@@ -463,3 +267,7 @@ AGPL-3.0-or-later。陪伴模式预设的工具列表照抄 dsh-web-app 的标�
 “主人私聊的 dsh 会话”（`sessionsMaster`）替换“别人私聊和群聊的存档”，保留独立的“主人私聊存档”。按 bridge 当前管理员 QQ 配置匹配其私聊会话，包含轮换历史、完整逻辑事件、被引用的持久化图片/文件附件及当前会话绑定；不复制整套附件目录。群聊、其他私聊及网页会话不在此项范围内；今后的新包也不再备份其他私聊和群聊的消息存档。已有记录和旧备份包不删除。
 
 备份先刷新宿主日志，再读取有效前缀；导入创建新会话，迁移交付标记中的宿主会话 ID，挂接当前工作目录的工作区，并恢复当前主人私聊绑定。旧会话保留；若主人正在处理消息，绑定切换会拒绝，空闲后可重新导入。不恢复已不在当前管理员列表中的 QQ 会话。不新增媒体、密钥、登录态或运行环境的独立备份选项。此项需要 bridge ≥ 0.20.4；未安装桥接插件时，原有其他备份仍可使用。格式 1/2 的旧包仍可选择恢复当前支持的项目，废弃的 `archiveOthers` 不恢复、不转换为原始会话。
+
+### SnowLuma 接入
+
+bridge ≥ 0.21.0 可将协议端切换为 SnowLuma。平台ID、桥接服务/事件及会话标识统一使用snowluma。既有部署须停机迁移标识及关联，保留聊天正文、人格和记忆文本；新部署直接使用新标识。部署步骤见 [bridge 的 SnowLuma 迁移指南](https://github.com/Geng-zy/dsh-snowluma-bridge/blob/main/docs/SNOWLUMA.md)。

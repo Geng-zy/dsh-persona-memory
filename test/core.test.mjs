@@ -48,16 +48,16 @@ test('applyEdit：替换、追加、找不到、不唯一', () => {
 })
 
 test('scopeOf：插件一登记的会话按类型分；没登记的 QQ 会话不当主人；dsh 自己的会话算主人', () => {
-  const napcat = { sessionInfo: id => ({
+  const snowluma = { sessionInfo: id => ({
     m: { umo: 'u', sessionId: 'm', type: 'private', userId: '42', adminPrivate: true },
     p: { umo: 'u', sessionId: 'p', type: 'private', userId: '8', adminPrivate: false },
     g: { umo: 'u', sessionId: 'g', type: 'group', groupId: '555', adminPrivate: false },
   })[id] }
-  assert.equal(scopeOf('m', napcat).category, 'master')
-  assert.equal(scopeOf('p', napcat).category, 'private')
-  assert.deepEqual(scopeOf('g', napcat), { category: 'group', qq: true, umo: 'u', groupId: '555' })
-  assert.equal(scopeOf('napcat-napcat-GroupMessage-555', napcat).category, 'group')
-  assert.equal(scopeOf('napcat-napcat-FriendMessage-42').category, 'private')
+  assert.equal(scopeOf('m', snowluma).category, 'master')
+  assert.equal(scopeOf('p', snowluma).category, 'private')
+  assert.deepEqual(scopeOf('g', snowluma), { category: 'group', qq: true, umo: 'u', groupId: '555' })
+  assert.equal(scopeOf('snowluma-snowluma-GroupMessage-555', snowluma).category, 'group')
+  assert.equal(scopeOf('snowluma-snowluma-FriendMessage-42').category, 'private')
   assert.deepEqual(scopeOf('session-abc'), { category: 'master', qq: false })
 })
 
@@ -108,7 +108,7 @@ function fakeSession(kinds) {
   const events = kinds.map((k, i) => ({
     seq: i,
     type: { s: 'system/message', u: 'user/message', a: 'assistant/message', c: 'user/message', t: 'turn/start' }[k],
-    data: k === 'u' ? { source: { kind: 'plugin:napcat-bridge' } } : k === 'c' ? { source: { kind: 'runtime-context' } } : {},
+    data: k === 'u' ? { source: { kind: 'plugin:snowluma-bridge' } } : k === 'c' ? { source: { kind: 'runtime-context' } } : {},
   }))
   return { seq: events.length, surface: { nodes: events.filter(e => e.type !== 'turn/start').map(e => e.seq) }, eventAt: seq => events[seq] }
 }
@@ -128,15 +128,15 @@ test('按轮数：数轮、刚开始一轮时把正在进来的算上、挑最�
 
 test('消息存档：存、同一条不重复、最近几条、统计', () => {
   const a = new Archive(':memory:')
-  const base = { umo: 'napcat:GroupMessage:555', kind: 'group', groupId: '555', direction: 'in', senderId: '9', senderName: '群友', woke: false, type: 'message' }
+  const base = { umo: 'snowluma:GroupMessage:555', kind: 'group', groupId: '555', direction: 'in', senderId: '9', senderName: '群友', woke: false, type: 'message' }
   assert.equal(a.add({ ...base, messageId: '1', time: 1000, text: '第一条' }), true)
   assert.equal(a.add({ ...base, messageId: '1', time: 1000, text: '第一条' }), false)
   a.add({ ...base, messageId: '2', time: 2000, text: '第二条', woke: true })
   a.add({ ...base, direction: 'out', senderId: 'self', senderName: '她', time: 3000, text: '回复', woke: true })
   a.add({ ...base, direction: 'out', senderId: 'self', senderName: '她', time: 3001, text: '回复', woke: true })
-  const recent = a.recent('napcat:GroupMessage:555', 2)
+  const recent = a.recent('snowluma:GroupMessage:555', 2)
   assert.deepEqual(recent.map(m => m.text), ['回复', '回复'])
-  assert.equal(a.recent('napcat:GroupMessage:555', 10)[0].woke, false)
+  assert.equal(a.recent('snowluma:GroupMessage:555', 10)[0].woke, false)
   assert.deepEqual(a.stats(), { total: 4, byKind: { group: 4 }, oldest: 1000, newest: 3001 })
   a.close()
 })
@@ -158,7 +158,7 @@ test('核心记忆按字数限制：主人的和公开的分开算，到了上�
 
 test('存档权限接口缺失、拒绝、异常均禁止；允许时使用实时会话权限', async () => {
   const { archiveAllowed } = await import('../lib/rules.js')
-  const session = { platform_name: 'napcat', message_type: 'GroupMessage', session_id: '555' }
+  const session = { platform_name: 'snowluma', message_type: 'GroupMessage', session_id: '555' }
   assert.equal(archiveAllowed(undefined, session), false)
   assert.equal(archiveAllowed({}, session), false)
   assert.equal(archiveAllowed({ canArchive: () => true }, undefined), false)

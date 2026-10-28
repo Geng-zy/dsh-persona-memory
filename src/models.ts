@@ -1,6 +1,6 @@
 // 设置页「获取模型列表」：用填的 Key 去 OpenAI 兼容接口的 GET /models 拉这个账号能用的模型，再按用途（向量 / 语音转文字）挑出来。
 // 拉不到（接口不支持 /models、Key 不对、连不上）时返回错误，设置页退回到预设里写好的常用模型。
-// 这个文件在 dsh-napcat-bridge 和 dsh-companion-core 里各有一份，内容一样，改的时候两边一起改。
+// 这个文件在 dsh-snowluma-bridge 和 dsh-companion-core 里各有一份，内容一样，改的时候两边一起改。
 
 export type ModelKind = 'embedding' | 'stt' | 'chat'
 

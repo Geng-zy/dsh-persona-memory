@@ -1,8 +1,8 @@
 // 按"轮"数上下文：一轮 = 一条人说的话（QQ 消息或 dsh 里输入的话）加上她接下来的回复和工具调用。
 // 这里只放不依赖 dsh 运行时的纯函数，方便单元测试。
 
-/** 算"人说的话"的消息来源：dsh 里输入的（user）、QQ 来的（plugin:napcat-bridge）。其他（压缩摘要、运行信息、技能等）不算一轮。 */
-export const HUMAN_SOURCES = new Set(['user', 'plugin:napcat-bridge'])
+/** 算"人说的话"的消息来源：dsh 里输入的（user）、QQ 来的（plugin:snowluma-bridge）。其他（压缩摘要、运行信息、技能等）不算一轮。 */
+export const HUMAN_SOURCES = new Set(['user', 'plugin:snowluma-bridge'])
 
 /** 只用到会话的这几样东西（真实的 dsh Session 都有）。 */
 export interface SurfaceLike {

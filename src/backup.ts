@@ -53,7 +53,7 @@ export function itemsOf(m: Manifest): BackupItem[] {
 
 /** 设置文件：settings/<名字>.json，内容是 { ns, user }（user = 用户改过的字段，已去掉 Key） */
 export interface SavedSettings { ns: string; user: Record<string, unknown> }
-export const SETTINGS_FILES: Record<string, BackupItem> = { 'companion-core': 'settingsCompanion', 'napcat-bridge': 'settingsBridge', dsh: 'settingsDsh' }
+export const SETTINGS_FILES: Record<string, BackupItem> = { 'companion-core': 'settingsCompanion', 'snowluma-bridge': 'settingsBridge', dsh: 'settingsDsh' }
 
 export interface Manifest {
   format: typeof BACKUP_FORMAT

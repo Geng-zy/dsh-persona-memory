@@ -1,4 +1,4 @@
-// 单元测试：设置页「获取模型列表」（假的接口，不联网）。dsh-napcat-bridge 里有一份一样的。
+// 单元测试：设置页「获取模型列表」（假的接口，不联网）。dsh-snowluma-bridge 里有一份一样的。
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 

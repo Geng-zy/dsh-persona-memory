@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// 端到端测试：真实的 dsh web 同时加载插件一（dsh-napcat-bridge，在旁边的文件夹）和本插件，
-// 假的 DeepSeek 接口回答模型请求，假的 NapCat 作为客户端连插件一。
+// 端到端测试：真实的 dsh web 同时加载插件一（dsh-snowluma-bridge，在旁边的文件夹）和本插件，
+// 假的 DeepSeek 接口回答模型请求，假的 SnowLuma 作为客户端连插件一。
 //
 // 检查：人格和核心记忆替换进系统提示词（主人/群聊看到的核心记忆不同，编程助手身份句去掉）；
 // 改人格文件后同一个会话下一步就变；主人会话有改人格工具、群里没有；她用工具改人格后文件真的变了并留了历史；
@@ -26,7 +26,7 @@ import { fileURLToPath } from 'node:url'
 import WebSocket from 'ws'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
-const BRIDGE = process.env.BRIDGE_DIR ?? join(ROOT, '..', 'dsh-napcat-bridge')
+const BRIDGE = process.env.BRIDGE_DIR ?? join(ROOT, '..', 'dsh-snowluma-bridge')
 const TOKEN = 'e2e-token'
 const MASTER = 123450001
 const OTHER = 123450002
@@ -145,7 +145,7 @@ const llm = createServer((req, res) => {
 })
 await new Promise(r => llm.listen(0, '127.0.0.1', r))
 const llmUrl = 'http://127.0.0.1:' + llm.address().port + '/anthropic'
-// 图片服务器：给假 NapCat 的图片地址用（1x1 PNG）
+// 图片服务器：给假 SnowLuma 的图片地址用（1x1 PNG）
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')
 let imageDownloads = 0
 const imgServer = createServer((_req, res) => { imageDownloads++; res.writeHead(200, { 'content-type': 'image/png' }).end(PNG) })
@@ -157,15 +157,15 @@ const home = mkdtempSync(join(tmpdir(), 'dsh-companion-e2e-'))
 const profile = join(home, 'profiles', 'web')
 mkdirSync(join(profile, 'node_modules'), { recursive: true })
 symlinkSync(ROOT, join(profile, 'node_modules', 'dsh-companion-core'), 'dir')
-symlinkSync(BRIDGE, join(profile, 'node_modules', 'dsh-napcat-bridge'), 'dir')
+symlinkSync(BRIDGE, join(profile, 'node_modules', 'dsh-snowluma-bridge'), 'dir')
 writeFileSync(join(profile, 'package.json'), JSON.stringify({
   name: 'dsh-profile-web', private: true,
-  dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', 'dsh-napcat-bridge', 'dsh-companion-core'] } },
-  dependencies: { 'dsh-napcat-bridge': 'link:' + BRIDGE, 'dsh-companion-core': 'link:' + ROOT },
+  dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', 'dsh-snowluma-bridge', 'dsh-companion-core'] } },
+  dependencies: { 'dsh-snowluma-bridge': 'link:' + BRIDGE, 'dsh-companion-core': 'link:' + ROOT },
 }, null, 2))
 const workspace = join(home, 'workspace')
 mkdirSync(workspace)
-writeFileSync(join(profile, 'cordis.patch.yml'), `- id: napcat-bridge
+writeFileSync(join(profile, 'cordis.patch.yml'), `- id: snowluma-bridge
   config:
     ws_reverse_host: 127.0.0.1
     ws_reverse_port: ${WS_PORT}
@@ -225,7 +225,7 @@ async function cleanup() {
   if (!process.env.E2E_KEEP) rmSync(home, { recursive: true, force: true })
 }
 
-// ---- 假 NapCat
+// ---- 假 SnowLuma
 const url = 'ws://127.0.0.1:' + WS_PORT + '/ws'
 let ws
 while (ws === undefined) {
@@ -487,11 +487,11 @@ log('群消息图片下载、群聊上下文带图 OK')
 
 // 12. 模拟过了 6 天：群会话换新，旧会话归档后真的删掉文件夹，dsh 照常能用
 const sessionDirs = id => readdirSync(join(home, 'sessions')).filter(p => existsSync(join(home, 'sessions', p, id)))
-const oldGroup = 'napcat-napcat-GroupMessage-' + GROUP
+const oldGroup = 'snowluma-snowluma-GroupMessage-' + GROUP
 if (sessionDirs(oldGroup).length !== 1) await fail('找不到群会话的文件夹：' + JSON.stringify(readdirSync(join(home, 'sessions'))))
 const sixDays = await api('POST', 'maintenance', { what: 'expire', now: Date.now() + 6 * 86_400_000 })
 const rep6 = sixDays.json?.report
-if (!rep6?.expired?.some(e => e.umo === 'napcat:GroupMessage:' + GROUP && e.rotated)) await fail('群会话没有换新：' + JSON.stringify(rep6))
+if (!rep6?.expired?.some(e => e.umo === 'snowluma:GroupMessage:' + GROUP && e.rotated)) await fail('群会话没有换新：' + JSON.stringify(rep6))
 if (!rep6.deletedSessions.includes(oldGroup)) await fail('旧群会话没有删掉：' + JSON.stringify(rep6))
 if (sessionDirs(oldGroup).length !== 0) await fail('旧群会话的文件夹还在')
 if (rep6.failedSessions.length > 0) await fail('删会话有失败：' + JSON.stringify(rep6.failedSessions))
@@ -502,10 +502,10 @@ if (/ERR|Error|unhandled/i.test(dshLog.split('删掉了已归档的旧会话')[1
 log('过了 6 天：群会话换新、旧会话删掉、dsh 照常 OK')
 
 // 13. 模拟过了 400 天：主人会话换新，旧的只归档不删；新会话开头先读日记
-const oldMaster = 'napcat-napcat-FriendMessage-' + MASTER
+const oldMaster = 'snowluma-snowluma-FriendMessage-' + MASTER
 const years = await api('POST', 'maintenance', { what: 'expire', now: Date.now() + 400 * 86_400_000 })
 const repY = years.json?.report
-if (!repY?.expired?.some(e => e.umo === 'napcat:FriendMessage:' + MASTER && e.rotated)) await fail('主人会话没有换新：' + JSON.stringify(repY))
+if (!repY?.expired?.some(e => e.umo === 'snowluma:FriendMessage:' + MASTER && e.rotated)) await fail('主人会话没有换新：' + JSON.stringify(repY))
 if (repY.deletedSessions.includes(oldMaster) || sessionDirs(oldMaster).length !== 1) await fail('主人的旧会话被删了')
 const retiredMaster = years.json.state.retired.find(x => x.sessionId === oldMaster)
 if (retiredMaster?.state !== 'archived') await fail('主人的旧会话不是归档状态：' + JSON.stringify(retiredMaster))
@@ -517,13 +517,13 @@ log('过了 400 天：主人会话换新、旧的只归档、新会话先读日�
 // ===== 阶段 4 =====
 // 15. 主动聊天：她说话就发；回「[不发]」就不发；群里带上下文
 let before = sentCount()
-const tried = await api('POST', 'proactive/try', { umo: 'napcat:FriendMessage:' + MASTER })
+const tried = await api('POST', 'proactive/try', { umo: 'snowluma:FriendMessage:' + MASTER })
 if (tried.status !== 200) await fail('主动唤醒失败：' + JSON.stringify(tried.json))
 const pro = await waitFor(() => sent.slice(before).find(x => x.action === 'send_private_msg'), '主动发出的私聊')
 if (sentText(pro) !== '在忙吗？PRO-1' || pro.params.user_id !== MASTER) await fail('主动发的不对：' + JSON.stringify(pro.params))
 proactiveSilent = true
 before = sentCount()
-await api('POST', 'proactive/try', { umo: 'napcat:FriendMessage:' + MASTER })
+await api('POST', 'proactive/try', { umo: 'snowluma:FriendMessage:' + MASTER })
 await waitFor(() => proactivePrompts.length >= 2, '第二次主动唤醒')
 await new Promise(r => setTimeout(r, 2000))
 if (sentCount() !== before) await fail('她回了「[不发]」还是发出去了')
@@ -531,7 +531,7 @@ proactiveSilent = false
 // 上面模拟过了 400 天，群存档已经删光：先有人在群里说一句
 groupMsg([text('群里最近的一句 ctx-p')])
 await new Promise(r => setTimeout(r, 800))
-const gtry = await api('POST', 'proactive/try', { umo: 'napcat:GroupMessage:' + GROUP })
+const gtry = await api('POST', 'proactive/try', { umo: 'snowluma:GroupMessage:' + GROUP })
 if (gtry.status !== 200) await fail('群里主动唤醒失败：' + JSON.stringify(gtry.json) + dshLog.slice(-1500))
 await waitFor(() => proactivePrompts.some(p => p.includes('群里最近的消息')), '群里主动带上下文')
 if (!proactivePrompts.find(p => p.includes('群里最近的消息')).includes('ctx-p')) await fail('群里主动没带上下文')
@@ -567,7 +567,7 @@ const sessionText = (await new Promise((resolve, reject) => {
 }))
 const sessionBundle = JSON.parse(sessionText)
 if (!sessionBundle.attachments.length) await fail('主人原始会话缺少引用的持久化附件')
-if (sessionBundle.sessions.some(s => s.ownerId !== String(MASTER) || !s.header.id.startsWith('napcat-napcat-FriendMessage-' + MASTER))) await fail('主人原始会话混入其他聊天')
+if (sessionBundle.sessions.some(s => s.ownerId !== String(MASTER) || !s.header.id.startsWith('snowluma-snowluma-FriendMessage-' + MASTER))) await fail('主人原始会话混入其他聊天')
 if (!sessionBundle.sessions.some(s => s.current && s.events.length > 0)) await fail('主人当前会话事件缺失')
 writeFileSync(personaFile, '你是 PERSONA-V4（备份之后改的）')
 // 备份之后新记的记忆：下面不还原记忆库，它应该还在
@@ -587,10 +587,10 @@ for (let i = 0; i < 40; i++) {
 if (!after?.json?.lastImport || after.json.lastImport.error) await fail('还原后状态不对：' + JSON.stringify(after?.json?.lastImport))
 if (!readFileSync(personaFile, 'utf-8').includes('PERSONA-V3')) await fail('还原后人格不对：' + readFileSync(personaFile, 'utf-8'))
 if (!after.json.backups.some(b => b.reason === 'before-import')) await fail('还原前没有自动备份当前数据')
-if (after.json.lastImport.plan?.items?.includes('memory') || !['dsh-napcat-bridge 的设置：已套用', 'dsh-companion-core 的设置：已套用', 'dsh 设置 agent-preset-registry：已套用'].every(x => (after.json.lastImport.plan?.notes ?? []).includes(x))) await fail('还原勾选或设置套用不对：' + JSON.stringify(after.json.lastImport.plan))
+if (after.json.lastImport.plan?.items?.includes('memory') || !['dsh-snowluma-bridge 的设置：已套用', 'dsh-companion-core 的设置：已套用', 'dsh 设置 agent-preset-registry：已套用'].every(x => (after.json.lastImport.plan?.notes ?? []).includes(x))) await fail('还原勾选或设置套用不对：' + JSON.stringify(after.json.lastImport.plan))
 if (!(await api('GET', 'memory?q=AFTER-BACKUP-MEM')).json.items.some(m => m.content.includes('AFTER-BACKUP-MEM'))) await fail('没勾记忆库，记忆却被换掉了')
 if (!Array.isArray(after.json.selfCheck?.results) || after.json.selfCheck.results.length !== 3) await fail('还原后没自检：' + JSON.stringify(after.json.selfCheck))
-const restoredBinding = JSON.parse(readFileSync(join(home, 'napcat-bridge', 'sessions.json'), 'utf8'))['napcat:FriendMessage:' + MASTER]
+const restoredBinding = JSON.parse(readFileSync(join(home, 'snowluma-bridge', 'sessions.json'), 'utf8'))['snowluma:FriendMessage:' + MASTER]
 if (!restoredBinding.includes('-import-') || sessionDirs(oldMaster).length !== 1) await fail('恢复映射没有切换或旧会话被删除')
 await say(() => privateMsg([text('还原以后还在吗 m200')]), '还原以后的回复')
 if (sessionDirs(restoredBinding).length !== 1) await fail('恢复的会话不存在')
@@ -643,7 +643,7 @@ log('备份、下载、还原（插件重新加载）、自检 OK')
   if (!tested?.ok) await fail('测试整理用的模型失败：' + JSON.stringify(tested).slice(0, 300))
   const noApi = (await api('POST', 'llm/models', { task: 'memory', apiUrl: 'not-a-url' })).json
   if (noApi?.ok !== false) await fail('别家地址不对时应该说清楚：' + JSON.stringify(noApi))
-  // 写日记：用和主人私聊用的模型（测试环境里 dsh-napcat-bridge 的默认是 deepseek-official/deepseek-flash），思考等级默认 high
+  // 写日记：用和主人私聊用的模型（测试环境里 dsh-snowluma-bridge 的默认是 deepseek-official/deepseek-flash），思考等级默认 high
   const diaryEff = (await api('POST', 'llm/efforts', { task: 'diary' })).json
   if (diaryEff?.from !== 'admin' || diaryEff?.model?.model !== 'deepseek-flash') await fail('写日记用的模型不对：' + JSON.stringify(diaryEff).slice(0, 300))
   const diaryTest = (await api('POST', 'llm/test', { task: 'diary' })).json

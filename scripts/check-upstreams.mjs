@@ -22,9 +22,9 @@ const checks = {
     const tags = (await get('https://registry.npmjs.org/@deepseek-ai/dsh'))['dist-tags']
     return { latest: tags.latest, note: 'next=' + tags.next + ' alpha=' + tags.alpha }
   },
-  'napcat-bridge': async () => {
-    const tags = await get('https://api.github.com/repos/Geng-zy/dsh-napcat-bridge/tags?per_page=1')
-    return { latest: tags[0]?.name ?? '（没有标签）', note: '插件一，本插件用它的事件和 ctx.napcat' }
+  'snowluma-bridge': async () => {
+    const tags = await get('https://api.github.com/repos/Geng-zy/dsh-snowluma-bridge/tags?per_page=1')
+    return { latest: tags[0]?.name ?? '（没有标签）', note: '插件一，本插件用它的事件和 ctx.snowluma' }
   },
   node: async () => {
     const list = await get('https://nodejs.org/dist/index.json')

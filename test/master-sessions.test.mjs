@@ -6,12 +6,12 @@ import { join } from 'node:path'
 import { exportMasterSessions, importMasterSessions } from '../lib/master-sessions.js'
 import { cleanItems, configuredItems, itemsOf } from '../lib/backup.js'
 
-const prefix = 'napcat-napcat-FriendMessage-42'
+const prefix = 'snowluma-snowluma-FriendMessage-42'
 const binding = { ownerId: '42', prefix, sessionId: prefix + '-rotated', cwd: '/new/workspace' }
 function services() {
   const created = [], switched = [], reads = [], attachmentsRead = []
   const refs = [{ attachmentId: 'image-id', mediaType: 'image/png', bytes: 3, width: 1, height: 1 }, { attachmentId: 'file-id', name: 'test.txt', bytes: 3 }]
-  const logs = [prefix, prefix + '-rotated', prefix + '3', 'napcat-napcat-GroupMessage-42', 'web-session', 'napcat-napcat-FriendMessage-77']
+  const logs = [prefix, prefix + '-rotated', prefix + '3', 'snowluma-snowluma-GroupMessage-42', 'web-session', 'snowluma-snowluma-FriendMessage-77']
   let flushed = false
   const s = {
     bridge: { masterPrivateBindings: () => [binding], restoreMasterPrivateBinding: async (ownerId, id) => switched.push({ ownerId, id }) },
@@ -70,7 +70,7 @@ test('拒绝旧管理员、群聊伪装、缺失附件；未提供服务不能�
     await assert.rejects(exportMasterSessions(dir, {}), /新版/)
     await exportMasterSessions(dir, s)
     const file = join(dir, 'master-sessions.json'), original = JSON.parse(readFileSync(file, 'utf8'))
-    for (const modify of [b => { b.sessions[0].ownerId = '77' }, b => { b.sessions[0].header.id = 'napcat-napcat-GroupMessage-42' }, b => { b.attachments.pop() }]) {
+    for (const modify of [b => { b.sessions[0].ownerId = '77' }, b => { b.sessions[0].header.id = 'snowluma-snowluma-GroupMessage-42' }, b => { b.attachments.pop() }]) {
       const b = structuredClone(original); modify(b); writeFileSync(file, JSON.stringify(b))
       await assert.rejects(importMasterSessions(dir, s))
       assert.equal(created.length, 0); assert.equal(switched.length, 0)

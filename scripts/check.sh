@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# 发布前的完整检查：安装依赖 → 编译 → 单元测试 → 端到端测试（真实 dsh + 插件一 + 假模型 + 假 NapCat）→ 个人信息扫描。
-# 全部通过才退出 0。先运行一次 scripts/setup-test-env.sh；端到端测试要用旁边的插件一（../dsh-napcat-bridge，先在那里编译好）。
+# 发布前的完整检查：安装依赖 → 编译 → 单元测试 → 端到端测试（真实 dsh + 插件一 + 假模型 + 假 SnowLuma）→ 个人信息扫描。
+# 全部通过才退出 0。先运行一次 scripts/setup-test-env.sh；端到端测试要用旁边的插件一（../dsh-snowluma-bridge，先在那里编译好）。
 #
 # 可选环境变量：
 #   TEST_ENV_DIR        测试环境目录（默认 <仓库>/.cache/test-env）
-#   BRIDGE_DIR          插件一的目录（默认 <仓库>/../dsh-napcat-bridge）
+#   BRIDGE_DIR          插件一的目录（默认 <仓库>/../dsh-snowluma-bridge）
 #   SKIP_E2E=1          跳过端到端测试（只在确实跑不了时用，并在交接文档里写明）
 #   SCAN_PATTERNS_FILE  个人信息扫描词表，一行一个（默认 <仓库>/../.private/个人信息扫描词.txt，不在仓库里）
 set -euo pipefail
@@ -51,7 +51,7 @@ fi
 grep -E "^(not ok|ℹ (pass|fail))" "$TEST_LOG" || true
 
 if [ "${SKIP_E2E:-0}" != "1" ]; then
-  echo "== 端到端测试（真实 dsh + 插件一 + 假模型 + 假 NapCat）"
+  echo "== 端到端测试（真实 dsh + 插件一 + 假模型 + 假 SnowLuma）"
   DSH_BIN="$ENV_DIR/dsh/node_modules/.bin/dsh" node test/e2e.mjs 2>&1 | grep -v "^\s*at " | tail -20
   [ "${PIPESTATUS[0]}" = "0" ] || { echo "端到端测试没通过" >&2; exit 1; }
 else

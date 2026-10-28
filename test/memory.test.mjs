@@ -166,7 +166,7 @@ function fakeLlm(reply) {
 
 test('群里最近的消息：含她自己说的和唤醒过她的，不含正在处理的这条', () => {
   const { archive } = fresh()
-  const umo = 'napcat:GroupMessage:555'
+  const umo = 'snowluma:GroupMessage:555'
   const base = { umo, kind: 'group', groupId: '555', senderId: '9', senderName: '群友', type: 'message' }
   archive.add({ ...base, messageId: '1', time: 1000, direction: 'in', woke: false, text: '很早的' })
   archive.add({ ...base, time: 2000, direction: 'out', woke: true, text: '她说过话', senderId: 'self' })
@@ -181,7 +181,7 @@ test('群里最近的消息：含她自己说的和唤醒过她的，不含正�
 
 test('整理：只整理没整理过的部分；记到会话自己的归属；没有模型时不动进度', async () => {
   const { archive, store } = fresh()
-  const umo = 'napcat:FriendMessage:42'
+  const umo = 'snowluma:FriendMessage:42'
   const base = { umo, kind: 'private', userId: '42', senderId: '42', senderName: '主人', type: 'message', woke: true, direction: 'in' }
   archive.add({ ...base, messageId: '1', time: Date.now(), text: '我最喜欢的水果是芒果' })
   archive.add({ ...base, time: Date.now(), direction: 'out', senderId: 'self', senderName: '她', text: '记住啦' })

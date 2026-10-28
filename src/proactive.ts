@@ -4,7 +4,7 @@
 //   - 她 30 分钟内在这个会话里说过话就不触发，从她最后一句起再等一个间隔；
 //   - 免打扰时间（默认 01:00–09:00）不触发，顺延到之后；
 //   - 群聊主动时带上群里最近 15 条消息当上下文（含她自己说的，图片用收到时存好的，不限张数）。
-// 需要 dsh-napcat-bridge ≥ 0.7.0 的 ctx.napcat.wake。
+// 需要 dsh-snowluma-bridge ≥ 0.7.0 的 ctx.snowluma.wake。
 
 import { archivedImage } from './archived-image.js'
 import type { Archive } from './archive.js'
@@ -170,7 +170,7 @@ export class Proactive {
   async fire(umo: string, scope: Scope, now = Date.now()): Promise<boolean> {
     const wake = this.deps.wake()
     if (wake === undefined) {
-      this.deps.log('warn', '主动聊天需要 dsh-napcat-bridge ≥ 0.7.0（没有 ctx.napcat.wake）')
+      this.deps.log('warn', '主动聊天需要 dsh-snowluma-bridge ≥ 0.7.0（没有 ctx.snowluma.wake）')
       return false
     }
     const s = this.deps.settings()

@@ -1,5 +1,5 @@
-/** 插件一（dsh-napcat-bridge ≥ 0.6.0）给的会话信息；这里只声明用到的字段，不依赖插件一的代码。 */
-export interface NapcatSessionInfo {
+/** 插件一（dsh-snowluma-bridge ≥ 0.6.0）给的会话信息；这里只声明用到的字段，不依赖插件一的代码。 */
+export interface SnowlumaSessionInfo {
     umo: string;
     sessionId: string;
     type: 'private' | 'group';
@@ -13,10 +13,10 @@ export interface ArchiveSession {
     session_id: string;
 }
 /** 本插件新增：缺少新版 bridge 权限接口时停止 QQ 存档，不能回退为默认放行。 */
-export declare function archiveAllowed(napcat: NapcatLike | undefined, session: ArchiveSession | undefined): boolean;
-export interface NapcatLike {
+export declare function archiveAllowed(snowluma: SnowlumaLike | undefined, session: ArchiveSession | undefined): boolean;
+export interface SnowlumaLike {
     canArchive?(session: ArchiveSession): boolean;
-    sessionInfo?(sessionId: string): NapcatSessionInfo | undefined;
+    sessionInfo?(sessionId: string): SnowlumaSessionInfo | undefined;
 }
 export type Category = 'master' | 'private' | 'group';
 export interface Scope {
@@ -32,11 +32,11 @@ export interface Scope {
 /**
  * 判断一个 dsh 会话属于谁。
  * - 插件一登记过的 QQ 会话：主人私聊 → master，其他私聊 → private，群 → group。
- * - 插件一没登记、但 id 像 QQ 会话（napcat- 开头，比如在 dsh 网页里打开了一个 QQ 会话）：
+ * - 插件一没登记、但 id 像 QQ 会话（snowluma- 开头，比如在 dsh 网页里打开了一个 QQ 会话）：
  *   按 id 里的消息类型归到 group / private，**不当成主人**（里面是别人说的话）。
  * - 其他：dsh 里直接开的会话，只有主人能打开 dsh，算 master。
  */
-export declare function scopeOf(sessionId: string, napcat?: NapcatLike): Scope;
+export declare function scopeOf(sessionId: string, snowluma?: SnowlumaLike): Scope;
 export type ContextMode = 'truncate' | 'llm';
 export interface ContextRule {
     /** 最多保留多少轮；0 = 不按轮数限制 */

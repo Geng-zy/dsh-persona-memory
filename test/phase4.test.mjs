@@ -53,9 +53,9 @@ function setupProactive(over = {}) {
 
 test('主动聊天：先排时间；到点、不在免打扰、她没刚说过话才唤醒；她刚说过话顺延（别人说话不算）；别人很久没聊不找', async () => {
   const t = setupProactive()
-  const master = 'napcat:FriendMessage:42'
-  const group = 'napcat:GroupMessage:555'
-  const stale = 'napcat:FriendMessage:8'
+  const master = 'snowluma:FriendMessage:42'
+  const group = 'snowluma:GroupMessage:555'
+  const stale = 'snowluma:FriendMessage:8'
   const day = Date.parse('2026-10-24T00:00:00Z')
   const noon = day + 12 * 3_600_000
   t.organizer.rememberCategory(master, 'master')
@@ -89,7 +89,7 @@ test('主动聊天：先排时间；到点、不在免打扰、她没刚说过�
 
 test('主动聊天：例外规则能关掉某个会话；总开关关掉就都不动', async () => {
   const t = setupProactive({ override: s => (s.category === 'master' ? false : undefined) })
-  const master = 'napcat:FriendMessage:42'
+  const master = 'snowluma:FriendMessage:42'
   t.organizer.rememberCategory(master, 'master')
   t.archive.add({ umo: master, kind: 'private', userId: '42', type: 'message', woke: true, direction: 'in', senderName: 'x', senderId: '42', time: Date.now(), text: 'hi' })
   await t.p.tick()
@@ -160,9 +160,9 @@ test('备份：打包（不含别人的存档、不含 Key）、列表、每类�
   const img = 'c'.repeat(64) + '.png'
   writeFileSync(join(dataDir, 'media', img), 'png')
   writeFileSync(join(dataDir, 'media', 'd'.repeat(64) + '.png'), 'other')
-  archive.setCursor('cat:napcat:FriendMessage:42', 1)
-  archive.add({ umo: 'napcat:FriendMessage:42', kind: 'private', userId: '42', type: 'message', woke: true, direction: 'in', senderName: '主人', senderId: '42', time: 1000, text: '主人的话', segments: JSON.stringify([{ type: 'Image', _local: img }]) })
-  archive.add({ umo: 'napcat:GroupMessage:5', kind: 'group', groupId: '5', type: 'message', woke: true, direction: 'in', senderName: '群友', senderId: '9', time: 2000, text: '群里的话', segments: JSON.stringify([{ type: 'Image', _local: 'd'.repeat(64) + '.png' }]) })
+  archive.setCursor('cat:snowluma:FriendMessage:42', 1)
+  archive.add({ umo: 'snowluma:FriendMessage:42', kind: 'private', userId: '42', type: 'message', woke: true, direction: 'in', senderName: '主人', senderId: '42', time: 1000, text: '主人的话', segments: JSON.stringify([{ type: 'Image', _local: img }]) })
+  archive.add({ umo: 'snowluma:GroupMessage:5', kind: 'group', groupId: '5', type: 'message', woke: true, direction: 'in', senderName: '群友', senderId: '9', time: 2000, text: '群里的话', segments: JSON.stringify([{ type: 'Image', _local: 'd'.repeat(64) + '.png' }]) })
   store.add({ scope: 'master', content: '主人爱吃红烧肉', writer: 'settings' })
   const out = join(dataDir, 'backups')
   const opts = { dataDir, db: archive.db, outDir: out, plugin: '0.4.0', schema: 4, settings: { recallTopK: 6 }, embed: { model: 'm', dim: 4 }, keep: 2 }
@@ -195,8 +195,8 @@ test('备份：打包（不含别人的存档、不含 Key）、列表、每类�
   assert.ok(!m2.files.some(f => f.path === 'media/' + 'd'.repeat(64) + '.png'), '别人存档的图片不在包里')
   assert.ok(existsSync(join(dataDir, 'media', 'd'.repeat(64) + '.png')), '导入时图片只补不删')
   const reopened = new Archive(join(dataDir, 'companion.db'))
-  assert.equal(reopened.recent('napcat:GroupMessage:5', 5).length, 1, '别人的存档不在包里，导入时保持原样')
-  assert.equal(reopened.recent('napcat:FriendMessage:42', 5).length, 1)
+  assert.equal(reopened.recent('snowluma:GroupMessage:5', 5).length, 1, '别人的存档不在包里，导入时保持原样')
+  assert.equal(reopened.recent('snowluma:FriendMessage:42', 5).length, 1)
   reopened.close()
   assert.equal(await applyPendingImport(dataDir), undefined, '没有待导入的就不动')
   // 坏包
@@ -212,7 +212,7 @@ test('备份：按勾选打包；导入时只换勾选的部分，没勾的保�
   writeFileSync(join(dataDir, 'persona', 'persona.md'), '人格 A')
   mkdirSync(join(dataDir, 'core'), { recursive: true })
   writeFileSync(join(dataDir, 'core', 'master.md'), '核心 A')
-  const M = 'napcat:FriendMessage:42', G = 'napcat:GroupMessage:5'
+  const M = 'snowluma:FriendMessage:42', G = 'snowluma:GroupMessage:5'
   archive.setCursor('cat:' + M, 1)
   archive.setCursor('cat:' + G, 3)
   const msg = (umo, text, time) => archive.add({ umo, kind: umo === M ? 'private' : 'group', type: 'message', woke: true, direction: 'in', senderName: 'x', senderId: '1', time, text })
@@ -223,7 +223,7 @@ test('备份：按勾选打包；导入时只换勾选的部分，没勾的保�
   const out = join(dataDir, 'backups')
   const opts = { dataDir, db: archive.db, outDir: out, plugin: 'x', schema: 5, settings: { a: 1 }, embed: {}, keep: 5 }
   // 只备份人格和桥接设置
-  const settingsFiles = { 'companion-core': { ns: 'companion-core', user: { a: 1 } }, 'napcat-bridge': { ns: 'napcat-bridge', user: { b: 2 } }, dsh: {} }
+  const settingsFiles = { 'companion-core': { ns: 'companion-core', user: { a: 1 } }, 'snowluma-bridge': { ns: 'snowluma-bridge', user: { b: 2 } }, dsh: {} }
   const small = await createBackup({ ...opts, reason: 'manual', items: ['persona', 'settingsBridge'], settingsFiles })
   assert.deepEqual(small.manifest.items, ['persona', 'settingsBridge'])
   assert.equal(small.manifest.counts.memories, 0)
@@ -231,9 +231,9 @@ test('备份：按勾选打包；导入时只换勾选的部分，没勾的保�
   assert.equal(small.manifest.counts.masterSessions, 0)
   assert.deepEqual(small.manifest.settings, {}, '没勾插件二的设置')
   const paths = small.manifest.files.map(f => f.path).sort()
-  assert.deepEqual(paths, ['persona/persona.md', 'settings/napcat-bridge.json'])
+  assert.deepEqual(paths, ['persona/persona.md', 'settings/snowluma-bridge.json'])
   const smallInspect = await inspectBackup(join(out, small.name), join(dataDir, '.i1'))
-  assert.deepEqual(readSavedSettings(smallInspect.dir, ['settingsBridge']), { 'napcat-bridge': { ns: 'napcat-bridge', user: { b: 2 } } })
+  assert.deepEqual(readSavedSettings(smallInspect.dir, ['settingsBridge']), { 'snowluma-bridge': { ns: 'snowluma-bridge', user: { b: 2 } } })
   // 全备份
   const full = await createBackup({ ...opts, reason: 'manual', items: ['persona', 'core', 'diary', 'memory', 'archiveMaster', 'settingsCompanion'], now: Date.now() + 2000 })
   // 之后数据变了

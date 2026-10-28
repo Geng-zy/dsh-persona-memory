@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
-# 一键部署（在服务器上跑）：从一台刚装好的 Ubuntu 开始，装好 Node 和 pnpm（系统软件）、dsh + 两个插件（dsh-napcat-bridge、dsh-companion-core）+ NapCat，
+# 一键部署（在服务器上跑）：从一台刚装好的 Ubuntu 开始，装好 Node 和 pnpm（系统软件）、dsh + 两个插件（dsh-snowluma-bridge、dsh-companion-core）+ SnowLuma，
 # 两边的连接 Token 自动生成并配好（不打印），做成开机自启的服务。跑完只剩：扫码登录 QQ 小号、在网页里填 DeepSeek Key。
 #
 # 用法（用有 sudo 的普通用户跑，比如腾讯云的 ubuntu；不要用 root 直接跑）：
 #   bash install-server.sh --admin <主人 QQ> [选项]
 # 选项：
 #   --admin QQ            主人的 QQ 号（必填，可以多个，用逗号分开）
-#   --bot-qq QQ           机器人小号的 QQ 号（填了 NapCat 会用它快速登录，不填就每次扫码）
+#   --bot-qq QQ           机器人小号的 QQ 号（填了 SnowLuma 会用它快速登录，不填就每次扫码）
 #   --public-host HOST    浏览器访问 dsh 网页用的地址（公网 IP 或域名，不带端口）；不填就自动查公网 IP，查不到就只能走 SSH 隧道
 #   --bind-ip IP          dsh 网页绑哪个网卡地址（默认自动取内网 IP；dsh 不接受 0.0.0.0）
 #   --web-port PORT       dsh 网页端口（默认 3080）
-#   --ws-port PORT        插件一给 NapCat 连的端口（默认 6199，只在本机用，不用放行）
+#   --ws-port PORT        插件一给 SnowLuma 连的端口（默认 6199，只在本机用，不用放行）
 #   --dsh-user NAME       跑 dsh 的用户（默认 dafeiyu，没有 sudo）
-#   --bundle DIR          离线安装包目录（deploy.sh 准备的：两个插件的 .tgz、NapCat.Shell.zip、NapCat 的 install.sh）；
+#   --bundle DIR          离线安装包目录（deploy.sh 准备的：两个插件的 .tgz、SnowLuma.Shell.zip、SnowLuma 的 install.sh）；
 #                         不给就从 GitHub 下（服务器连不上 GitHub 时一定要给）
-#   --no-napcat           不装 NapCat（已经有了，或者 NapCat 装在别的机器）
+#   --no-snowluma           不装 SnowLuma（已经有了，或者 SnowLuma 装在别的机器）
 #   --node-version V      Node 版本（默认 24.22.1）
 #   --dsh-version V       dsh 版本（默认 0.2.1-rc.2）
 #   --node-mirror URL     Node 下载镜像（默认 https://npmmirror.com/mirrors/node）
@@ -23,10 +23,10 @@
 # 可以重复跑：装过的会跳过；已有的配置不覆盖（连接 Token 不会被换掉）。
 set -euo pipefail
 
-ADMIN="" BOT_QQ="" PUBLIC_HOST="" BIND_IP="" WEB_PORT=3080 WS_PORT=6199 DSH_USER=dafeiyu BUNDLE="" WITH_NAPCAT=1
+ADMIN="" BOT_QQ="" PUBLIC_HOST="" BIND_IP="" WEB_PORT=3080 WS_PORT=6199 DSH_USER=dafeiyu BUNDLE="" WITH_SNOWLUMA=1
 NODE_VERSION=24.22.1 DSH_VERSION=0.2.1-rc.2 PNPM_VERSION=11.28.5
 NODE_MIRROR=https://npmmirror.com/mirrors/node NPM_REGISTRY=https://registry.npmmirror.com/
-GH_PLUGINS=("Geng-zy/dsh-napcat-bridge" "Geng-zy/dsh-companion-core")
+GH_PLUGINS=("Geng-zy/dsh-snowluma-bridge" "Geng-zy/dsh-companion-core")
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -38,7 +38,7 @@ while [ $# -gt 0 ]; do
     --ws-port) WS_PORT="$2"; shift 2 ;;
     --dsh-user) DSH_USER="$2"; shift 2 ;;
     --bundle) BUNDLE="$(cd "$2" && pwd)"; shift 2 ;;
-    --no-napcat) WITH_NAPCAT=0; shift ;;
+    --no-snowluma) WITH_SNOWLUMA=0; shift ;;
     --node-version) NODE_VERSION="$2"; shift 2 ;;
     --dsh-version) DSH_VERSION="$2"; shift 2 ;;
     --node-mirror) NODE_MIRROR="${2%/}"; shift 2 ;;
@@ -55,7 +55,7 @@ die() { printf '\033[1;31m错误：%s\033[0m\n' "$*" >&2; exit 1; }
 [ -n "$ADMIN" ] || die "要用 --admin 告诉我主人的 QQ 号"
 [[ "$ADMIN" =~ ^[0-9]+(,[0-9]+)*$ ]] || die "--admin 只能是 QQ 号（多个用逗号分开）"
 [ -z "$BOT_QQ" ] || [[ "$BOT_QQ" =~ ^[0-9]+$ ]] || die "--bot-qq 只能是 QQ 号"
-[ "$(id -u)" -ne 0 ] || die "请用有 sudo 的普通用户跑（NapCat 会装在这个用户下），不要直接用 root"
+[ "$(id -u)" -ne 0 ] || die "请用有 sudo 的普通用户跑（SnowLuma 会装在这个用户下），不要直接用 root"
 sudo -v || die "这个用户没有 sudo"
 . /etc/os-release
 [ "${ID:-}" = ubuntu ] || [ "${ID_LIKE:-}" = debian ] || [ "${ID:-}" = debian ] || die "只在 Ubuntu / Debian 上测过（这台是 ${PRETTY_NAME:-未知}）"
@@ -161,7 +161,7 @@ fi
 PATCH="$DSH_HOME_DIR/.dsh/profiles/web/cordis.patch.yml"
 TOKEN_FILE="$(mktemp)"; chmod 600 "$TOKEN_FILE"
 NEW_TOKEN=0
-if sudo test -f "$PATCH" && sudo grep -q '^- id: napcat-bridge' "$PATCH"; then
+if sudo test -f "$PATCH" && sudo grep -q '^- id: snowluma-bridge' "$PATCH"; then
   note "配置已经有了，不覆盖（$PATCH）"
 else
   openssl rand -hex 32 > "$TOKEN_FILE"; NEW_TOKEN=1
@@ -177,7 +177,7 @@ else
   config:
     cookieMaxAgeDays: 365
 $TRUSTED
-- id: napcat-bridge
+- id: snowluma-bridge
   config:
     ws_reverse_port: $WS_PORT
     ws_reverse_token: $(cat "$TOKEN_FILE")
@@ -193,7 +193,7 @@ fi
 step "6/8 dsh 服务（开机自启，挂了自动重启）"
 sudo tee /etc/systemd/system/dsh.service >/dev/null <<EOF
 [Unit]
-Description=DeepSeek Harness 网页（$DSH_USER 用户，带 dsh-napcat-bridge 和 dsh-companion-core）
+Description=DeepSeek Harness 网页（$DSH_USER 用户，带 dsh-snowluma-bridge 和 dsh-companion-core）
 After=network-online.target
 Wants=network-online.target
 
@@ -215,20 +215,20 @@ sudo systemctl enable dsh >/dev/null 2>&1
 sudo systemctl restart dsh
 note "已启动：dsh web --host $BIND_IP --port $WEB_PORT"
 
-if [ "$WITH_NAPCAT" = 1 ]; then
-  step "7/8 NapCat（装在 $ME 下）"
-  NC_DIR="$ME_HOME/Napcat"
-  NC_CONF="$NC_DIR/opt/QQ/resources/app/app_launcher/napcat/config"
+if [ "$WITH_SNOWLUMA" = 1 ]; then
+  step "7/8 SnowLuma（装在 $ME 下）"
+  NC_DIR="$ME_HOME/Snowluma"
+  NC_CONF="$NC_DIR/opt/QQ/resources/app/app_launcher/snowluma/config"
   if [ -x "$NC_DIR/opt/QQ/qq" ]; then note "已经装好"
   else
-    mkdir -p "$ME_HOME/napcat-install"; cd "$ME_HOME/napcat-install"
-    if [ -n "$BUNDLE" ] && [ -f "$BUNDLE/NapCat.Shell.zip" ]; then cp "$BUNDLE/NapCat.Shell.zip" .; fi
-    if [ -n "$BUNDLE" ] && [ -f "$BUNDLE/napcat-install.sh" ]; then cp "$BUNDLE/napcat-install.sh" install.sh
-    else curl -fsSL -o install.sh https://raw.githubusercontent.com/NapNeko/NapCat-Installer/main/script/install.sh || die "下载 NapCat 安装脚本失败（服务器连不上 GitHub 时用 deploy.sh）"
+    mkdir -p "$ME_HOME/snowluma-install"; cd "$ME_HOME/snowluma-install"
+    if [ -n "$BUNDLE" ] && [ -f "$BUNDLE/SnowLuma.Shell.zip" ]; then cp "$BUNDLE/SnowLuma.Shell.zip" .; fi
+    if [ -n "$BUNDLE" ] && [ -f "$BUNDLE/snowluma-install.sh" ]; then cp "$BUNDLE/snowluma-install.sh" install.sh
+    else curl -fsSL -o install.sh https://raw.githubusercontent.com/NapNeko/SnowLuma-Installer/main/script/install.sh || die "下载 SnowLuma 安装脚本失败（服务器连不上 GitHub 时用 deploy.sh）"
     fi
-    note "运行 NapCat 官方安装脚本（不装 Docker 版和 TUI-CLI）…"
-    bash install.sh --docker n --cli n --github-proxy 0 > install.log 2>&1 || { tail -20 install.log; die "NapCat 安装失败，日志在 $ME_HOME/napcat-install/install.log"; }
-    rm -f NapCat.Shell.zip
+    note "运行 SnowLuma 官方安装脚本（不装 Docker 版和 TUI-CLI）…"
+    bash install.sh --docker n --cli n --github-proxy 0 > install.log 2>&1 || { tail -20 install.log; die "SnowLuma 安装失败，日志在 $ME_HOME/snowluma-install/install.log"; }
+    rm -f SnowLuma.Shell.zip
     cd - >/dev/null
   fi
   mkdir -p "$NC_CONF"
@@ -243,8 +243,8 @@ d = json.load(open(path)) if os.path.exists(path) else {}
 net = d.setdefault('network', {})
 for k in ('httpServers', 'httpSseServers', 'httpClients', 'websocketServers', 'websocketClients', 'plugins'):
     net.setdefault(k, [])
-net['websocketClients'] = [c for c in net['websocketClients'] if c.get('name') != 'dsh-napcat-bridge'] + [{
-    'name': 'dsh-napcat-bridge', 'enable': True, 'url': 'ws://127.0.0.1:%s/ws' % port, 'messagePostFormat': 'array',
+net['websocketClients'] = [c for c in net['websocketClients'] if c.get('name') != 'dsh-snowluma-bridge'] + [{
+    'name': 'dsh-snowluma-bridge', 'enable': True, 'url': 'ws://127.0.0.1:%s/ws' % port, 'messagePostFormat': 'array',
     'reportSelfMessage': False, 'reconnectInterval': 5000, 'token': token, 'debug': False, 'heartInterval': 30000,
 }]
 d.setdefault('musicSignUrl', ''); d.setdefault('enableLocalFile2Url', False); d.setdefault('parseMultMsg', False)
@@ -254,13 +254,13 @@ with open(os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600), 'w') as fh
 os.replace(tmp, path)
 PY
     done
-    note "NapCat 连接配置写好了（WebSocket 客户端 ws://127.0.0.1:$WS_PORT/ws，Token 和插件一一致）"
+    note "SnowLuma 连接配置写好了（WebSocket 客户端 ws://127.0.0.1:$WS_PORT/ws，Token 和插件一一致）"
   else
-    note "插件一的配置原来就有，NapCat 连接配置不动（要换 Token 就在插件一设置页「随机生成 Token」，再填进 NapCat）"
+    note "插件一的配置原来就有，SnowLuma 连接配置不动（要换 Token 就在插件一设置页「随机生成 Token」，再填进 SnowLuma）"
   fi
-  sudo tee /etc/systemd/system/napcat.service >/dev/null <<EOF
+  sudo tee /etc/systemd/system/snowluma.service >/dev/null <<EOF
 [Unit]
-Description=NapCat（QQ 小号，$ME 用户）
+Description=SnowLuma（QQ 小号，$ME 用户）
 After=network-online.target
 Wants=network-online.target
 
@@ -277,12 +277,12 @@ MemoryMax=1500M
 WantedBy=multi-user.target
 EOF
   sudo systemctl daemon-reload
-  sudo systemctl enable napcat >/dev/null 2>&1
-  sudo systemctl restart napcat
+  sudo systemctl enable snowluma >/dev/null 2>&1
+  sudo systemctl restart snowluma
   note "已启动"
 else
-  step "7/8 NapCat：跳过（--no-napcat）"
-  if [ "$NEW_TOKEN" = 1 ]; then note "NapCat 那边的 Token 要和插件一一致：到插件一设置页「随机生成 Token」重新生成一个，保存后填进 NapCat"; fi
+  step "7/8 SnowLuma：跳过（--no-snowluma）"
+  if [ "$NEW_TOKEN" = 1 ]; then note "SnowLuma 那边的 Token 要和插件一一致：到插件一设置页「随机生成 Token」重新生成一个，保存后填进 SnowLuma"; fi
 fi
 rm -f "$TOKEN_FILE"
 
@@ -303,10 +303,10 @@ cat <<EOF
 2. 在网页的「设置 → 模型」里填 DeepSeek API Key。想用 DeepSeek 账号登录：dsh 只允许在 localhost 地址上登录账号，
    所以要先按上面的 SSH 隧道方式打开网页，再去登录。
 EOF
-if [ "$WITH_NAPCAT" = 1 ]; then cat <<EOF
-3. 登录 QQ 小号：二维码在 $NC_DIR/opt/QQ/resources/app/app_launcher/napcat/cache/qrcode.png
-   （或者打开 NapCat 网页 http://<服务器>:6099/webui/ 扫码，Token 在 $NC_CONF/webui.json，记得改掉）。
-   扫完后插件一设置页的「测试连接」应该显示已连上。${BOT_QQ:+以后 NapCat 重启会用 $BOT_QQ 快速登录。}
+if [ "$WITH_SNOWLUMA" = 1 ]; then cat <<EOF
+3. 登录 QQ 小号：二维码在 $NC_DIR/opt/QQ/resources/app/app_launcher/snowluma/cache/qrcode.png
+   （或者打开 SnowLuma 网页 http://<服务器>:6099/webui/ 扫码，Token 在 $NC_CONF/webui.json，记得改掉）。
+   扫完后插件一设置页的「测试连接」应该显示已连上。${BOT_QQ:+以后 SnowLuma 重启会用 $BOT_QQ 快速登录。}
 EOF
 fi
 cat <<EOF

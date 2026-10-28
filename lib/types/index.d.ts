@@ -1,6 +1,6 @@
 import z from '@deepseek-ai/schemastery';
 import type { Context as CordisContext } from '@deepseek-ai/cordis';
-import { type ContextMode, type ForgetMode, type NapcatLike, type RuleRow } from './rules.js';
+import { type ContextMode, type ForgetMode, type SnowlumaLike, type RuleRow } from './rules.js';
 declare module '@deepseek-ai/dsh-llm' {
     interface MessageSourceMap {
         /** 本插件放进这一轮的召回记忆 */
@@ -136,7 +136,7 @@ export type LiveConfig = {
 export declare const Config: z<LiveConfig>;
 export declare const name = "dsh-companion-core";
 type Context = CordisContext & {
-    napcat?: NapcatLike;
+    snowluma?: SnowlumaLike;
     agents?: {
         list(): any[];
     };

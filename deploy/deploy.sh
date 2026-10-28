@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 一键部署（在你自己的电脑上跑，Mac / Linux）：先在本机把要用的东西都下好（两个插件的最新版、NapCat 和它的安装脚本），
+# 一键部署（在你自己的电脑上跑，Mac / Linux）：先在本机把要用的东西都下好（两个插件的最新版、SnowLuma 和它的安装脚本），
 # 核对校验值后传到服务器，再在服务器上运行 install-server.sh。适合连不上 GitHub 的国内服务器。
 #
 # 用法：
@@ -53,12 +53,12 @@ for a in json.load(sys.stdin)["assets"]:
 }
 
 echo "== 在本机下载"
-fetch_release Geng-zy/dsh-napcat-bridge '\.tgz$' ""
+fetch_release Geng-zy/dsh-snowluma-bridge '\.tgz$' ""
 fetch_release Geng-zy/dsh-companion-core '\.tgz$' ""
-if [[ " ${PASS[*]:-} " != *" --no-napcat "* ]]; then
-  fetch_release NapNeko/NapCatQQ '^NapCat\.Shell\.zip$' ""
-  curl -fsSL -o "$BUNDLE/napcat-install.sh" https://raw.githubusercontent.com/NapNeko/NapCat-Installer/main/script/install.sh
-  echo "   NapCat 安装脚本（NapCat-Installer main 分支，sha256 $(sha256 "$BUNDLE/napcat-install.sh" | cut -c1-16)…）"
+if [[ " ${PASS[*]:-} " != *" --no-snowluma "* ]]; then
+  fetch_release NapNeko/SnowLumaQQ '^SnowLuma\.Shell\.zip$' ""
+  curl -fsSL -o "$BUNDLE/snowluma-install.sh" https://raw.githubusercontent.com/NapNeko/SnowLuma-Installer/main/script/install.sh
+  echo "   SnowLuma 安装脚本（SnowLuma-Installer main 分支，sha256 $(sha256 "$BUNDLE/snowluma-install.sh" | cut -c1-16)…）"
 fi
 cp "$HERE/install-server.sh" "$BUNDLE/"
 

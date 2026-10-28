@@ -1,10 +1,10 @@
 // dsh-companion-core（插件二）常驻部分：
 //   - 人格、核心记忆：挂在 dsh 全局的系统提示词组装环节，QQ 和 dsh 的所有会话每一步都现读；
 //   - 她自己改人格/核心记忆的工具：只装在主人的会话里；
-//   - 消息存档：从插件一（dsh-napcat-bridge ≥ 0.6.0）的事件收消息；
+//   - 消息存档：从插件一（dsh-snowluma-bridge ≥ 0.6.0）的事件收消息；
 //   - 给预设里的「上下文管理」行（./context）提供每个会话的规则；
 //   - 长期记忆：整理（每 N 轮、压缩前、手动）、召回（每轮放进这一轮的消息里）、主动记忆工具、遗忘、向量索引；
-//   - 群聊之前 n 条：通过插件一的 napcat/prompt 把她没看到的群消息一起给她；
+//   - 群聊之前 n 条：通过插件一的 snowluma/prompt 把她没看到的群消息一起给她；
 //   - 日记和月度总览、主人开新会话时先读日记、存档到期（整理 → 删存档 → 换会话 → 归档/删旧会话）、群消息图片收到时下载；
 //   - 设置页（client.js）和它用的接口 <dsh>/api/companion/…（要先登录 dsh 网页）。
 
@@ -15,7 +15,7 @@ import { Archive, type ArchivedMessage } from './archive.js'
 import { TextDoc, defaultDataDir, writeAtomic } from './docs.js'
 import { applyPrompt, coreBlock, type AssemblyLike } from './prompt.js'
 import { listModels } from './models.js'
-import { archiveAllowed, archiveRule, contextRule, forgetMode, matchRule, scopeOf, type ArchiveSession, type Category, type ContextMode, type ForgetMode, type NapcatLike, type RuleDefaults, type RuleRow, type Scope } from './rules.js'
+import { archiveAllowed, archiveRule, contextRule, forgetMode, matchRule, scopeOf, type ArchiveSession, type Category, type ContextMode, type ForgetMode, type SnowlumaLike, type RuleDefaults, type RuleRow, type Scope } from './rules.js'
 import type { BeforeCompactPayload, CompanionService, ContextPolicy } from './service.js'
 import { archivedImage } from './archived-image.js'
 import { coreTool, personaTool, type ToolDeps } from './tools.js'
@@ -281,7 +281,7 @@ export const Config: z<LiveConfig> = z.object({
   deleteOldSessions: z.boolean().default(true).volatile().description('其他人的旧会话过期后删除（主人的永不删）'),
   carryMessages: z.natural().default(10).volatile().description('换会话时带过去最近几条消息'),
   archiveImages: z.boolean().default(true).volatile().description('收到图片时下载存起来（QQ 图片链接会过期）'),
-  // 主动聊天（需要 dsh-napcat-bridge ≥ 0.7.0）
+  // 主动聊天（需要 dsh-snowluma-bridge ≥ 0.7.0）
   proactiveEnabled: z.boolean().default(true).volatile().description('主动聊天：随机间隔唤醒她，让她决定要不要说话'),
   proactiveMinMinutes: z.natural().min(10).default(60).volatile().description('主人私聊：最短间隔（分钟）'),
   proactiveMaxMinutes: z.natural().min(10).default(240).volatile().description('主人私聊：最长间隔（分钟）'),
@@ -294,7 +294,7 @@ export const Config: z<LiveConfig> = z.object({
   proactiveRecentMinutes: z.natural().default(30).volatile().description('她这么多分钟内在这个会话里说过话就不触发'),
   proactiveGroupContext: z.natural().default(15).volatile().description('群里主动说话时带几条上下文（图片不限张数）'),
   proactiveActiveDays: z.natural().min(1).default(7).volatile().description('别人和群：最近几天里聊过才主动找'),
-  silenceToken: z.string().default('[不发]').volatile().description('「不发」暗号，和 dsh-napcat-bridge 设置里的保持一致'),
+  silenceToken: z.string().default('[不发]').volatile().description('「不发」暗号，和 dsh-snowluma-bridge 设置里的保持一致'),
   // 记忆保养
   autoCleanup: z.boolean().default(true).volatile().description('自动清理久没想起、不重要的记忆'),
   autoCleanupDays: z.natural().min(1).default(90).volatile().description('超过几天没被想起'),
@@ -315,9 +315,9 @@ export const Config: z<LiveConfig> = z.object({
 }) as never
 
 export const name = 'dsh-companion-core'
-// napcat（插件一）、agents 都是可选的，用到时 ctx.get
+// snowluma（插件一）、agents 都是可选的，用到时 ctx.get
 
-type Context = CordisContext & { napcat?: NapcatLike; agents?: { list(): any[] } }
+type Context = CordisContext & { snowluma?: SnowlumaLike; agents?: { list(): any[] } }
 
 const RANK = { debug: 0, info: 1, warn: 2, error: 3 } as const
 const MAX_LOGS = 200
@@ -338,7 +338,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
   }
 
   const sessionServices = (): MasterSessionServices => ({
-    bridge: ctx.get('napcat' as never) as never,
+    bridge: ctx.get('snowluma' as never) as never,
     persistence: ctx.get('sessionPersistence' as never) as never,
     attachments: ctx.get('attachments' as never) as never,
     workspaces: ctx.get('workspaceRegistry' as never) as never,
@@ -369,8 +369,8 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
     log('error', '打不开存档数据库，消息存档暂停：' + errText(e))
   }
 
-  const napcat = (): NapcatLike | undefined => ctx.get('napcat' as never) as NapcatLike | undefined
-  const scope = (sessionId: string): Scope => scopeOf(sessionId, napcat())
+  const snowluma = (): SnowlumaLike | undefined => ctx.get('snowluma' as never) as SnowlumaLike | undefined
+  const scope = (sessionId: string): Scope => scopeOf(sessionId, snowluma())
   /** 这个预设的会话不归插件二管：不在「生效的预设」里（* 表示全部），或在「不生效的预设」里。不知道预设的会话照常管。 */
   const excluded = (presetId: string | undefined): boolean => {
     if (presetId === undefined || presetId === '') return false
@@ -515,12 +515,12 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
   }
   const modelTarget = (): ModelTarget | undefined => taskTarget('memory')
   /**
-   * 写日记只写关于主人的事，所以用和主人私聊用的模型：dsh-napcat-bridge 里「管理员私聊用的模型」→「私聊用的模型」→ dsh 默认模型
-   * （和 dsh-napcat-bridge 自己选模型的顺序一样）。思考等级单独设（diaryEffort，默认 high）。
+   * 写日记只写关于主人的事，所以用和主人私聊用的模型：dsh-snowluma-bridge 里「管理员私聊用的模型」→「私聊用的模型」→ dsh 默认模型
+   * （和 dsh-snowluma-bridge 自己选模型的顺序一样）。思考等级单独设（diaryEffort，默认 high）。
    */
   const masterChatModel = (): { target?: ModelTarget; from: 'admin' | 'private' | 'default' | 'none' } => {
     let nb: Record<string, unknown> | undefined
-    try { nb = settingsService()?.describe({ redactSecrets: true }).find(f => formKind(f) === 'napcat-bridge')?.value } catch { nb = undefined }
+    try { nb = settingsService()?.describe({ redactSecrets: true }).find(f => formKind(f) === 'snowluma-bridge')?.value } catch { nb = undefined }
     for (const [key, from] of [['adminPrivateModel', 'admin'], ['privateModel', 'private']] as const) {
       const t = parseTarget(String(nb?.[key] ?? ''))
       if (t !== undefined) return { target: t, from }
@@ -560,7 +560,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
         rotateSessions: get('rotateSessions'), deleteOldSessions: get('deleteOldSessions'), carryMessages: get('carryMessages'),
         archiveDays: s => archiveRule(s, defaults(), rules()).days,
       }),
-      napcat: () => napcat() as never,
+      snowluma: () => snowluma() as never,
       registry: () => ctx.get('workspaceRegistry' as never) as never,
       persistence: () => ctx.get('sessionPersistence' as never) as never,
       isLive: id => (agentsService()?.list?.() ?? []).some(a => String(a?.session?.id) === id),
@@ -574,7 +574,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
   const proactive = archive !== undefined && organizer !== undefined
     ? new Proactive({
       archive, organizer, mediaDir, meta, log,
-      wake: () => (napcat() as any)?.wake?.bind(napcat()),
+      wake: () => (snowluma() as any)?.wake?.bind(snowluma()),
       settings: () => ({
         enabled: get('proactiveEnabled'), masterMinMinutes: get('proactiveMinMinutes'), masterMaxMinutes: get('proactiveMaxMinutes'),
         othersMinMinutes: get('proactiveOthersMinMinutes'), othersMaxMinutes: get('proactiveOthersMaxMinutes'), privateEnabled: get('proactivePrivate'), groupEnabled: get('proactiveGroup'),
@@ -652,10 +652,10 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
   type SettingsForm = { ns: string; value?: Record<string, unknown>; user?: Record<string, unknown>; secrets?: Array<{ path: string[] }> }
   const settingsService = (): { describe(o: { redactSecrets: boolean }): SettingsForm[]; mutate(ns: string, ops: unknown[]): Promise<void> } | undefined => ctx.get('settings' as never) as never
   /** 认出两个插件的设置（按自己的字段认，不靠 profile 里的 id） */
-  const formKind = (f: SettingsForm): 'companion-core' | 'napcat-bridge' | 'dsh' => {
+  const formKind = (f: SettingsForm): 'companion-core' | 'snowluma-bridge' | 'dsh' => {
     const keys = Object.keys(f.value ?? {})
     if (keys.includes('personaMaxChars') && keys.includes('backupItems')) return 'companion-core'
-    if (keys.includes('ws_reverse_host') || keys.includes('wakeKeywords')) return 'napcat-bridge'
+    if (keys.includes('ws_reverse_host') || keys.includes('wakeKeywords')) return 'snowluma-bridge'
     return 'dsh'
   }
   const captureSettings = (): Record<string, unknown> => {
@@ -690,7 +690,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
       }
     }
     if (saved['companion-core']) await one('dsh-companion-core 的设置', forms.find(f => formKind(f) === 'companion-core'), saved['companion-core'])
-    if (saved['napcat-bridge']) await one('dsh-napcat-bridge 的设置', forms.find(f => formKind(f) === 'napcat-bridge'), saved['napcat-bridge'])
+    if (saved['snowluma-bridge']) await one('dsh-snowluma-bridge 的设置', forms.find(f => formKind(f) === 'snowluma-bridge'), saved['snowluma-bridge'])
     for (const s of Object.values((saved.dsh ?? {}) as Record<string, SavedSettings>)) await one('dsh 设置 ' + s.ns, forms.find(f => f.ns === s.ns), s)
     return notes
   }
@@ -832,7 +832,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
   ctx.on('session/event' as never, ((session: any, event: any) => {
     if (organizer === undefined) return
     const id = String(session?.id ?? '')
-    if (id === '' || id.startsWith('napcat-') || excluded(session?.meta?.agentPreset)) return
+    if (id === '' || id.startsWith('snowluma-') || excluded(session?.meta?.agentPreset)) return
     if (event?.type !== 'user/message' && event?.type !== 'assistant/message') return
     const msg = event.data
     const human = event.type === 'user/message' && isHumanTurn(event)
@@ -844,7 +844,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
   }) as never)
 
   // 群聊之前 n 条：她参与群话题时，把群里最近 n 条消息（含她自己说的）一起给她，图片不限张数（原图、语音转文字、视频截图都用插件一的媒体服务）
-  ctx.on('napcat/prompt' as never, (async (payload: { info: { type: string; umo: string; groupId?: string; sessionId: string }; message: any; content: any[] }) => {
+  ctx.on('snowluma/prompt' as never, (async (payload: { info: { type: string; umo: string; groupId?: string; sessionId: string }; message: any; content: any[] }) => {
     try {
       const info = payload.info
       if (archive === undefined || info?.type !== 'group' || get('groupContextCount') <= 0) return
@@ -853,7 +853,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
       const umo = String(info.umo)
       const rows = archive.lastMessages(umo, get('groupContextCount'), payload.message?.message_id !== undefined ? String(payload.message.message_id) : undefined)
       if (rows.length === 0) return
-      const media = (napcat() as any)?.media as { convert?(components: any[], budget?: number): Promise<{ text: string; parts: any[]; used: number }> } | undefined
+      const media = (snowluma() as any)?.media as { convert?(components: any[], budget?: number): Promise<{ text: string; parts: any[]; used: number }> } | undefined
       const lines: string[] = []
       const images: any[] = []
       for (const r of rows) {
@@ -870,7 +870,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
               extra += ' [图片，见下面]'
             }
             const comps = Array.isArray(all) ? all.filter((c: any) => !(c?.type === 'Image' && typeof c._local === 'string')) : []
-            if (media?.convert === undefined) throw new Error('没有 dsh-napcat-bridge 的媒体服务')
+            if (media?.convert === undefined) throw new Error('没有 dsh-snowluma-bridge 的媒体服务')
             if (Array.isArray(comps) && comps.some((c: any) => c?.type === 'Image' || c?.type === 'Record' || c?.type === 'Video')) {
               const got = await media.convert(comps, Infinity)
               const imgCount = got.parts.filter((p: any) => p?.type === 'image').length
@@ -963,8 +963,8 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
   const EXT: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp' }
   /** 收到的图片下载存好（按内容的 SHA-256 命名），在存档的消息段里记下文件名。 */
   const saveImages = async (umo: string, messageId: string, comps: any[], session: ArchiveSession): Promise<void> => {
-    const allowed = (): boolean => get('archiveEnabled') && archiveAllowed(napcat(), session)
-    const media = (napcat() as any)?.media as { loadImage?(c: any): Promise<{ mediaType: string; data: string }> } | undefined
+    const allowed = (): boolean => get('archiveEnabled') && archiveAllowed(snowluma(), session)
+    const media = (snowluma() as any)?.media as { loadImage?(c: any): Promise<{ mediaType: string; data: string }> } | undefined
     if (media?.loadImage === undefined || archive === undefined) return
     let changed = false
     for (const c of comps) {
@@ -996,11 +996,11 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
       log('warn', '存档失败: ' + errText(e))
     }
   }
-  ctx.on('napcat/message' as never, ((abm: any, event: any, isWake: boolean) => {
+  ctx.on('snowluma/message' as never, ((abm: any, event: any, isWake: boolean) => {
     const umo = String(event?.unified_msg_origin ?? '')
-    if (umo === '' || !archiveAllowed(napcat(), event?.session)) return
+    if (umo === '' || !archiveAllowed(snowluma(), event?.session)) return
     const isGroup = abm?.type === 'GroupMessage'
-    const info = (napcat() as any)?.sessionInfoByUmo?.(umo) as { sessionId?: string; adminPrivate?: boolean } | undefined
+    const info = (snowluma() as any)?.sessionInfoByUmo?.(umo) as { sessionId?: string; adminPrivate?: boolean } | undefined
     const s: Scope = isGroup
       ? { category: 'group', qq: true, groupId: String(abm.raw_message?.group_id ?? abm.group?.group_id ?? abm.session_id ?? '') }
       : { category: info?.adminPrivate ? 'master' : 'private', qq: true, userId: String(abm.session_id ?? abm.sender?.user_id ?? '') }
@@ -1026,11 +1026,11 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
       void saveImages(umo, String(abm.message_id), JSON.parse(segments ?? '[]'), event.session)
     }
   }) as never)
-  ctx.on('napcat/sent' as never, ((p: { umo: string; session: ArchiveSession; text: string; time: number }) => {
+  ctx.on('snowluma/sent' as never, ((p: { umo: string; session: ArchiveSession; text: string; time: number }) => {
     // 本插件新增：回复允许管理员在名单外群发言，但该群的出站消息也不存档。
-    if (!archiveAllowed(napcat(), p.session)) return
+    if (!archiveAllowed(snowluma(), p.session)) return
     const isGroup = p.session?.message_type === 'GroupMessage'
-    const info = (napcat() as any)?.sessionInfoByUmo?.(p.umo) as { sessionId?: string; selfId?: string; type?: string; adminPrivate?: boolean } | undefined
+    const info = (snowluma() as any)?.sessionInfoByUmo?.(p.umo) as { sessionId?: string; selfId?: string; type?: string; adminPrivate?: boolean } | undefined
     if (info !== undefined) organizer?.rememberCategory(p.umo, info.type === 'group' ? 'group' : info.adminPrivate ? 'master' : 'private')
     store({
       umo: p.umo, kind: isGroup ? 'group' : 'private',
@@ -1092,7 +1092,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
   })
   const state = (): Record<string, unknown> => ({
     dataDir: dir,
-    napcat: napcat() !== undefined,
+    snowluma: snowluma() !== undefined,
     docs: Object.fromEntries(DOC_NAMES.map(n => [n, { text: docs[n].read(), history: docs[n].history() }])),
     archive: archive?.stats() ?? null,
     memory: memories?.stats() ?? null,
@@ -1105,7 +1105,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
     diary: { days: diary.days().length, months: diary.months().length, latest: diary.days()[0] ?? null, nextDay: meta.get('maint:day') ?? null },
     maintenance: maintenance?.last ?? null,
     retired: archive?.retiredList() ?? [],
-    proactive: { list: proactive?.list() ?? [], wakeAvailable: typeof (napcat() as any)?.wake === 'function' },
+    proactive: { list: proactive?.list() ?? [], wakeAvailable: typeof (snowluma() as any)?.wake === 'function' },
     care: { lastCleanup: Number(meta.get('care:cleanup') ?? 0) || null, lastConsolidate: Number(meta.get('care:consolidate') ?? 0) || null, lastRun: care?.lastRun() ?? null },
     backups: listBackups(backupsDir),
     importing: pendingInspect === undefined ? null : { id: pendingInspect.id, manifest: pendingInspect.manifest },

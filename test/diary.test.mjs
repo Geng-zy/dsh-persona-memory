@@ -83,7 +83,7 @@ function setup(over = {}) {
     archive, store, diary, organizer, llm: () => llm, target: () => ({ provider: 'p', model: 'm' }),
     settings: () => ({ diaryEnabled: true, monthlyEnabled: true, boundaryHour: 4, timeZone: 'Asia/Shanghai', rotateSessions: true, deleteOldSessions: true, carryMessages: 3,
       archiveDays: s => (s.category === 'master' ? 365 : 5), ...over }),
-    napcat: () => ({ rotateSession: async umo => { rotated.push(umo); return { oldSessionId: 'napcat-' + umo.replace(/[^A-Za-z0-9-]/g, '-'), newSessionId: 'napcat-new-' + rotated.length } } }),
+    snowluma: () => ({ rotateSession: async umo => { rotated.push(umo); return { oldSessionId: 'snowluma-' + umo.replace(/[^A-Za-z0-9-]/g, '-'), newSessionId: 'snowluma-new-' + rotated.length } } }),
     registry: () => ({
       archiveSession: async id => { registryCalls.push(['archive', id]) },
       unarchiveSession: async id => { registryCalls.push(['unarchive', id]) },
@@ -101,12 +101,12 @@ function setup(over = {}) {
 test('写日记：只用主人的聊天和 dsh 会话流水；跨月写总览；没聊天不写', async () => {
   const t = setup()
   const now = Date.parse('2026-10-24T17:30:00Z')
-  const master = 'napcat:FriendMessage:42'
+  const master = 'snowluma:FriendMessage:42'
   t.organizer.rememberCategory(master, 'master')
   const base = { kind: 'private', type: 'message', woke: true, direction: 'in', senderName: '主人', senderId: '42' }
   t.archive.add({ ...base, umo: master, userId: '42', messageId: '1', time: now - 3_600_000, text: '我想吃芒果' })
-  t.archive.add({ ...base, umo: 'napcat:FriendMessage:8', userId: '8', senderId: '8', senderName: '别人', messageId: '2', time: now - 3_600_000, text: '别人的话' })
-  t.archive.add({ ...base, umo: 'napcat:GroupMessage:5', kind: 'group', groupId: '5', messageId: '3', time: now - 3_600_000, text: '群里的话' })
+  t.archive.add({ ...base, umo: 'snowluma:FriendMessage:8', userId: '8', senderId: '8', senderName: '别人', messageId: '2', time: now - 3_600_000, text: '别人的话' })
+  t.archive.add({ ...base, umo: 'snowluma:GroupMessage:5', kind: 'group', groupId: '5', messageId: '3', time: now - 3_600_000, text: '群里的话' })
   t.archive.addJournal('session-abc', 'master', '在 dsh 里说的话', now - 1000)
   t.diary.writeDay('2026-09-30', '# 2026-09-30\n九月最后一天')
   const r = await t.m.writeDiary(now)
@@ -124,15 +124,15 @@ test('写日记：只用主人的聊天和 dsh 会话流水；跨月写总览；
 test('存档到期：先整理，换会话（带最近几条），删存档，旧会话归档；别人的旧会话过期后删掉，主人的不删', async () => {
   const t = setup()
   const now = Date.now()
-  const group = 'napcat:GroupMessage:555'
-  const master = 'napcat:FriendMessage:42'
+  const group = 'snowluma:GroupMessage:555'
+  const master = 'snowluma:FriendMessage:42'
   t.organizer.rememberCategory(master, 'master')
   const g = { umo: group, kind: 'group', groupId: '555', type: 'message', woke: true, direction: 'in', senderName: '群友', senderId: '9' }
-  const oldId = 'napcat-napcat-GroupMessage-555'
+  const oldId = 'snowluma-snowluma-GroupMessage-555'
   t.archive.add({ ...g, messageId: '1', time: now - 7 * DAY, text: '一周前', sessionId: oldId })
   t.archive.add({ ...g, messageId: '2', time: now - 6 * DAY, text: '六天前', sessionId: oldId })
   t.archive.add({ ...g, messageId: '3', time: now - DAY, text: '昨天', sessionId: oldId })
-  t.archive.add({ umo: master, kind: 'private', userId: '42', type: 'message', woke: true, direction: 'in', senderName: '主人', senderId: '42', messageId: '9', time: now - 10 * DAY, text: '十天前', sessionId: 'napcat-napcat-FriendMessage-42' })
+  t.archive.add({ umo: master, kind: 'private', userId: '42', type: 'message', woke: true, direction: 'in', senderName: '主人', senderId: '42', messageId: '9', time: now - 10 * DAY, text: '十天前', sessionId: 'snowluma-snowluma-FriendMessage-42' })
   const report = await t.m.run(now, 'expire')
   assert.deepEqual(t.rotated, [group], '只有群会话用满了保留期')
   assert.equal(report.expired.find(e => e.umo === group).deleted, 2)
@@ -155,7 +155,7 @@ test('存档到期：先整理，换会话（带最近几条），删存档，�
 test('删旧会话：只删插件一建的会话；找不到文件夹算失败', async () => {
   const t = setup()
   await assert.rejects(t.m.deleteSession('session-abc'), /只删/)
-  await assert.rejects(t.m.deleteSession('napcat-x'), /没找到会话文件夹/)
+  await assert.rejects(t.m.deleteSession('snowluma-x'), /没找到会话文件夹/)
 })
 
 test('清理没被引用的图片', async () => {
