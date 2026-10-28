@@ -148,7 +148,7 @@ dsh --version                        # 0.2.1-rc.2
 
 # 6. 两个插件（回到家目录）
 cd ~
-dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.20.1 github:Geng-zy/dsh-companion-core#v0.14.1
+dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.20.2 github:Geng-zy/dsh-companion-core#v0.14.2
 #    连不上 GitHub：到两个仓库的 Releases 下载 .tgz，传到 ~/pkgs/ 后
 #    dsh plugin --profile web add ./pkgs/dsh-napcat-bridge-0.19.1.tgz ./pkgs/dsh-companion-core-0.13.0.tgz
 #    （~/pkgs 以后不能删：dsh 的 profile 里记着它）
@@ -264,7 +264,7 @@ sudo systemctl daemon-reload && sudo systemctl enable --now napcat
 ## 安装
 
 ```bash
-dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.14.1
+dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.14.2
 ```
 
 装好后：
@@ -442,3 +442,7 @@ AGPL-3.0-or-later。陪伴模式预设的工具列表照抄 dsh-web-app 的标�
 ### 0.14.1：移除独立判断
 
 按用户要求移除独立群聊判断及其设置、额外模型请求和上下文接口。群聊命中正文唤醒词、真实 @机器人、引用机器人或唤醒前缀后，按既有访问规则直接进入正式回复流程。没有额外判断模型调用。正式回复的群上下文、人格和记忆继续沿用原流程。
+
+### 0.14.2：设置帮助说明
+
+统一重写全部现有中英文设置帮助，并为原先缺少说明的设置补充“？”角标。说明覆盖用途、适用范围、默认值、输入格式及关联条件；唤醒前缀、白名单与存档边界、会话模型生效时间等表述已核实。仅调整帮助文字及角标，功能、配置字段和默认值保持不变。
