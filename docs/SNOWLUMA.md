@@ -16,7 +16,7 @@ sudo docker compose --env-file .env -f snowluma.compose.yml up -d
 
 模板使用SnowLuma官方`motricseven7/snowluma:v2.2.1`；生产应核对官方镜像digest并固定版本。`data`保存SnowLuma配置，`qq-config`与`qq-share`保存QQ数据。它们与容器生命周期分开，普通重建会保留；迁移服务器时需单独妥善转移这些目录，不由companion普通备份代管。
 
-管理端口5099/6081只绑定宿主127.0.0.1，通过SSH转发访问。OneBot HTTP/正向WS端口不发布。模板设置host.docker.internal映射为宿主网关，供反向WS访问宿主dsh监听的6199端口。
+管理端口5099/6081显式发布到宿主0.0.0.0，与官方模板默认的所有IPv4网卡发布范围一致；可使用服务器IP访问，公网是否可达取决于安全组、防火墙和网络。OneBot HTTP/正向WS端口不发布。模板设置host.docker.internal映射为宿主网关，供反向WS访问宿主dsh监听的6199端口。
 
 ## 接入配置
 
@@ -38,13 +38,13 @@ sudo docker compose --env-file .env -f snowluma.compose.yml up -d
 
 先准备镜像、容器和QQ登录界面，正式切换时停止原协议端，确保同一QQ只有一个协议端向桥接上报。登录SnowLuma并确认注入成功，检查桥接设置页显示一条连接、QQ信息正常。不要同时让两个协议端连同一个桥接实例。
 
-宿主6199需要可从Docker网关访问，仍须配置Token。不要向公网新增开放OneBot端口。管理界面可用SSH转发：
+宿主6199需要可从Docker网关访问，仍须配置Token。本模板不发布OneBot HTTP/正向WS端口。管理界面可直接访问服务器5099/6081，也可继续使用可选SSH转发：
 
 ```sh
 ssh -L 15099:127.0.0.1:5099 -L 16081:127.0.0.1:6081 ubuntu@你的服务器
 ```
 
-浏览器打开http://127.0.0.1:16081扫码，http://127.0.0.1:15099管理SnowLuma。首次生成的管理/远程桌面密码只保存在私有部署数据中，不写进公开仓库。若界面要求协议确认或扫码，请由账号本人完成。
+直接访问http://服务器IP:6081/vnc.html扫码、http://服务器IP:5099管理SnowLuma；使用上述转发时分别访问http://127.0.0.1:16081/vnc.html和http://127.0.0.1:15099。首次生成的管理/远程桌面密码只保存在私有部署数据中，不写进公开仓库。若界面要求协议确认或扫码，请由账号本人完成。
 
 ## 媒体及回退
 
@@ -55,3 +55,7 @@ ssh -L 15099:127.0.0.1:5099 -L 16081:127.0.0.1:6081 ubuntu@你的服务器
 参考：[SnowLuma官方Docker文档](https://snowluma.github.io/zh/docs/guide/deploy/docker)、[官方Compose镜像仓库](https://github.com/SnowLuma/SnowLuma.Docker.Framework)。接口核对版本：SnowLuma v2.2.1（8ffd314），镜像框架3f388b1。
 
 首次扫码时使用默认QQ启动参数。带`-q`的快速登录若失败，登录窗口可能最小化；先恢复QQ窗口后刷新二维码。启动包装脚本启用VNC的alwaysshared，允许通过认证的新连接接入，不会因遗留连接被拒绝。
+
+## 官方默认与本部署
+
+原模板曾额外把宿主映射限制为127.0.0.1；现按用户要求改为0.0.0.0。其他差异、原因和实际启动方式见[部署差异清单](DEPLOYMENT-DIFFERENCES.md)。后续以官方默认为基准，不在用户任务之外自行更改监听范围、资源限制或部署行为；必要适配需先明确说明。

@@ -4,12 +4,12 @@
 
 ## 安装与升级
 
-要求 dsh **0.2.1-rc.2** 对应 SDK、Node **≥22.13**（使用内置 SQLite）。在 dsh 插件管理页安装本仓库 [v1.1.0](https://github.com/Geng-zy/dsh-snowluma-companion/releases/tag/v1.1.0) 的 `.tgz`。只需安装一个包；QQ 协议端仍由官方 SnowLuma Docker 镜像运行。
+要求 dsh **0.2.1-rc.2** 对应 SDK、Node **≥22.13**（使用内置 SQLite）。在 dsh 插件管理页安装本仓库 [v1.1.1](https://github.com/Geng-zy/dsh-snowluma-companion/releases/tag/v1.1.1) 的 `.tgz`。只需安装一个包；QQ 协议端仍由官方 SnowLuma Docker 镜像运行。
 
 从两个旧插件升级时，停止 dsh，保留现有数据与 profile 配置，以 profile 所属用户执行：
 
 ```sh
-node /解包目录/deploy/migrate-profile.mjs /绝对路径/profiles/web /绝对路径/dsh-snowluma-companion-1.1.0.tgz
+node /解包目录/deploy/migrate-profile.mjs /绝对路径/profiles/web /绝对路径/dsh-snowluma-companion-1.1.1.tgz
 cd /绝对路径/profiles/web
 pnpm install
 ```
@@ -58,9 +58,11 @@ pnpm install
 
 ## 部署与内部接口
 
-[SnowLuma Compose 部署](docs/SNOWLUMA.md)。管理端口通过宿主回环地址与 SSH 访问；反向 WS 使用 Token。关闭 SnowLuma 内置状态命令，避免绕过插件权限直接回复。
+[SnowLuma Compose 部署](docs/SNOWLUMA.md)。管理端口 5099/6081 发布到宿主 `0.0.0.0`，可通过服务器地址访问；公网连通还取决于安全组和防火墙；反向 WS 使用 Token。关闭 SnowLuma 内置状态命令，避免绕过插件权限直接回复。
 
 内部模块：包根入口负责 QQ 桥接，`/companion` 负责陪伴服务，`/context` 提供陪伴压缩引擎；只发布一个安装包和一个设置页。`ctx.snowluma`、`ctx.companion` 及已有事件保留，便于宿主集成。原 `/api/snowluma-bridge/*` 与 `/api/companion/*` 接口继续服务同一个包内的两个模块。
+
+部署与官方模板的差异逐项记录在[部署差异清单](docs/DEPLOYMENT-DIFFERENCES.md)，包括内存限制、日志轮转、VNC 修复与 dsh 接入配置。
 
 ## 开发验证
 
