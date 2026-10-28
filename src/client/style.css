@@ -12,3 +12,5 @@
 .sc-save.sc-clean{position:static;box-shadow:none}.sc-save.sc-clean .sc-save-actions{display:none}
 .sc-section[open] .sc-section-description{-webkit-line-clamp:unset}
 @media(max-width:440px){.sc-hero{padding:16px;gap:10px}.sc-hero h2{font-size:18px;letter-spacing:-.5px}.sc-brand-mark{width:38px;height:38px;border-radius:12px;font-size:23px}.sc-eyebrow{font-size:9px;letter-spacing:1.6px}.sc-save.sc-dirty p{display:none}}
+
+.sc-app .compc-restore-files{padding:12px 14px}.sc-app .compc-restore-files summary{cursor:pointer;font-weight:600}.sc-app .compc-restore-files code{overflow-wrap:anywhere;word-break:break-word}.sc-app .compc-restore-files ul{padding-left:20px}

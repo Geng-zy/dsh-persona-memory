@@ -44,7 +44,7 @@ window.__ModuleLoader__.load({
       return h("div", { className: "sc-app" },
         h("header", { className: "sc-hero" }, h("div", { className: "sc-brand-mark", "aria-hidden": true }, "S"),
           h("div", null, h("p", { className: "sc-eyebrow" }, t("eyebrow")), h("h2", null, t("title")), h("p", { className: "sc-subtitle" }, t("subtitle"))),
-          h("span", { className: "sc-badge" }, "1.0")),
+          h("span", { className: "sc-badge" }, "1.1")),
         h("div", { className: "sc-layout" },
           h("nav", { className: "sc-nav", "aria-label": t("title") }, categories.map((id, i) => h("button", { key: id, type: "button", className: "sc-nav-item" + (category === id && !query ? " sc-active" : ""), "aria-current": category === id && !query ? "page" : undefined, onClick: () => navigate(id) }, h("span", { className: "sc-nav-number", "aria-hidden": true }, String(i + 1).padStart(2, "0")), t(id)))),
           h("main", { className: "sc-main" },

@@ -4,12 +4,12 @@
 
 ## 安装与升级
 
-要求 dsh **0.2.1-rc.2** 对应 SDK、Node **≥22.13**（使用内置 SQLite）。在 dsh 插件管理页安装本仓库 [v1.0.0](https://github.com/Geng-zy/dsh-snowluma-companion/releases/tag/v1.0.0) 的 `.tgz`。只需安装一个包；QQ 协议端仍由官方 SnowLuma Docker 镜像运行。
+要求 dsh **0.2.1-rc.2** 对应 SDK、Node **≥22.13**（使用内置 SQLite）。在 dsh 插件管理页安装本仓库 [v1.1.0](https://github.com/Geng-zy/dsh-snowluma-companion/releases/tag/v1.1.0) 的 `.tgz`。只需安装一个包；QQ 协议端仍由官方 SnowLuma Docker 镜像运行。
 
 从两个旧插件升级时，停止 dsh，保留现有数据与 profile 配置，以 profile 所属用户执行：
 
 ```sh
-node /解包目录/deploy/migrate-profile.mjs /绝对路径/profiles/web /绝对路径/dsh-snowluma-companion-1.0.0.tgz
+node /解包目录/deploy/migrate-profile.mjs /绝对路径/profiles/web /绝对路径/dsh-snowluma-companion-1.1.0.tgz
 cd /绝对路径/profiles/web
 pnpm install
 ```
@@ -31,6 +31,19 @@ pnpm install
 | 图片、语音与视频 | 图片输入、STT、TTS、视频抽帧与 ffmpeg |
 | 备份与迁移 | 九项备份选择、下载、预览、导入和自检 |
 | 维护与通知 | 掉线通知、数据到期、记忆保养、日志 |
+
+## 从备份恢复（可多选）
+
+打开“备份与迁移”分组，展开独立的“恢复备份”卡片：
+
+1. 上传本插件导出的 `.tar.gz` / `.tgz`，或选择服务器已有备份的“查看并选择恢复项目”。
+2. 系统验证包的格式、路径、文件类型、大小和 SHA256，显示备份时间、数据统计及识别到的实际文件清单。
+3. 勾选要恢复的类别，支持多选、全选、清空。只显示备份包含的类别，默认不勾选。
+4. 确认“恢复所选项目”；系统先备份当前数据，再恢复所选内容并重新加载插件，页面显示结果。
+
+人格、核心记忆、日记、记忆库、主人存档、主人原始会话以及三类设置均可按包内内容选择。未选类别保留当前内容；记忆库与存档共用数据库时也按所选类别恢复表，不会整库覆盖。空日记类别恢复会清空当前日记。人格和核心记忆被替换的现稿进入历史；配置密钥与 Token 不从包中覆盖。
+
+此入口识别本插件的备份格式，也兼容旧格式 1/2；普通任意文件压缩包不能作为插件备份恢复。备份格式不变，仍为 3。
 
 ## 保留的能力与权限
 

@@ -58,6 +58,51 @@ export async function runUi(session) {
   await page.setViewportSize({width:390,height:844});await page.waitForTimeout(150)
   assert.ok(await app.evaluate(el=>el.scrollWidth<=el.clientWidth+2),'settings must fit mobile width')
   await app.screenshot({path:join(artifacts,'settings-mobile.png')})
+  // Exercise upload -> detected files -> multi-select -> actual selective restore, only in this disposable profile.
+  await page.setViewportSize({width:1440,height:1050});await navigate('备份与迁移');await expand()
+  const endpoint=path=>session.url+'api/companion/'+path
+  const post=async(path,data)=>{const response=await page.request.post(endpoint(path),{data});assert.ok(response.ok(),path);return response.json()}
+  const state=async()=>{const response=await page.request.get(endpoint('state'));assert.ok(response.ok());return response.json()}
+  const before=await state()
+  const made=await post('backup/create',{items:['persona','core','memory','diary']})
+  const download=await page.request.get(endpoint('backup/file/'+made.name));assert.ok(download.ok())
+  await post('doc/persona',{text:'UI restore: persona changed after backup'})
+  await post('doc/core-master',{text:'UI restore: core changed after backup'})
+  await post('memory/add',{scope:'master',content:'UI restore: this unselected memory must survive',kind:'fact',importance:0.6})
+  const changed=await state()
+  const restore=app.locator('[data-section="companion-restoreSec"]')
+  await restore.locator('input[type=file]').setInputFiles({name:made.name,mimeType:'application/gzip',buffer:await download.body()})
+  await restore.getByText('备份内容识别结果',{exact:true}).waitFor()
+  const choices=restore.locator('.compc-restore-choice')
+  assert.equal(await choices.locator('input[type=checkbox]').count(),4)
+  const confirm=choices.getByRole('button',{name:'恢复所选项目（先备份当前数据）',exact:true})
+  assert.ok(await confirm.isDisabled(),'restore requires explicit selection')
+  await choices.getByRole('button',{name:'全选恢复项目',exact:true}).click()
+  assert.equal(await choices.locator('input:checked').count(),4)
+  await choices.getByRole('button',{name:'清空选择',exact:true}).click()
+  for(const id of ['persona','core'])await choices.locator('[data-item="'+id+'"] input').check()
+  assert.equal(await choices.locator('input:checked').count(),2)
+  assert.equal((await state()).docs.persona.text,changed.docs.persona.text,'upload and preview must not restore yet')
+  await choices.getByText('查看识别到的文件',{exact:true}).click()
+  assert.ok(await choices.getByText('persona/persona.md',{exact:true}).isVisible())
+  assert.ok(await choices.getByText('core/master.md',{exact:true}).isVisible())
+  await choices.getByText('查看识别到的文件',{exact:true}).click()
+  await choices.screenshot({path:join(artifacts,'restore-preview.png')})
+  await confirm.click()
+  let restored
+  for(let i=0;i<90;i++){
+   await page.waitForTimeout(500)
+   try{const next=await state();if(next.lastImport?.at!==before.lastImport?.at && next.lastImport?.plan?.items.join(',')==='persona,core'){restored=next;break}}catch{}
+  }
+  assert.ok(restored,'selected restore completes after plugin reload')
+  assert.equal(restored.docs.persona.text,before.docs.persona.text)
+  assert.equal(restored.docs['core-master'].text,before.docs['core-master'].text)
+  assert.deepEqual(restored.memory,changed.memory,'unselected memory remains unchanged')
+  assert.equal(restored.diary.days,changed.diary.days,'unselected diary remains unchanged')
+  await page.waitForFunction(()=>document.querySelector('.compc-restore-choice')===null)
+  await navigate('人格与核心记忆')
+  assert.equal(await editor.inputValue(),before.docs.persona.text,'selected editor replaces its stale draft after restore')
+  console.log('[ui] Uploaded .tar.gz, detected payload files, explicit multi-select and real persona/core restore passed; unselected memory and diary preserved')
   assert.deepEqual(errors,[])
   console.log('[ui] Single entry, nine groups, fold/search, two-module save, validation, draft retention, desktop/mobile rendering passed')
  } finally {await browser.close()}

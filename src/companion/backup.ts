@@ -51,6 +51,18 @@ export function itemsOf(m: Manifest): BackupItem[] {
   return Array.isArray(m.items) ? cleanItems(m.items) : LEGACY_ITEMS
 }
 
+/** Validated payload files grouped by the restore operation that consumes them. A DB may serve two independent table selections. */
+export function restoreContents(m: Manifest): Array<{ item: BackupItem; files: Array<{ path: string; size: number }> }> {
+  return itemsOf(m).map(item => ({ item, files: m.files.filter(f => {
+    if (item === 'persona' || item === 'core') return DOC_FILES[item].some(([path]) => path === f.path)
+    if (item === 'diary') return f.path.startsWith('diary/')
+    if (item === 'memory') return f.path === 'companion.db'
+    if (item === 'archiveMaster') return f.path === 'companion.db' || f.path.startsWith('media/')
+    if (item === 'sessionsMaster') return f.path === 'master-sessions.json'
+    return Object.entries(SETTINGS_FILES).some(([name, value]) => value === item && f.path === 'settings/' + name + '.json') || item === 'settingsCompanion' && f.path === 'settings.json'
+  }).map(({ path, size }) => ({ path, size })) }))
+}
+
 /** 设置文件：settings/<名字>.json，内容是 { ns, user }（user = 用户改过的字段，已去掉 Key） */
 export interface SavedSettings { ns: string; user: Record<string, unknown> }
 export const SETTINGS_FILES: Record<string, BackupItem> = { 'companion-core': 'settingsCompanion', 'snowluma-bridge': 'settingsBridge', dsh: 'settingsDsh' }
@@ -74,11 +86,11 @@ export interface Manifest {
 
 export interface BackupInfo { name: string; size: number; createdAt: number; reason?: string }
 
-function run(cmd: string, args: string[]): Promise<void> {
+function run(cmd: string, args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
     execFile(cmd, args, { timeout: 10 * 60_000, maxBuffer: 4 * 1024 * 1024 }, (error, _out, stderr) => {
       if (error) reject(new Error(cmd + ' 失败：' + (String(stderr).trim().slice(0, 300) || error.message)))
-      else resolve()
+      else resolve(_out)
     })
   })
 }
@@ -231,18 +243,33 @@ export async function inspectBackup(file: string, workDir: string): Promise<{ di
   const dir = workDir
   rmSync(dir, { recursive: true, force: true })
   mkdirSync(dir, { recursive: true })
-  await run('tar', ['-xzf', file, '-C', dir])
-  const mPath = join(dir, 'manifest.json')
-  if (!existsSync(mPath)) throw new Error('不是 dsh-companion-core 的备份包（没有 manifest.json）')
-  const manifest = JSON.parse(readFileSync(mPath, 'utf-8')) as Manifest
-  if (manifest.format !== BACKUP_FORMAT) throw new Error('不是 dsh-companion-core 的备份包')
-  if (manifest.formatVersion > BACKUP_FORMAT_VERSION) throw new Error('备份包是更新版本的插件做的，请先升级插件')
-  for (const f of manifest.files) {
-    const p = join(dir, f.path)
-    if (!p.startsWith(dir + sep)) throw new Error('备份包里有不安全的路径')
-    if (!existsSync(p) || sha256(p) !== f.sha256) throw new Error('校验值对不上：' + f.path + '（包可能损坏）')
+  try {
+    // Check paths and entry types before extraction, including entries omitted from the manifest.
+    const safePath = (path: string): boolean => path.length > 0 && !path.startsWith('/') && !path.includes('\\') && !/[\x00-\x1f\x7f]/.test(path) && !path.split('/').some(p => p === '..' || p === '.')
+    const names = (await run('tar', ['-tzf', file])).trimEnd().split('\n').map(p => p.replace(/^\.\//, '').replace(/\/$/, '')).filter(Boolean)
+    if (names.some(p => !safePath(p)) || new Set(names).size !== names.length) throw new Error('备份包含不安全或重复的路径')
+    const entries = (await run('tar', ['-tvzf', file])).trimEnd().split('\n')
+    if (entries.some(line => !/^[-d]/.test(line))) throw new Error('备份包只允许普通文件和目录，不支持链接或特殊文件')
+    await run('tar', ['-xzf', file, '-C', dir])
+    const mPath = join(dir, 'manifest.json')
+    if (!existsSync(mPath)) throw new Error('不是陪伴助手备份包（缺少 manifest.json）')
+    const manifest = JSON.parse(readFileSync(mPath, 'utf-8')) as Manifest
+    if (manifest.format !== BACKUP_FORMAT) throw new Error('不是陪伴助手备份包')
+    if (manifest.formatVersion > BACKUP_FORMAT_VERSION) throw new Error('备份包是更新版本的插件做的，请先升级插件')
+    if (!Array.isArray(manifest.files)) throw new Error('备份文件清单无效')
+    for (const f of manifest.files) {
+      if (typeof f.path !== 'string' || !safePath(f.path) || !/^[a-f0-9]{64}$/.test(f.sha256)) throw new Error('备份文件清单无效')
+      const p = join(dir, f.path)
+      if (!p.startsWith(dir + sep)) throw new Error('备份包里有不安全的路径')
+      if (!existsSync(p) || !statSync(p).isFile() || statSync(p).size !== f.size || sha256(p) !== f.sha256) throw new Error('校验值对不上：' + f.path + '（包可能损坏）')
+    }
+    const listed = new Set(manifest.files.map(f => f.path))
+    if (listed.size !== manifest.files.length || walk(dir).some(p => p !== 'manifest.json' && !listed.has(p))) throw new Error('实际文件与备份清单不一致')
+    return { dir, manifest }
+  } catch (error) {
+    rmSync(dir, { recursive: true, force: true })
+    throw error
   }
-  return { dir, manifest }
 }
 
 /** 包里的设置文件（只读勾选了的）。 */

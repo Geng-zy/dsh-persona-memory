@@ -13,6 +13,14 @@ export declare function cleanItems(list: unknown): BackupItem[];
 export declare function configuredItems(list: unknown): BackupItem[];
 /** 包里有哪些（旧包没写就按旧版固定内容算） */
 export declare function itemsOf(m: Manifest): BackupItem[];
+/** Validated payload files grouped by the restore operation that consumes them. A DB may serve two independent table selections. */
+export declare function restoreContents(m: Manifest): Array<{
+    item: BackupItem;
+    files: Array<{
+        path: string;
+        size: number;
+    }>;
+}>;
 /** 设置文件：settings/<名字>.json，内容是 { ns, user }（user = 用户改过的字段，已去掉 Key） */
 export interface SavedSettings {
     ns: string;

@@ -449,8 +449,19 @@ window.__ModuleLoader__.load({
 			careUndo: "撤销最近一次整合",
 			careUndoConfirm: "撤销后合成的新记忆删掉，原来的几条恢复。确认？",
 			careUndone: "撤销了。",
-			backupSec: "备份与迁移",
-			backupSecHint: "导出所选人格、记忆、日记、存档及插件或 dsh 设置，用于恢复或迁移。配置密钥和 Token 不导出；可单独选择主人 QQ 私聊的 dsh 原始会话。导入时可选择恢复范围；模型变更时可能需要重建向量索引。",
+			restoreSec: "恢复备份",
+			restoreSecHint: "上传本插件导出的 .tar.gz 备份，或选择服务器已有备份。系统先校验并识别包内文件，再由您多选恢复类别；确认前不会覆盖当前数据，未选择的类别保持原状。",
+			restoreSelectAll: "全选恢复项目",
+			restoreSelectNone: "清空选择",
+			restoreFiles: "查看识别到的文件",
+			restoreEmptyFiles: "此类别在包中没有文件。空日记项目恢复后将清空当前日记。",
+			restoreSharedDb: "记忆库与主人消息存档可能共用 companion.db；恢复时仅替换所选类别对应的数据表，不会因共用文件而恢复未选类别。",
+			restoreSelection: "本次将恢复：{items}",
+			restoreNothingSelected: "请选择至少一个恢复项目，可同时选择多项。",
+			restoreVerified: "文件校验通过，共识别 {count} 个数据文件。",
+			restorePending: "暂未确认恢复结果，请刷新页面查看；请勿重复提交恢复。",
+			backupSec: "备份计划与导出",
+			backupSecHint: "设置自动备份时间、保留数量与备份类别，也可立即导出所选内容。配置密钥和 Token 不导出。需要还原时，请使用下方独立的“恢复备份”卡片。",
 			backupItemsLabel: "备份哪些内容",
 			backupItemsHint: "自动备份和“现在备份并下载”使用这些选项；手动备份直接采用当前勾选，无需先保存。主人原始会话默认关闭，旧配置选中的其他存档会替换为此项。配置凭据不导出；导入时仍可缩小恢复范围。",
 			bi_persona: "人格",
@@ -473,7 +484,7 @@ window.__ModuleLoader__.load({
 			bi_settingsDshDesc: "dsh 网页设置页里改过的其他设置，比如选的默认预设、模型（不含 Key）",
 			backupNotIncluded: "备份不导出配置密钥、QQ 登录数据或运行环境，也不包含其他私聊、群聊及网页的原始会话。人格和核心记忆只备份现稿。主人原始会话含完整事件及引用附件，可能包含聊天中出现的敏感内容，请妥善保管。",
 			backupNoItems: "一样都没勾，备份包会是空的。",
-			restorePick: "要还原哪些（没勾的保持现在的样子）：",
+			restorePick: "选择恢复项目（可多选，未选项目保持当前内容）",
 			restoreSettingsNote: "勾了的设置确认后马上套用（Key 和 Token 不动）；包里没改过的设置会恢复成默认值。",
 			importedItems: "还原了：{items}",
 			backupEnabled: "每天自动备份",
@@ -483,24 +494,24 @@ window.__ModuleLoader__.load({
 			exportNow: "现在备份并下载",
 			exported: "备份好了：{name}",
 			download: "下载",
-			importFile: "导入备份包",
+			importFile: "上传备份包并识别内容",
 			chooseFile: "选择备份包…",
 			importFileHint: "选择本插件导出的 companion-….tar.gz 备份包。系统先校验并展示内容，确认所选恢复项后才执行覆盖；导入前会创建备份。",
-			previewTitle: "包里有：",
+			previewTitle: "备份内容识别结果",
 			previewLine: "插件 {plugin} · {time} 做的 · 记忆 {mem} 条 · 日记 {days} 篇 · 月度总览 {months} 篇 · 主人存档 {msgs} 条 · 主人 dsh 会话 {sessions} 个 · 图片 {media} 张 · 向量模型 {model}",
 			previewSettings: "包里 人格、记忆与陪伴设置：",
-			confirmImport: "确认导入（先自动备份当前数据）",
-			cancelImport: "不导入",
-			importing: "正在导入，插件会自动重新加载…",
-			imported: "导入完成（{time}）。",
-			importFailed: "导入失败，原来的数据没动：{error}",
+			confirmImport: "恢复所选项目（先备份当前数据）",
+			cancelImport: "取消本次恢复",
+			importing: "正在恢复所选项目，插件会自动重新加载…",
+			imported: "恢复完成（{time}）。",
+			importFailed: "恢复失败：{error}",
 			backupList: "备份列表",
 			backupEmpty: "还没有备份。",
 			backupItem: "{name} · {size} · {reason}",
 			reasonAuto: "自动",
 			reasonManual: "手动",
 			reasonBefore: "导入前",
-			restoreThis: "从它还原",
+			restoreThis: "查看并选择恢复项目",
 			deleteBackup: "删除",
 			deleteBackupConfirm: "删除这个备份文件？",
 			selfCheck: "迁移后自检",
@@ -995,7 +1006,18 @@ window.__ModuleLoader__.load({
 			careUndo: "Undo the latest consolidation",
 			careUndoConfirm: "The merged memories are removed and the originals restored. Confirm?",
 			careUndone: "Undone.",
-			backupSec: "Backup & migration",
+			restoreSec: "Restore a backup",
+			restoreSecHint: "Upload a plugin .tar.gz backup or choose an existing server backup. Files are verified before you select one or more categories. Current data changes only after confirmation; unselected categories stay unchanged.",
+			restoreSelectAll: "Select all restore items",
+			restoreSelectNone: "Clear selection",
+			restoreFiles: "View detected files",
+			restoreEmptyFiles: "No files in this category. Restoring an empty diary category clears current diaries.",
+			restoreSharedDb: "Memory and master archives can share companion.db. Only tables belonging to selected categories are replaced; sharing a file does not restore unselected categories.",
+			restoreSelection: "Will restore: {items}",
+			restoreNothingSelected: "Select at least one category. Multiple selections are supported.",
+			restoreVerified: "Verification passed: {count} data files detected.",
+			restorePending: "Restoration has not been confirmed yet. Refresh to check the result; do not submit the same restore again.",
+			backupSec: "Backup schedule & export",
 			backupSecHint: "Export selected documents, memories, diaries, archives, and plugin/dsh settings for recovery or migration. Configuration credentials are excluded; master QQ private dsh sessions are a separate selection. Import supports selective restoration; model changes may require embedding-index rebuilds.",
 			backupItemsLabel: "What to back up",
 			backupItemsHint: "Applies to automatic and manual backups. Manual backup uses the current selection without requiring a save. Master raw sessions are off by default; a selected legacy others-archive setting migrates to this item. Configuration credentials are omitted, and import can restore a smaller subset.",
@@ -1029,24 +1051,24 @@ window.__ModuleLoader__.load({
 			exportNow: "Back up and download now",
 			exported: "Backed up: {name}",
 			download: "Download",
-			importFile: "Import a backup",
+			importFile: "Upload and inspect a backup",
 			chooseFile: "Choose a package…",
 			importFileHint: "Select a companion-….tar.gz backup exported by this plugin. The package is validated and previewed before confirmed selected data is restored. A pre-import backup is created.",
 			previewTitle: "The package contains:",
 			previewLine: "plugin {plugin} · made {time} · {mem} memories · {days} entries · {months} overviews · {msgs} archived messages · {sessions} master sessions · {media} images · embedding {model}",
 			previewSettings: "This plugin's settings in the package:",
-			confirmImport: "Import (current data is backed up first)",
+			confirmImport: "Restore selected items (back up current data first)",
 			cancelImport: "Don't import",
 			importing: "Importing; the plugin reloads itself…",
 			imported: "Imported ({time}).",
-			importFailed: "Import failed; existing data untouched: {error}",
+			importFailed: "Restore failed: {error}",
 			backupList: "Backups",
 			backupEmpty: "No backups yet.",
 			backupItem: "{name} · {size} · {reason}",
 			reasonAuto: "auto",
 			reasonManual: "manual",
 			reasonBefore: "pre-import",
-			restoreThis: "Restore",
+			restoreThis: "Preview and select restore items",
 			deleteBackup: "Delete",
 			deleteBackupConfirm: "Delete this backup file?",
 			selfCheck: "Post-migration self-check",
@@ -1469,6 +1491,8 @@ window.__ModuleLoader__.load({
 			var [draft, setDraft] = React.useState(null);
 			var [busy, setBusy] = React.useState(false);
 			var [msg, setMsg] = React.useState(null);
+			// A confirmed restore replaces selected editors, while ordinary navigation preserves drafts.
+			React.useEffect(function () { if (props.restoreStamp !== undefined) { setDraft(null); setMsg(null); } }, [props.restoreStamp]);
 			var value = draft === null ? doc.text : draft;
 			var dirty = draft !== null && draft !== doc.text;
 			function save() {
@@ -2018,14 +2042,13 @@ window.__ModuleLoader__.load({
 		function sizeText(n) { return n > 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1024)) + " KB"; }
 
 		var BACKUP_ITEMS = ["persona", "core", "diary", "memory", "archiveMaster", "sessionsMaster", "settingsCompanion", "settingsBridge", "settingsDsh"];
-		var LEGACY_ITEMS = ["persona", "core", "diary", "memory", "archiveMaster", "settingsCompanion"];
-		/** 一组勾选框：每项一个标题和一句说明 */
+				/** 一组勾选框：每项一个标题和一句说明 */
 		function ItemChecks(props) {
 			var t = props.t;
 			return h("div", { className: "compc-checkGrid", role: "group", "aria-label": props.label },
 				props.ids.map(function (id) {
 					var on = props.value.indexOf(id) >= 0;
-					return h("label", { key: id, className: "compc-checkItem" + (on ? " compc-on" : "") },
+					return h("label", { key: id, "data-item": id, className: "compc-checkItem" + (on ? " compc-on" : "") },
 						h("input", { type: "checkbox", checked: on, disabled: props.disabled, onChange: function (e) {
 							var next = props.ids.filter(function (x) { return x === id ? e.target.checked : props.value.indexOf(x) >= 0; });
 							props.onChange(next);
@@ -2049,19 +2072,43 @@ window.__ModuleLoader__.load({
 				value.length === 0 ? h("p", { className: "compc-result compc-warn" }, t("backupNoItems")) : null,
 				h("p", { className: "compc-hint" }, t("backupNotIncluded")));
 		}
-		/** 导入预览里的「要还原哪些」 */
+		/** Confirm explicit categories after the server validates every payload file. */
 		function RestoreChoice(props) {
-			var t = props.t, m = props.manifest;
-			var have = (m.items || LEGACY_ITEMS).filter(function (x) { return BACKUP_ITEMS.indexOf(x) >= 0; });
-			var [picked, setPicked] = React.useState(have);
+			var t = props.t, contents = props.contents;
+			var have = contents.map(function (entry) { return entry.item; });
+			var [picked, setPicked] = React.useState([]);
 			var hasSettings = picked.some(function (x) { return x.indexOf("settings") === 0; });
-			return h("div", { className: "compc-field" },
+			return h("div", { className: "compc-field compc-restore-choice" },
 				h("p", { className: "compc-label" }, t("restorePick")),
+				h("div", { className: "compc-row" },
+					h(P.Button, { size: "sm", disabled: props.busy, onClick: function () { setPicked(have); } }, t("restoreSelectAll")),
+					h(P.Button, { size: "sm", disabled: props.busy || !picked.length, onClick: function () { setPicked([]); } }, t("restoreSelectNone"))),
 				h(ItemChecks, { t: t, ids: have, value: picked, label: t("restorePick"), disabled: props.busy, onChange: setPicked }),
+				h("details", { className: "compc-details compc-restore-files" },
+					h("summary", null, t("restoreFiles")),
+					contents.map(function (entry) {
+						return h("div", { key: entry.item, className: "compc-card" },
+							h("strong", null, t("bi_" + entry.item)),
+							entry.files.length ? h("ul", null, entry.files.map(function (f) { return h("li", { key: f.path }, h("code", null, f.path), " · " + sizeText(f.size)); })) : h("p", { className: "compc-hint" }, t("restoreEmptyFiles")));
+					})),
+				h("p", { className: "compc-hint" }, t("restoreSharedDb")),
 				hasSettings ? h("p", { className: "compc-hint" }, t("restoreSettingsNote")) : null,
+				h("p", { className: "compc-result", role: "status" }, picked.length ? t("restoreSelection", { items: picked.map(function (id) { return t("bi_" + id); }).join("、") }) : t("restoreNothingSelected")),
 				h("div", { className: "compc-row" },
 					h(P.Button, { size: "sm", disabled: props.busy || picked.length === 0, onClick: function () { props.onConfirm(picked); } }, t("confirmImport")),
 					h(P.Button, { size: "sm", disabled: props.busy, onClick: props.onCancel }, t("cancelImport"))));
+		}
+
+		function BackupExport(props) {
+			var act = useAction(), t = props.t;
+			return h("div", { className: "compc-field" },
+				h(P.Button, { size: "sm", disabled: act.busy || !props.items.length, onClick: function () {
+					act.run(function () { return api("POST", "backup/create", { items: props.items }).then(function (r) {
+						props.onState(r.state); act.setMsg({ tone: "ok", text: t("exported", { name: r.name }) });
+						var a = document.createElement("a"); a.href = apiUrl("backup/file/" + encodeURIComponent(r.name)); a.download = r.name; document.body.appendChild(a); a.click(); a.remove();
+					}); });
+				} }, act.busy ? t("running") : t("exportNow")),
+				h(Status, { msg: act.msg }));
 		}
 
 		function BackupPanel(props) {
@@ -2070,6 +2117,8 @@ window.__ModuleLoader__.load({
 			var [asking, setAsking] = React.useState(null);
 			var [waiting, setWaiting] = React.useState(false);
 			var inputRef = React.useRef(null);
+			var pollRef = React.useRef(null);
+			React.useEffect(function () { return function () { clearInterval(pollRef.current); }; }, []);
 			if (!data) return null;
 			var fileUrl = function (name) { return apiUrl("backup/file/" + encodeURIComponent(name)); };
 			var reasonName = function (r) { return r === "auto" ? t("reasonAuto") : r === "before-import" ? t("reasonBefore") : t("reasonManual"); };
@@ -2088,12 +2137,12 @@ window.__ModuleLoader__.load({
 					return api("POST", "backup/confirm", { id: id, items: items }).then(function () {
 						setWaiting(true);
 						var tries = 0;
-						var timer = setInterval(function () {
+						var timer = pollRef.current = setInterval(function () {
 							tries += 1;
 							api("GET", "state").then(function (st) {
 								if (st.lastImport && st.lastImport.at !== before) { clearInterval(timer); setWaiting(false); props.onState(st); }
 							}, function () {});
-							if (tries > 60) { clearInterval(timer); setWaiting(false); }
+							if (tries > 60) { clearInterval(timer); setWaiting(false); act.setMsg({ tone: "warn", text: t("restorePending") }); }
 						}, 1000);
 					});
 				});
@@ -2101,19 +2150,9 @@ window.__ModuleLoader__.load({
 			var pend = data.importing;
 			var m = pend && pend.manifest;
 			return h("div", { className: "compc-field" },
-				h("div", { className: "compc-row" },
-					h(P.Button, { size: "sm", disabled: act.busy || (props.items && props.items.length === 0), onClick: function () {
-						act.run(function () {
-							return api("POST", "backup/create", props.items ? { items: props.items } : {}).then(function (r) {
-								props.onState(r.state);
-								act.setMsg({ tone: "ok", text: t("exported", { name: r.name }) });
-								var a = document.createElement("a"); a.href = fileUrl(r.name); a.download = r.name; document.body.appendChild(a); a.click(); a.remove();
-							});
-						});
-					} }, act.busy ? t("running") : t("exportNow"))),
 				h("div", { className: "compc-field" },
 					h("span", { className: "compc-label" }, h(Label, { text: t("importFile"), hint: t("importFileHint") })),
-					h("input", { ref: inputRef, type: "file", accept: ".gz,.tgz,application/gzip", hidden: true, onChange: upload }),
+					h("input", { ref: inputRef, type: "file", "aria-label": t("importFile"), accept: ".tar.gz,.tgz,application/gzip", hidden: true, onChange: upload }),
 					h("div", { className: "compc-row" }, h(P.Button, { size: "sm", disabled: act.busy || waiting, onClick: function () { if (inputRef.current) inputRef.current.click(); } }, t("chooseFile")))),
 				waiting ? h("p", { className: "compc-result compc-warn", role: "status" }, t("importing")) : null,
 				h(Status, { msg: act.msg }),
@@ -2122,11 +2161,12 @@ window.__ModuleLoader__.load({
 					t("importedItems", { items: data.lastImport.plan.items.map(function (x) { return t("bi_" + x); }).join("、") }) + ((data.lastImport.plan.notes || []).length ? "；" + data.lastImport.plan.notes.join("；") : "")) : null,
 				m ? h("div", { className: "compc-card", role: "group" },
 					h("p", { className: "compc-label" }, t("previewTitle")),
+					h("p", { className: "compc-hint" }, t("restoreVerified", { count: m.files.length })),
 					h("p", { className: "compc-hint" }, t("previewLine", { plugin: m.plugin, time: fmtTime(m.createdAt), mem: m.counts.memories, days: m.counts.diaryDays, months: m.counts.months, msgs: m.counts.archiveMessages, sessions: m.counts.masterSessions || 0, media: m.counts.media, model: (m.embed && m.embed.model) || "—" })),
 					m.settings && Object.keys(m.settings).length > 0 ? h("details", { className: "compc-details" },
 						h("summary", { className: "compc-summary" }, h("span", { className: "compc-chevron", "aria-hidden": true }, "›"), t("previewSettings")),
 						h("div", { className: "compc-detailsBody" }, h("pre", { className: "compc-pre" }, JSON.stringify(m.settings, null, 2)))) : null,
-					h(RestoreChoice, { key: pend.id, t: t, manifest: m, busy: act.busy || waiting, onConfirm: function (items) { confirmImport(pend.id, items); },
+					h(RestoreChoice, { key: pend.id, t: t, contents: pend.contents, busy: act.busy || waiting, onConfirm: function (items) { confirmImport(pend.id, items); },
 						onCancel: function () { act.run(function () { return api("POST", "backup/cancel", {}).then(props.onState); }); } })) : null,
 				h("h4", { className: "compc-subtitle" }, t("backupList")),
 				(data.backups || []).length === 0 ? h("p", { className: "compc-hint" }, t("backupEmpty")) : data.backups.map(function (b) {
@@ -2490,7 +2530,7 @@ window.__ModuleLoader__.load({
 						h(Select, Object.assign({ field: "pluginAccess", label: t("pluginAccess"), hint: t("pluginAccessHint"), fallback: "all", options: [{ value: "all", label: t("pluginAccessAll") }, { value: "public", label: t("pluginAccessPublic") }, { value: "off", label: t("pluginAccessOff") }] }, common))),
 					h(Toggle, Object.assign({ field: "personaOnly", label: t("personaOnly"), hint: t("personaOnlyHint") }, common))),
 				h(Section, { sectionId: "companion-persona", category: "persona", title: t("persona"), hint: t("personaHint") },
-					data ? h(DocEditor, { t: t, name: "persona", doc: docs.persona, ariaLabel: t("persona"), saveLabel: t("savePersona"), onState: setData }) : null,
+					data ? h(DocEditor, { t: t, restoreStamp: data.lastImport && data.lastImport.plan && data.lastImport.plan.items.indexOf("persona") >= 0 ? data.lastImport.at : undefined, name: "persona", doc: docs.persona, ariaLabel: t("persona"), saveLabel: t("savePersona"), onState: setData }) : null,
 					h(Toggle, Object.assign({ field: "selfEdit", label: t("selfEdit"), hint: t("selfEditHint") }, common)),
 					h(Value, Object.assign({ field: "historyKeep", label: t("historyKeep"), hint: t("historyKeepHint"), numeric: true, invalidLabel: t("invalidCount") }, common))),
 				h(Section, { sectionId: "companion-personaGuardSec", category: "persona", title: t("personaGuardSec"), hint: t("personaGuardHint") },
@@ -2503,8 +2543,8 @@ window.__ModuleLoader__.load({
 						h(Lines, Object.assign({ t: t, field: "personaAllowed", label: t("personaAllowed"), hint: t("personaAllowedHint") }, common)),
 						h(Lines, Object.assign({ t: t, field: "personaForbidden", label: t("personaForbidden"), hint: t("personaForbiddenHint") }, common))) : null),
 				h(Section, { sectionId: "companion-core", category: "persona", title: t("core"), hint: t("coreHint") },
-					data ? h(DocEditor, { t: t, name: "core-master", title: t("coreMaster"), small: true, doc: docs["core-master"], saveLabel: t("saveCore"), onState: setData }) : null,
-					data ? h(DocEditor, { t: t, name: "core-public", title: t("corePublic"), small: true, doc: docs["core-public"], saveLabel: t("saveCore"), onState: setData }) : null,
+					data ? h(DocEditor, { t: t, restoreStamp: data.lastImport && data.lastImport.plan && data.lastImport.plan.items.indexOf("core") >= 0 ? data.lastImport.at : undefined, name: "core-master", title: t("coreMaster"), small: true, doc: docs["core-master"], saveLabel: t("saveCore"), onState: setData }) : null,
+					data ? h(DocEditor, { t: t, restoreStamp: data.lastImport && data.lastImport.plan && data.lastImport.plan.items.indexOf("core") >= 0 ? data.lastImport.at : undefined, name: "core-public", title: t("corePublic"), small: true, doc: docs["core-public"], saveLabel: t("saveCore"), onState: setData }) : null,
 					h("div", { className: "compc-grid" },
 						h(Value, Object.assign({ field: "coreMasterMaxChars", label: t("coreMasterMaxChars"), hint: t("coreMasterMaxCharsHint"), numeric: true, invalidLabel: t("invalid") }, common)),
 						h(Value, Object.assign({ field: "corePublicMaxChars", label: t("corePublicMaxChars"), hint: t("corePublicMaxCharsHint"), numeric: true, invalidLabel: t("invalid") }, common)))),
@@ -2629,7 +2669,10 @@ window.__ModuleLoader__.load({
 						h(Value, Object.assign({ field: "backupTime", label: t("backupTime"), hint: t("backupTimeHint") }, common)),
 						h(Value, Object.assign({ field: "backupKeep", label: t("backupKeep"), hint: t("backupKeepHint"), numeric: true, invalidLabel: t("invalidPositive") }, common))),
 					h(BackupItemsField, common),
-					h(BackupPanel, { t: t, data: data, onState: setData, items: backupItemsOf(state) }),
+					h(BackupExport, { t: t, data: data, onState: setData, items: backupItemsOf(state) })),
+				h(Section, { sectionId: "companion-restoreSec", category: "backup", title: t("restoreSec"), hint: t("restoreSecHint") },
+					h(BackupPanel, { t: t, data: data, onState: setData })),
+				h(Section, { sectionId: "companion-selfCheckSec", category: "backup", title: t("selfCheck"), hint: t("selfCheckHint") },
 					h("h4", { className: "compc-subtitle" }, h(Label, { text: t("selfCheck"), hint: t("selfCheckHint") })),
 					h(Value, Object.assign({ field: "selfCheckQueries", label: t("selfCheckQueries"), hint: t("selfCheckQueriesHint") }, common)),
 					h(SelfCheckPanel, { t: t, data: data, onState: setData })),

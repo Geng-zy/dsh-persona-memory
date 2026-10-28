@@ -34,7 +34,7 @@ import { Maintenance } from './maintenance.js'
 import { Proactive } from './proactive.js'
 import { Care } from './care.js'
 import type { MasterSessionServices } from './master-sessions.js'
-import { applyPendingImport, cleanItems, configuredItems, createBackup, DEFAULT_ITEMS, inspectBackup, ITEMS, itemsOf, listBackups, readSavedSettings, safeBackupName, SETTINGS_ITEMS, type BackupItem, type Manifest, type RestorePlan, type SavedSettings } from './backup.js'
+import { applyPendingImport, cleanItems, configuredItems, createBackup, DEFAULT_ITEMS, inspectBackup, ITEMS, itemsOf, listBackups, readSavedSettings, safeBackupName, restoreContents, SETTINGS_ITEMS, type BackupItem, type Manifest, type RestorePlan, type SavedSettings } from './backup.js'
 import { SCHEMA_VERSION } from './archive.js'
 import { createReadStream, createWriteStream, renameSync, rmSync, statSync } from 'node:fs'
 import { pipeline } from 'node:stream/promises'
@@ -1113,7 +1113,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
     proactive: { list: proactive?.list() ?? [], wakeAvailable: typeof (snowluma() as any)?.wake === 'function' },
     care: { lastCleanup: Number(meta.get('care:cleanup') ?? 0) || null, lastConsolidate: Number(meta.get('care:consolidate') ?? 0) || null, lastRun: care?.lastRun() ?? null },
     backups: listBackups(backupsDir),
-    importing: pendingInspect === undefined ? null : { id: pendingInspect.id, manifest: pendingInspect.manifest },
+    importing: pendingInspect === undefined ? null : { id: pendingInspect.id, manifest: pendingInspect.manifest, contents: restoreContents(pendingInspect.manifest) },
     lastImport: lastImport === undefined ? null : { at: lastImport.at, error: lastImport.error ?? null, manifest: lastImport.manifest ?? null, plan: lastImport.plan ?? null },
     backupItemsAll: ITEMS,
     selfCheck: (() => { try { return JSON.parse(meta.get('selfcheck:last') ?? 'null') } catch { return null } })(),
@@ -1165,9 +1165,10 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
         const file = join(backupsDir, '.upload-' + id + '.tar.gz')
         let size = 0
         req.on('data', (c: Buffer) => { size += c.length; if (size > 2 * 1024 * 1024 * 1024) req.destroy(new Error('文件太大')) })
-        await pipeline(req, createWriteStream(file))
         try {
+          await pipeline(req, createWriteStream(file))
           const r = await inspectBackup(file, join(dir, '.import-' + id))
+          if (pendingInspect) rmSync(pendingInspect.dir, { recursive: true, force: true })
           pendingInspect = { id, dir: r.dir, manifest: r.manifest }
           return json(200, state())
         } finally {
@@ -1222,6 +1223,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
           if (!safeBackupName(name) || !existsSync(join(backupsDir, name))) return json(404, { error: '没有这个备份' })
           const id = Date.now().toString(36)
           const r = await inspectBackup(join(backupsDir, name), join(dir, '.import-' + id))
+          if (pendingInspect) rmSync(pendingInspect.dir, { recursive: true, force: true })
           pendingInspect = { id, dir: r.dir, manifest: r.manifest }
           return json(200, state())
         }
