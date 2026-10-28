@@ -33,7 +33,8 @@ import { DiaryStore, diaryBlock, guessDate, localClock, logicalDay } from './dia
 import { Maintenance } from './maintenance.js'
 import { Proactive } from './proactive.js'
 import { Care } from './care.js'
-import { applyPendingImport, cleanItems, createBackup, DEFAULT_ITEMS, inspectBackup, ITEMS, itemsOf, listBackups, readSavedSettings, safeBackupName, SETTINGS_ITEMS, type BackupItem, type Manifest, type RestorePlan, type SavedSettings } from './backup.js'
+import type { MasterSessionServices } from './master-sessions.js'
+import { applyPendingImport, cleanItems, configuredItems, createBackup, DEFAULT_ITEMS, inspectBackup, ITEMS, itemsOf, listBackups, readSavedSettings, safeBackupName, SETTINGS_ITEMS, type BackupItem, type Manifest, type RestorePlan, type SavedSettings } from './backup.js'
 import { SCHEMA_VERSION } from './archive.js'
 import { createReadStream, createWriteStream, renameSync, rmSync, statSync } from 'node:fs'
 import { pipeline } from 'node:stream/promises'
@@ -308,7 +309,7 @@ export const Config: z<LiveConfig> = z.object({
   backupEnabled: z.boolean().default(true).volatile().description('每天自动备份'),
   backupTime: z.string().default('04:00').volatile().description('自动备份时间（HH:MM）'),
   backupKeep: z.natural().min(1).default(5).volatile().description('每一类备份最多留几份'),
-  backupItems: z.array(z.string()).default([...DEFAULT_ITEMS]).volatile().description('备份哪些：' + ITEMS.join(' ') + '（默认除了 archiveOthers 都备份）'),
+  backupItems: z.array(z.string()).default([...DEFAULT_ITEMS]).volatile().description('备份哪些：' + ITEMS.join(' ') + '（默认除了 sessionsMaster 都备份）'),
   selfCheckQueries: z.array(z.string()).default(['主人叫什么名字', '我们约好了什么', '主人喜欢吃什么']).volatile().description('迁移后自检用的问题'),
   logLevel: z.union(['debug', 'info', 'warn', 'error']).default('info').volatile().description('日志级别'),
 }) as never
@@ -322,7 +323,7 @@ const RANK = { debug: 0, info: 1, warn: 2, error: 3 } as const
 const MAX_LOGS = 200
 const errText = (e: unknown): string => (e instanceof Error ? e.message : String(e))
 
-export function apply(ctx: Context, live: LiveConfig): void {
+export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
   // 密钥字段不设默认值（设置页才能分清"没设置"和"设成空"），读不到时当空字符串
   const get = <K extends keyof Config>(key: K): Config[K] => (live[key]?.get() ?? (/ApiKey$/.test(String(key)) ? '' : undefined)) as Config[K]
   const logs: Array<{ time: number; level: string; message: string }> = []
@@ -336,6 +337,12 @@ export function apply(ctx: Context, live: LiveConfig): void {
     else console.log(line)
   }
 
+  const sessionServices = (): MasterSessionServices => ({
+    bridge: ctx.get('napcat' as never) as never,
+    persistence: ctx.get('sessionPersistence' as never) as never,
+    attachments: ctx.get('attachments' as never) as never,
+    workspaces: ctx.get('workspaceRegistry' as never) as never,
+  })
   const dir = defaultDataDir()
   const keep = (): number => get('historyKeep')
   const persona = new TextDoc(join(dir, 'persona', 'persona.md'), join(dir, 'persona', 'history'), keep)
@@ -346,14 +353,14 @@ export function apply(ctx: Context, live: LiveConfig): void {
   // 导入：上一次在设置页确认导入后，插件重新加载时在这里替换数据（数据库还没打开）
   let lastImport: { manifest: Manifest; plan?: RestorePlan; at: number; error?: string } | undefined
   try {
-    const imported = applyPendingImport(dir, keep)
+    const imported = await applyPendingImport(dir, keep, sessionServices())
     if (imported !== undefined) {
       lastImport = { manifest: imported.manifest, plan: imported.plan, at: Date.now() }
       log('info', '导入了备份包（' + new Date(imported.manifest.createdAt).toISOString() + ' 做的，还原了：' + imported.plan.items.join('、') + '）')
     }
   } catch (e) {
     lastImport = { manifest: undefined as never, at: Date.now(), error: errText(e) }
-    log('error', '导入失败，保留原来的数据：' + errText(e))
+    log('error', '导入未完成，待导入包和原会话均已保留：' + errText(e))
   }
   let archive: Archive | undefined
   try {
@@ -692,11 +699,11 @@ export function apply(ctx: Context, live: LiveConfig): void {
     const es = embedSettings()
     const dim = Number(meta.get('embed_dim:' + es.model.trim()) ?? NaN)
     // 导入前的备份什么都带上，万一要退回去
-    const chosen = reason === 'before-import' ? [...ITEMS] : items ?? cleanItems(get('backupItems'))
+    const chosen = reason === 'before-import' ? ITEMS.filter(i => i !== 'sessionsMaster' || !!(sessionServices().bridge?.masterPrivateBindings && sessionServices().persistence)) : items ?? configuredItems(get('backupItems'))
     const r = await createBackup({
       dataDir: dir, db: archive.db, outDir: backupsDir, reason, plugin: pluginVersion, schema: SCHEMA_VERSION, settings: settingsSnapshot(),
       embed: { ...(es.model.trim() ? { model: es.model.trim() } : {}), ...(Number.isFinite(dim) ? { dim } : {}) }, keep: get('backupKeep'),
-      items: chosen, settingsFiles: chosen.some(i => SETTINGS_ITEMS.includes(i)) ? captureSettings() : {},
+      items: chosen, sessionServices: sessionServices(), settingsFiles: chosen.some(i => SETTINGS_ITEMS.includes(i)) ? captureSettings() : {},
     })
     log('info', '备份好了：' + r.name)
     return r

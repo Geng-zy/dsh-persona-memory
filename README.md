@@ -35,7 +35,7 @@
 12. **记忆保养**（默认每 7 天一次，跟着每天的任务）：
     - **自动清理**：超过 90 天没被想起、而且重要程度（衰减后）低于 0.2 的记忆，按那个会话的遗忘方式遗忘；可选把普通遗忘超过 180 天的彻底遗忘。日记永远不清理。
     - **定期整合**：把很像的零散记忆（同一归属、相近程度 ≥ 0.5）让模型合成一两条更精炼的，原来的标成「已被取代」；最近一次可以撤销，下一次整合时才真正删（彻底遗忘的会话）。
-13. **备份与迁移**：一键导出一个 `.tar.gz`，内容可以勾选（人格、核心记忆、日记、记忆库、主人私聊的存档和图片、别人私聊和群聊的存档、插件二 / 插件一 / dsh 其他设置；默认不带别人的存档；Key 和 Token 永远不进包），每天 04:00 自动备份；自动、手动、导入前各留 5 份。导入时先核对校验值、给你看包里有什么、勾选要还原哪几样（没勾的保持原样），确认后先自动备份当前全部数据，设置马上套用，其余在插件自动重新加载时替换，然后自检（用几个固定问题搜主人的记忆）。
+13. **备份与迁移**：一键导出一个 `.tar.gz`，内容可以勾选（人格、核心记忆、日记、记忆库、主人私聊的存档和图片、主人 QQ 私聊的 dsh 原始会话、插件二 / 插件一 / dsh 其他设置；主人原始会话默认不带，旧配置选中过其他存档时会自动替换勾选；配置密钥不导出，原始会话可能含聊天中的敏感内容），每天 04:00 自动备份；自动、手动、导入前各留 5 份。导入时先核对校验值、给你看包里有什么、勾选要还原哪几样（没勾的保持原样），确认后先自动备份当前支持的备份项，设置马上套用，其余在插件自动重新加载时替换，然后自检（用几个固定问题搜主人的记忆）。
 14. **图记忆**（默认关）：从记忆里抽出人、地点、事、物和它们的关系，存成一张关系网（按归属分开）。召回时多走一路：这条消息提到的实体（名字直接出现；填了向量 Key 时名字的向量够像也算）顺着关系走 1 步（可调 0–2），找到提到这些实体的记忆，和原来那一路按排名融合（RRF），每轮条数不变。被很多记忆提到的「中心」实体（比如「主人」）不往外走、分数摊薄。每条记忆要多调一次模型（按批，默认一次 8 条），所以默认关；打开后对已有记忆补抽一遍，改了内容会重抽，日记不抽。
 
 ## 会话怎么分
@@ -148,7 +148,7 @@ dsh --version                        # 0.2.1-rc.2
 
 # 6. 两个插件（回到家目录）
 cd ~
-dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.20.3 github:Geng-zy/dsh-companion-core#v0.16.0
+dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.20.4 github:Geng-zy/dsh-companion-core#v0.17.0
 #    连不上 GitHub：到两个仓库的 Releases 下载 .tgz，传到 ~/pkgs/ 后
 #    dsh plugin --profile web add ./pkgs/dsh-napcat-bridge-0.19.1.tgz ./pkgs/dsh-companion-core-0.13.0.tgz
 #    （~/pkgs 以后不能删：dsh 的 profile 里记着它）
@@ -264,7 +264,7 @@ sudo systemctl daemon-reload && sudo systemctl enable --now napcat
 ## 安装
 
 ```bash
-dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.16.0
+dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.17.0
 ```
 
 装好后：
@@ -370,7 +370,7 @@ dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.16.0
 | `purgeForgotten` / `purgeForgottenDays` | `false` / `180` | 普通遗忘很久的自动彻底遗忘 |
 | `consolidateEnabled` / `consolidateOverlap` / `consolidateGroups` / `careIntervalDays` | `true` / `0.5` / `20` / `7` | 定期整合、每几天保养一次 |
 | `backupEnabled` / `backupTime` / `backupKeep` | `true` / `04:00` / `5` | 自动备份 |
-| `backupItems` | 除 `archiveOthers` 外全部 | 备份哪些：`persona` `core` `diary` `memory` `archiveMaster` `archiveOthers` `settingsCompanion` `settingsBridge` `settingsDsh`；Key 和 Token 永远不进包 |
+| `backupItems` | 除 `sessionsMaster` 外全部 | 备份哪些：`persona` `core` `diary` `memory` `archiveMaster` `sessionsMaster` `settingsCompanion` `settingsBridge` `settingsDsh`；不导出配置密钥，原始会话可能包含聊天中的敏感内容 |
 | `selfCheckQueries` | 三个问题 | 迁移后自检用的问题 |
 | `logLevel` | `info` | 日志级别 |
 
@@ -457,3 +457,9 @@ AGPL-3.0-or-later。陪伴模式预设的工具列表照抄 dsh-web-app 的标�
 ### 0.16.0：移除完整环境备份
 
 按用户要求删除完整环境备份的界面、配置项、API、任务队列、系统服务脚本、安装/恢复工具及专用测试。保留原有九项普通备份、导入和自动备份机制。dsh原始会话及其他新增备份选择仍在讨论中，本版不添加。
+
+### 0.17.0：仅增加主人 QQ 私聊的原始会话备份
+
+“主人私聊的 dsh 会话”（`sessionsMaster`）替换“别人私聊和群聊的存档”，保留独立的“主人私聊存档”。按 bridge 当前管理员 QQ 配置匹配其私聊会话，包含轮换历史、完整逻辑事件、被引用的持久化图片/文件附件及当前会话绑定；不复制整套附件目录。群聊、其他私聊及网页会话不在此项范围内；今后的新包也不再备份其他私聊和群聊的消息存档。已有记录和旧备份包不删除。
+
+备份先刷新宿主日志，再读取有效前缀；导入创建新会话，迁移交付标记中的宿主会话 ID，挂接当前工作目录的工作区，并恢复当前主人私聊绑定。旧会话保留；若主人正在处理消息，绑定切换会拒绝，空闲后可重新导入。不恢复已不在当前管理员列表中的 QQ 会话。不新增媒体、密钥、登录态或运行环境的独立备份选项。此项需要 bridge ≥ 0.20.4；未安装桥接插件时，原有其他备份仍可使用。格式 1/2 的旧包仍可选择恢复当前支持的项目，废弃的 `archiveOthers` 不恢复、不转换为原始会话。

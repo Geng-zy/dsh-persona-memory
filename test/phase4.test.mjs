@@ -170,8 +170,8 @@ test('备份：打包（不含别人的存档、不含 Key）、列表、每类�
   // 文件名用本地时间
   const d = new Date(Date.parse('2026-10-24T10:00:00Z')), p2 = n => String(n).padStart(2, '0')
   assert.equal(name, 'companion-manual-' + d.getFullYear() + p2(d.getMonth() + 1) + p2(d.getDate()) + '-' + p2(d.getHours()) + p2(d.getMinutes()) + '00.tar.gz')
-  assert.deepEqual(manifest.counts, { memories: 1, diaryDays: 1, months: 0, archiveMessages: 1, media: 1, othersMessages: 0 })
-  assert.ok(!manifest.items.includes('archiveOthers'), '默认不带别人的存档')
+  assert.deepEqual(manifest.counts, { memories: 1, diaryDays: 1, months: 0, archiveMessages: 1, media: 1, masterSessions: 0 })
+  assert.ok(!manifest.items.includes('sessionsMaster'), '默认不带原始会话')
   assert.ok(!JSON.stringify(manifest).includes('embedApiKey'))
   assert.ok(!manifest.files.some(f => f.path.includes('history')), '不带历史版本')
   for (let i = 1; i <= 3; i++) await createBackup({ ...opts, reason: 'auto', now: Date.parse('2026-10-2' + i + 'T04:00:00Z') })
@@ -186,7 +186,7 @@ test('备份：打包（不含别人的存档、不含 Key）、列表、每类�
   archive.close()
   const { renameSync } = await import('node:fs')
   renameSync(work, join(dataDir, '.pending-import'))
-  const applied = applyPendingImport(dataDir)
+  const applied = await applyPendingImport(dataDir)
   assert.equal(applied.manifest.counts.memories, 1)
   assert.equal(readFileSync(join(dataDir, 'persona', 'persona.md'), 'utf-8'), '你是大肥鱼')
   assert.ok(existsSync(join(dataDir, 'persona', 'history', 'old.md')), '原来的历史版本还在')
@@ -198,7 +198,7 @@ test('备份：打包（不含别人的存档、不含 Key）、列表、每类�
   assert.equal(reopened.recent('napcat:GroupMessage:5', 5).length, 1, '别人的存档不在包里，导入时保持原样')
   assert.equal(reopened.recent('napcat:FriendMessage:42', 5).length, 1)
   reopened.close()
-  assert.equal(applyPendingImport(dataDir), undefined, '没有待导入的就不动')
+  assert.equal(await applyPendingImport(dataDir), undefined, '没有待导入的就不动')
   // 坏包
   writeFileSync(join(dataDir, 'bad.tar.gz'), 'not a tarball')
   await assert.rejects(inspectBackup(join(dataDir, 'bad.tar.gz'), join(dataDir, '.import-bad')))
@@ -222,20 +222,20 @@ test('备份：按勾选打包；导入时只换勾选的部分，没勾的保�
   store.add({ scope: 'master', content: '备份时的记忆', writer: 'settings' })
   const out = join(dataDir, 'backups')
   const opts = { dataDir, db: archive.db, outDir: out, plugin: 'x', schema: 5, settings: { a: 1 }, embed: {}, keep: 5 }
-  // 只备份人格和别人的存档，外加三份设置
+  // 只备份人格和桥接设置
   const settingsFiles = { 'companion-core': { ns: 'companion-core', user: { a: 1 } }, 'napcat-bridge': { ns: 'napcat-bridge', user: { b: 2 } }, dsh: {} }
-  const small = await createBackup({ ...opts, reason: 'manual', items: ['persona', 'archiveOthers', 'settingsBridge'], settingsFiles })
-  assert.deepEqual(small.manifest.items, ['persona', 'archiveOthers', 'settingsBridge'])
+  const small = await createBackup({ ...opts, reason: 'manual', items: ['persona', 'settingsBridge'], settingsFiles })
+  assert.deepEqual(small.manifest.items, ['persona', 'settingsBridge'])
   assert.equal(small.manifest.counts.memories, 0)
   assert.equal(small.manifest.counts.archiveMessages, 0)
-  assert.equal(small.manifest.counts.othersMessages, 1)
+  assert.equal(small.manifest.counts.masterSessions, 0)
   assert.deepEqual(small.manifest.settings, {}, '没勾插件二的设置')
   const paths = small.manifest.files.map(f => f.path).sort()
-  assert.deepEqual(paths, ['companion.db', 'persona/persona.md', 'settings/napcat-bridge.json'])
+  assert.deepEqual(paths, ['persona/persona.md', 'settings/napcat-bridge.json'])
   const smallInspect = await inspectBackup(join(out, small.name), join(dataDir, '.i1'))
   assert.deepEqual(readSavedSettings(smallInspect.dir, ['settingsBridge']), { 'napcat-bridge': { ns: 'napcat-bridge', user: { b: 2 } } })
   // 全备份
-  const full = await createBackup({ ...opts, reason: 'manual', items: ['persona', 'core', 'diary', 'memory', 'archiveMaster', 'archiveOthers', 'settingsCompanion'], now: Date.now() + 2000 })
+  const full = await createBackup({ ...opts, reason: 'manual', items: ['persona', 'core', 'diary', 'memory', 'archiveMaster', 'settingsCompanion'], now: Date.now() + 2000 })
   // 之后数据变了
   writeFileSync(join(dataDir, 'persona', 'persona.md'), '人格 B')
   writeFileSync(join(dataDir, 'core', 'master.md'), '核心 B')
@@ -247,7 +247,7 @@ test('备份：按勾选打包；导入时只换勾选的部分，没勾的保�
   const work = (await inspectBackup(join(out, full.name), join(dataDir, '.i2'))).dir
   writeFileSync(join(work, 'restore.json'), JSON.stringify({ items: ['persona', 'archiveMaster'], notes: ['n'] }))
   renameSync(work, join(dataDir, '.pending-import'))
-  const applied = applyPendingImport(dataDir)
+  const applied = await applyPendingImport(dataDir)
   assert.deepEqual(applied.plan.items, ['persona', 'archiveMaster'])
   assert.equal(readFileSync(join(dataDir, 'persona', 'persona.md'), 'utf-8'), '人格 A')
   assert.equal(readFileSync(join(dataDir, 'core', 'master.md'), 'utf-8'), '核心 B', '没勾核心记忆')

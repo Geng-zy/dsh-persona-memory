@@ -15,7 +15,7 @@
 // 从备份还原（插件自动重新加载）、还原后自检。
 //
 // 需要：DSH_BIN 指向 dsh；先在两个仓库都 pnpm run build。不联网、不需要真实 API Key。
-import { spawn } from 'node:child_process'
+import { spawn, execFile } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
@@ -549,7 +549,8 @@ if (undone.json?.undone < 1 || (await api('GET', 'memory?q=CAT')).json.items.som
 log('定期整合、撤销 OK')
 
 // 17. 备份：手动备份、下载；改掉人格后从备份还原（插件自动重新加载），还原后自检
-const ALL_ITEMS = ['persona', 'core', 'diary', 'memory', 'archiveMaster', 'archiveOthers', 'settingsCompanion', 'settingsBridge', 'settingsDsh']
+await say(() => privateMsg([text('MASTER-SESSION-IMAGE'), { type: 'image', data: { file: 'master.png', url: imgUrl, summary: '[图片]' } }]), '主人私聊持久化附件')
+const ALL_ITEMS = ['persona', 'core', 'diary', 'memory', 'archiveMaster', 'sessionsMaster', 'settingsCompanion', 'settingsBridge', 'settingsDsh']
 const made = await api('POST', 'backup/create', { items: ALL_ITEMS })
 if (!made.json?.name) await fail('手动备份失败：' + JSON.stringify(made.json))
 const dl = await fetch(webBase0 + 'api/companion/backup/file/' + made.json.name, { headers: { cookie: cookie0 } })
@@ -559,6 +560,15 @@ if (!dl.ok || bytes[0] !== 0x1f || bytes[1] !== 0x8b) await fail('下载备份�
 const tarText = (await import('node:zlib')).gunzipSync(bytes).toString('utf-8')
 if (!tarText.includes('typingCharsPerMinute') || !tarText.includes('masterMaxRounds') || !tarText.includes('selectedDefault')) await fail('备份包里没有插件设置或 dsh 设置')
 if (tarText.includes(TOKEN) || tarText.includes('e2e-embed-key')) await fail('备份包里有 Key 或 Token')
+// 只包含主人原始会话（包括之前轮换保留的）；普通私聊、群聊及活动文件不混入。
+if (made.json.manifest?.counts?.masterSessions < 2) await fail('主人原始会话和历史会话未备份')
+const sessionText = (await new Promise((resolve, reject) => {
+  execFile('tar', ['-xOzf', join(data, 'backups', made.json.name), './master-sessions.json'], (e, out) => e ? reject(e) : resolve(out))
+}))
+const sessionBundle = JSON.parse(sessionText)
+if (!sessionBundle.attachments.length) await fail('主人原始会话缺少引用的持久化附件')
+if (sessionBundle.sessions.some(s => s.ownerId !== String(MASTER) || !s.header.id.startsWith('napcat-napcat-FriendMessage-' + MASTER))) await fail('主人原始会话混入其他聊天')
+if (!sessionBundle.sessions.some(s => s.current && s.events.length > 0)) await fail('主人当前会话事件缺失')
 writeFileSync(personaFile, '你是 PERSONA-V4（备份之后改的）')
 // 备份之后新记的记忆：下面不还原记忆库，它应该还在
 await api('POST', 'memory/add', { scope: 'master', content: '备份之后记的 AFTER-BACKUP-MEM', kind: 'fact', importance: 0.5 })
@@ -580,7 +590,11 @@ if (!after.json.backups.some(b => b.reason === 'before-import')) await fail('还
 if (after.json.lastImport.plan?.items?.includes('memory') || !['dsh-napcat-bridge 的设置：已套用', 'dsh-companion-core 的设置：已套用', 'dsh 设置 agent-preset-registry：已套用'].every(x => (after.json.lastImport.plan?.notes ?? []).includes(x))) await fail('还原勾选或设置套用不对：' + JSON.stringify(after.json.lastImport.plan))
 if (!(await api('GET', 'memory?q=AFTER-BACKUP-MEM')).json.items.some(m => m.content.includes('AFTER-BACKUP-MEM'))) await fail('没勾记忆库，记忆却被换掉了')
 if (!Array.isArray(after.json.selfCheck?.results) || after.json.selfCheck.results.length !== 3) await fail('还原后没自检：' + JSON.stringify(after.json.selfCheck))
+const restoredBinding = JSON.parse(readFileSync(join(home, 'napcat-bridge', 'sessions.json'), 'utf8'))['napcat:FriendMessage:' + MASTER]
+if (!restoredBinding.includes('-import-') || sessionDirs(oldMaster).length !== 1) await fail('恢复映射没有切换或旧会话被删除')
 await say(() => privateMsg([text('还原以后还在吗 m200')]), '还原以后的回复')
+if (sessionDirs(restoredBinding).length !== 1) await fail('恢复的会话不存在')
+log('主人原始会话导出、隔离、历史保留及恢复后私聊接续 OK')
 
 // 18. 图记忆：两条记忆抽出关系网；聊「咪咪」时能想起没出现「咪咪」的那条（顺着 咪咪—橘猫 走一步）
 await api('POST', 'memory/add', { scope: 'master', content: '主人养的橘猫名字叫咪咪 GR-1', kind: 'fact', importance: 0.6 })

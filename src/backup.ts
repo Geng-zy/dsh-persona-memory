@@ -1,8 +1,8 @@
 // 备份与迁移：把勾选的东西打成一个 .tar.gz，导入时也按勾选还原。
 // 能备份的（ITEMS）：人格和核心记忆现稿、日记和月度总览、记忆库（长期记忆、向量、关系网、指纹）、
-// 主人私聊的消息存档和图片、别人私聊和群聊的消息存档和图片、插件二 / 插件一 / dsh 其他插件的设置（都不含 Key 和 Token：
+// 主人私聊的消息存档和图片、主人 QQ 私聊的 dsh 会话及引用附件、插件二 / 插件一 / dsh 其他插件的设置（配置不含 Key 和 Token：
 // 从 dsh 设置服务读，标了 role('secret') 的字段它会自己去掉）。另有一份清单 manifest.json（版本、时间、各种数量、每个文件的 SHA-256）。
-// 普通包不包含 Key、Token、dsh 会话日志及非在线设置；这些内容目前不在普通备份范围内。
+// 普通包不包含配置密钥、其他私聊或群聊的存档和 dsh 会话、网页会话及运行环境。原始会话可能包含聊天中出现的敏感内容。
 // 导入：先解开、核对校验值、给你看清单和勾选；确认后先自动备份当前全部数据，设置马上套用，
 // 文件和数据库在插件重新加载时替换（数据库在用着时不能动）。数据库按勾选的部分换表，没勾的部分保持原样。
 
@@ -13,15 +13,16 @@ import { join, relative, sep } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import { Archive } from './archive.js'
 import { TextDoc } from './docs.js'
+import { exportMasterSessions, importMasterSessions, type MasterSessionServices } from './master-sessions.js'
 
 export const BACKUP_FORMAT = 'dsh-companion-backup'
-export const BACKUP_FORMAT_VERSION = 2
+export const BACKUP_FORMAT_VERSION = 3
 
 /** 能备份的东西，顺序就是设置页里的顺序 */
-export const ITEMS = ['persona', 'core', 'diary', 'memory', 'archiveMaster', 'archiveOthers', 'settingsCompanion', 'settingsBridge', 'settingsDsh'] as const
+export const ITEMS = ['persona', 'core', 'diary', 'memory', 'archiveMaster', 'sessionsMaster', 'settingsCompanion', 'settingsBridge', 'settingsDsh'] as const
 export type BackupItem = typeof ITEMS[number]
-/** 默认勾选：别人的私聊和群聊存档不带（只留 5 天，本来就是临时的） */
-export const DEFAULT_ITEMS: BackupItem[] = ITEMS.filter(i => i !== 'archiveOthers')
+/** 默认勾选：主人原始会话需自行勾选（旧设置中已选其他存档时迁移为此项） */
+export const DEFAULT_ITEMS: BackupItem[] = ITEMS.filter(i => i !== 'sessionsMaster')
 /** 旧版（格式 1）的包里固定有的 */
 const LEGACY_ITEMS: BackupItem[] = ['persona', 'core', 'diary', 'memory', 'archiveMaster', 'settingsCompanion']
 export const SETTINGS_ITEMS: BackupItem[] = ['settingsCompanion', 'settingsBridge', 'settingsDsh']
@@ -31,7 +32,7 @@ const DOC_FILES: Record<string, Array<[file: string, history: string]>> = {
   persona: [['persona/persona.md', 'persona/history']],
   core: [['core/master.md', 'core/history-master'], ['core/public.md', 'core/history-public']],
 }
-const DB_ITEMS: BackupItem[] = ['memory', 'archiveMaster', 'archiveOthers']
+const DB_ITEMS: BackupItem[] = ['memory', 'archiveMaster']
 /** 记忆库的表（换「记忆库」时整表换） */
 const MEMORY_TABLES = ['memories', 'tombstones', 'consolidations', 'graph_entities', 'graph_edges', 'graph_mentions', 'graph_done']
 /** 主人的会话：organizer 记的分类是 1 */
@@ -40,6 +41,10 @@ const MASTER_UMOS = "SELECT substr(key, 5) FROM cursors WHERE key LIKE 'cat:%' A
 export function cleanItems(list: unknown): BackupItem[] {
   const want = new Set(Array.isArray(list) ? list.map(String) : [])
   return ITEMS.filter(i => want.has(i))
+}
+/** 设置项的旧选择迁移；不用于解释旧备份包的内容。 */
+export function configuredItems(list: unknown): BackupItem[] {
+  return cleanItems(Array.isArray(list) ? list.map(i => i === 'archiveOthers' ? 'sessionsMaster' : i) : list)
 }
 /** 包里有哪些（旧包没写就按旧版固定内容算） */
 export function itemsOf(m: Manifest): BackupItem[] {
@@ -60,7 +65,7 @@ export interface Manifest {
   /** 包里有哪些（格式 2 起有） */
   items?: BackupItem[]
   /** archiveMessages 是主人的存档条数；othersMessages 是别人的（格式 2 起有） */
-  counts: { memories: number; diaryDays: number; months: number; archiveMessages: number; media: number; othersMessages?: number }
+  counts: { memories: number; diaryDays: number; months: number; archiveMessages: number; media: number; masterSessions?: number; othersMessages?: number }
   range: { from?: number; to?: number }
   embed: { model?: string; dim?: number }
   settings: Record<string, unknown>
@@ -114,6 +119,7 @@ export interface CreateOptions {
   items?: readonly BackupItem[]
   /** 设置文件（名字见 SETTINGS_FILES），只放勾选了的 */
   settingsFiles?: Record<string, unknown>
+  sessionServices?: MasterSessionServices
   now?: number
 }
 
@@ -136,7 +142,7 @@ export async function createBackup(o: CreateOptions): Promise<{ name: string; ma
       }
     }
     let archiveMessages = 0
-    let othersMessages = 0
+    const masterSessions = items.has('sessionsMaster') ? await exportMasterSessions(staging, o.sessionServices ?? {}) : 0
     let range: Manifest['range'] = {}
     let memories = 0
     const media = new Set<string>()
@@ -154,10 +160,9 @@ export async function createBackup(o: CreateOptions): Promise<{ name: string; ma
           copy.exec('DELETE FROM messages WHERE umo IN (' + MASTER_UMOS + ')')
           copy.exec('DELETE FROM journal')
         }
-        if (!items.has('archiveOthers')) copy.exec('DELETE FROM messages WHERE umo NOT IN (' + MASTER_UMOS + ')')
+        copy.exec('DELETE FROM messages WHERE umo NOT IN (' + MASTER_UMOS + ')')
         copy.exec("DELETE FROM meta WHERE key LIKE 'carry:%' OR key LIKE 'proactive:%'")
         archiveMessages = Number((copy.prepare('SELECT COUNT(*) AS n FROM messages WHERE umo IN (' + MASTER_UMOS + ')').get() as { n: number }).n)
-        othersMessages = Number((copy.prepare('SELECT COUNT(*) AS n FROM messages WHERE umo NOT IN (' + MASTER_UMOS + ')').get() as { n: number }).n)
         const r = copy.prepare('SELECT MIN(time) AS a, MAX(time) AS b FROM messages').get() as { a: number | null; b: number | null }
         range = { ...(r.a !== null ? { from: Number(r.a) } : {}), ...(r.b !== null ? { to: Number(r.b) } : {}) }
         memories = Number((copy.prepare('SELECT COUNT(*) AS n FROM memories').get() as { n: number }).n)
@@ -186,7 +191,7 @@ export async function createBackup(o: CreateOptions): Promise<{ name: string; ma
     const manifest: Manifest = {
       format: BACKUP_FORMAT, formatVersion: BACKUP_FORMAT_VERSION, plugin: o.plugin, schema: o.schema, createdAt: now, reason: o.reason,
       items: ITEMS.filter(i => items.has(i)),
-      counts: { memories, diaryDays: diaryFiles.filter(f => !f.startsWith('monthly/')).length, months: diaryFiles.filter(f => f.startsWith('monthly/')).length, archiveMessages, media: media.size, othersMessages },
+      counts: { memories, diaryDays: diaryFiles.filter(f => !f.startsWith('monthly/')).length, months: diaryFiles.filter(f => f.startsWith('monthly/')).length, archiveMessages, media: media.size, masterSessions },
       range, embed: o.embed, settings: items.has('settingsCompanion') ? o.settings : {}, files,
     }
     writeFileSync(join(staging, 'manifest.json'), JSON.stringify(manifest, null, 2))
@@ -259,16 +264,17 @@ export interface RestorePlan { items: BackupItem[]; notes?: string[] }
 
 /**
  * 插件启动时（打开数据库之前）调用：有待导入的数据就按勾选还原。
- * 先换数据库（一个事务，失败什么都不动），再换文件夹（旧的先挪开，失败放回去），图片只补不删。
+ * 原始会话先建立新日志并切换绑定（旧日志保留），再换数据库（一个事务），再换文件夹（旧的先挪开，失败放回去），图片只补不删。
  * 返回导入的清单和勾选（没有待导入时 undefined）。
  */
-export function applyPendingImport(dataDir: string, historyKeep: () => number = () => 20): { manifest: Manifest; plan: RestorePlan } | undefined {
+export async function applyPendingImport(dataDir: string, historyKeep: () => number = () => 20, sessionServices: MasterSessionServices = {}): Promise<{ manifest: Manifest; plan: RestorePlan } | undefined> {
   const pending = join(dataDir, '.pending-import')
   if (!existsSync(join(pending, 'manifest.json'))) return undefined
   const manifest = JSON.parse(readFileSync(join(pending, 'manifest.json'), 'utf-8')) as Manifest
   const planPath = join(pending, 'restore.json')
   const plan: RestorePlan = existsSync(planPath) ? JSON.parse(readFileSync(planPath, 'utf-8')) as RestorePlan : { items: itemsOf(manifest) }
   const items = new Set(cleanItems(plan.items).filter(i => itemsOf(manifest).includes(i)))
+  if (items.has('sessionsMaster')) await importMasterSessions(pending, sessionServices)
   if (DB_ITEMS.some(i => items.has(i)) && existsSync(join(pending, 'companion.db'))) mergeDb(join(dataDir, 'companion.db'), join(pending, 'companion.db'), items)
   // 人格、核心记忆：只换文件，历史版本留着（被换掉的那版也存进去，导错了能在设置页回退）
   for (const d of Object.keys(DOC_FILES)) {
@@ -291,7 +297,7 @@ export function applyPendingImport(dataDir: string, historyKeep: () => number = 
     for (const d of moved) if (!existsSync(join(dataDir, d))) renameSync(join(aside, d), join(dataDir, d))
     throw e
   }
-  if ((items.has('archiveMaster') || items.has('archiveOthers')) && existsSync(join(pending, 'media'))) {
+  if (items.has('archiveMaster') && existsSync(join(pending, 'media'))) {
     mkdirSync(join(dataDir, 'media'), { recursive: true })
     for (const name of readdirSync(join(pending, 'media'))) if (!existsSync(join(dataDir, 'media', name))) cpSync(join(pending, 'media', name), join(dataDir, 'media', name))
   }
@@ -318,7 +324,7 @@ function mergeDb(currentPath: string, backupPath: string, items: Set<BackupItem>
       for (const t of MEMORY_TABLES) copyAll(t)
       copyAll('meta', "key LIKE 'embed_dim:%' OR key LIKE 'care:%'")
     }
-    if (items.has('archiveMaster') || items.has('archiveOthers')) {
+    if (items.has('archiveMaster')) {
       // 谁是主人的会话：两边的分类记录合起来
       db.exec('CREATE TEMP TABLE restore_master (umo TEXT PRIMARY KEY)')
       db.exec('INSERT OR IGNORE INTO temp.restore_master ' + MASTER_UMOS.replace('cursors', 'main.cursors') + ' UNION ' + MASTER_UMOS.replace('cursors', 'bk.cursors'))
@@ -326,9 +332,8 @@ function mergeDb(currentPath: string, backupPath: string, items: Set<BackupItem>
       const insert = db.prepare('INSERT INTO main.messages (' + msgCols.join(', ') + ') VALUES (' + msgCols.map(() => '?').join(', ') + ')')
       const setCursor = db.prepare('INSERT INTO main.cursors (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value')
       const cursorOf = (key: string): number | undefined => (db.prepare('SELECT value FROM bk.cursors WHERE key = ?').get(key) as { value: number } | undefined)?.value
-      for (const [item, inMaster] of [['archiveMaster', true], ['archiveOthers', false]] as const) {
-        if (!items.has(item)) continue
-        const cond = 'umo ' + (inMaster ? '' : 'NOT ') + 'IN (SELECT umo FROM temp.restore_master)'
+      {
+        const cond = 'umo IN (SELECT umo FROM temp.restore_master)'
         db.exec('DELETE FROM main.messages WHERE ' + cond)
         // 换进来的消息 id 会变，「已整理到哪条」跟着换算（按 org:<会话> 在备份里指到的位置）
         const umos = (db.prepare('SELECT DISTINCT umo FROM bk.messages WHERE ' + cond).all() as Array<{ umo: string }>).map(r => r.umo)
@@ -343,7 +348,7 @@ function mergeDb(currentPath: string, backupPath: string, items: Set<BackupItem>
           const cat = cursorOf('cat:' + umo)
           if (cat !== undefined) setCursor.run('cat:' + umo, cat)
         }
-        if (inMaster) {
+        {
           // dsh 里直接聊的流水也算主人的
           copyAll('journal')
           copyAll('cursors', "key LIKE 'orgdsh:%'")

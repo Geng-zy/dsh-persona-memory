@@ -141,4 +141,4 @@ type Context = CordisContext & {
         list(): any[];
     };
 };
-export declare function apply(ctx: Context, live: LiveConfig): void;
+export declare function apply(ctx: Context, live: LiveConfig): Promise<void>;
