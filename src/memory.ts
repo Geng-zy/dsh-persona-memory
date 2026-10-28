@@ -151,9 +151,9 @@ export class MemoryStore {
     const hash = fingerprint(content)
     if (this.db.prepare('SELECT 1 FROM tombstones WHERE hash = ? AND scope = ?').get(hash, m.scope) !== undefined) return { action: 'blocked' }
     const importance = clamp(m.importance ?? 0.5)
-    const same = this.active([m.scope]).filter(x => x.content === content || overlap(x.content, content) >= MERGE_OVERLAP)
-    if (same.length > 0) {
-      const keep = same[0]
+    const existing = this.active([m.scope])
+    const keep = existing.find(x => x.content === content || overlap(x.content, content) >= MERGE_OVERLAP)
+    if (keep !== undefined) {
       this.db.prepare('UPDATE memories SET importance = ?, trust = MAX(trust, ?) WHERE id = ?').run(clamp(Math.max(keep.importance, importance) + 0.05), clamp(m.trust ?? 0.5), keep.id)
       this.changed()
       return { action: 'merged', id: keep.id }
@@ -167,8 +167,7 @@ export class MemoryStore {
     let superseded: number | undefined
     if (m.replaces && m.replaces.trim() !== '') {
       let best: { id: number; score: number } | undefined
-      for (const old of this.active([m.scope])) {
-        if (old.id === id) continue
+      for (const old of existing) {
         const score = Math.max(overlap(old.content, m.replaces), old.content.includes(m.replaces.trim()) ? 1 : 0)
         if (score >= REPLACE_OVERLAP && (best === undefined || score > best.score)) best = { id: old.id, score }
       }
@@ -249,14 +248,17 @@ export class MemoryStore {
   }
 
   stats(): { active: number; forgotten: number; superseded: number; tombstones: number; byScope: Record<string, number> } {
-    const n = (sql: string): number => Number((this.db.prepare(sql).get() as { n: number }).n)
+    const counts = this.db.prepare(`SELECT
+      COUNT(CASE WHEN status = 'active' AND superseded_by IS NULL THEN 1 END) AS active,
+      COUNT(CASE WHEN status = 'forgotten' THEN 1 END) AS forgotten,
+      COUNT(CASE WHEN superseded_by IS NOT NULL THEN 1 END) AS superseded
+      FROM memories`).get() as { active: number; forgotten: number; superseded: number }
+
     const byScope: Record<string, number> = {}
     for (const r of this.db.prepare("SELECT CASE WHEN scope LIKE 'group:%' THEN 'group' WHEN scope LIKE 'user:%' THEN 'user' ELSE scope END AS s, COUNT(*) AS n FROM memories WHERE status = 'active' AND superseded_by IS NULL GROUP BY s").all() as Array<{ s: string; n: number }>) byScope[r.s] = Number(r.n)
     return {
-      active: n("SELECT COUNT(*) AS n FROM memories WHERE status = 'active' AND superseded_by IS NULL"),
-      forgotten: n("SELECT COUNT(*) AS n FROM memories WHERE status = 'forgotten'"),
-      superseded: n('SELECT COUNT(*) AS n FROM memories WHERE superseded_by IS NOT NULL'),
-      tombstones: n('SELECT COUNT(*) AS n FROM tombstones'),
+      active: Number(counts.active), forgotten: Number(counts.forgotten), superseded: Number(counts.superseded),
+      tombstones: Number((this.db.prepare('SELECT COUNT(*) AS n FROM tombstones').get() as { n: number }).n),
       byScope,
     }
   }
@@ -269,9 +271,8 @@ export class MemoryStore {
   }
 
   countEmbedded(model: string): { total: number; embedded: number } {
-    const total = Number((this.db.prepare('SELECT COUNT(*) AS n FROM memories').get() as { n: number }).n)
-    const embedded = Number((this.db.prepare('SELECT COUNT(*) AS n FROM memories WHERE embed_model = ?').get(model) as { n: number }).n)
-    return { total, embedded }
+    const row = this.db.prepare('SELECT COUNT(*) AS total, COUNT(CASE WHEN embed_model = ? THEN 1 END) AS embedded FROM memories').get(model) as { total: number; embedded: number }
+    return { total: Number(row.total), embedded: Number(row.embedded) }
   }
 
   setEmbedding(id: number, vector: Float32Array, model: string): void {

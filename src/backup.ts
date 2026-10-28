@@ -139,7 +139,7 @@ export async function createBackup(o: CreateOptions): Promise<{ name: string; ma
     let othersMessages = 0
     let range: Manifest['range'] = {}
     let memories = 0
-    const media: string[] = []
+    const media = new Set<string>()
     if (DB_ITEMS.some(i => items.has(i))) {
       // 数据库：在线拷一份（VACUUM INTO 不影响正在用的），再删掉没勾的部分
       const dbPath = join(staging, 'companion.db')
@@ -162,7 +162,7 @@ export async function createBackup(o: CreateOptions): Promise<{ name: string; ma
         range = { ...(r.a !== null ? { from: Number(r.a) } : {}), ...(r.b !== null ? { to: Number(r.b) } : {}) }
         memories = Number((copy.prepare('SELECT COUNT(*) AS n FROM memories').get() as { n: number }).n)
         for (const row of copy.prepare("SELECT segments FROM messages WHERE segments LIKE '%_local%'").all() as Array<{ segments: string }>) {
-          for (const m of row.segments.matchAll(/"_local":"([0-9a-f]{64}\.[a-z0-9]+)"/g)) if (!media.includes(m[1])) media.push(m[1])
+          for (const m of row.segments.matchAll(/"_local":"([0-9a-f]{64}\.[a-z0-9]+)"/g)) media.add(m[1])
         }
         copy.exec('VACUUM')
       } finally {
@@ -186,7 +186,7 @@ export async function createBackup(o: CreateOptions): Promise<{ name: string; ma
     const manifest: Manifest = {
       format: BACKUP_FORMAT, formatVersion: BACKUP_FORMAT_VERSION, plugin: o.plugin, schema: o.schema, createdAt: now, reason: o.reason,
       items: ITEMS.filter(i => items.has(i)),
-      counts: { memories, diaryDays: diaryFiles.filter(f => !f.startsWith('monthly/')).length, months: diaryFiles.filter(f => f.startsWith('monthly/')).length, archiveMessages, media: media.length, othersMessages },
+      counts: { memories, diaryDays: diaryFiles.filter(f => !f.startsWith('monthly/')).length, months: diaryFiles.filter(f => f.startsWith('monthly/')).length, archiveMessages, media: media.size, othersMessages },
       range, embed: o.embed, settings: items.has('settingsCompanion') ? o.settings : {}, files,
     }
     writeFileSync(join(staging, 'manifest.json'), JSON.stringify(manifest, null, 2))
@@ -213,8 +213,7 @@ export function listBackups(outDir: string): BackupInfo[] {
 
 /** 每一类（自动、手动、导入前）各留 keep 份。 */
 export function prune(outDir: string, keep: number): void {
-  const byReason = new Map<string, BackupInfo[]>()
-  for (const b of listBackups(outDir)) byReason.set(b.reason ?? '', [...(byReason.get(b.reason ?? '') ?? []), b])
+  const byReason = Map.groupBy(listBackups(outDir), b => b.reason ?? '')
   for (const list of byReason.values()) for (const b of list.slice(Math.max(1, keep))) rmSync(join(outDir, b.name), { force: true })
 }
 

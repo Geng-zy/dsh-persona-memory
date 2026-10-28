@@ -17,13 +17,14 @@ import { applyPrompt, coreBlock, type AssemblyLike } from './prompt.js'
 import { listModels } from './models.js'
 import { archiveAllowed, archiveRule, contextRule, forgetMode, matchRule, scopeOf, type ArchiveSession, type Category, type ContextMode, type ForgetMode, type NapcatLike, type RuleDefaults, type RuleRow, type Scope } from './rules.js'
 import type { BeforeCompactPayload, CompanionService, ContextPolicy } from './service.js'
+import { archivedImage } from './archived-image.js'
 import { coreTool, personaTool, type ToolDeps } from './tools.js'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { embed, embedEnabled, Indexer, testEmbed, type EmbedSettings } from './embed.js'
 import { DEFAULT_ALLOWED, DEFAULT_FORBIDDEN, guardPersonaEdit, countChars } from './persona-guard.js'
 import { GraphBuilder, graphScores, GraphStore, type GraphSettings } from './graph.js'
 import { cleanupPrompt, complete, parseCleanup, type LlmLike, type ModelTarget } from './extract.js'
-import { KINDS, MemoryStore, defaultTrust, ownScope, type MemoryKind } from './memory.js'
+import { KINDS, MemoryStore, defaultTrust, type MemoryKind } from './memory.js'
 import { forgetTool, saveTool, searchTool, type MemoryToolDeps } from './memory-tools.js'
 import { Organizer } from './organizer.js'
 import { formatRecall, recall, type RecallSettings } from './recall.js'
@@ -598,7 +599,7 @@ export function apply(ctx: Context, live: LiveConfig): void {
       const day = logicalDay(now, get('dayBoundaryHour'), get('timezone'))
       if (meta.get('maint:day') === day) return
       const clock = localClock(now, get('timezone'))
-      const want = /^\d{1,2}:\d{2}$/.test(get('diaryTime').trim()) ? get('diaryTime').trim().padStart(5, '0') : '01:30'
+      const want = clockOk(get('diaryTime'), '01:30')
       // 写日记的时间在分界之前（比如 1:30 < 4:00）：凌晨那段才算；否则当天到点以后都算
       const boundary = String(get('dayBoundaryHour')).padStart(2, '0') + ':00'
       const due = want < boundary ? clock >= want && clock < boundary : clock >= want || clock < boundary
@@ -705,7 +706,7 @@ export function apply(ctx: Context, live: LiveConfig): void {
       if (!get('backupEnabled') || archive === undefined) return
       const now = Date.now()
       const day = logicalDay(now, 0, get('timezone'))
-      if (meta.get('backup:day') === day || localClock(now, get('timezone')) < (/^\d{1,2}:\d{2}$/.test(get('backupTime').trim()) ? get('backupTime').trim().padStart(5, '0') : '04:00')) return
+      if (meta.get('backup:day') === day || localClock(now, get('timezone')) < clockOk(get('backupTime'), '04:00')) return
       meta.set('backup:day', day)
       void backupNow('auto').catch(e => log('warn', '自动备份失败：' + errText(e)))
     }, 60_000)
@@ -842,11 +843,10 @@ export function apply(ctx: Context, live: LiveConfig): void {
       if (archive === undefined || info?.type !== 'group' || get('groupContextCount') <= 0) return
       const s: Scope = { category: 'group', qq: true, umo: info.umo, ...(info.groupId ? { groupId: info.groupId } : {}) }
       if (!archiveRule(s, defaults(), rules()).unwoken) return
-      const umo = String(payload.message?.raw_message ? info.umo : info.umo)
+      const umo = String(info.umo)
       const rows = archive.lastMessages(umo, get('groupContextCount'), payload.message?.message_id !== undefined ? String(payload.message.message_id) : undefined)
       if (rows.length === 0) return
       const media = (napcat() as any)?.media as { convert?(components: any[], budget?: number): Promise<{ text: string; parts: any[]; used: number }> } | undefined
-      let budget = Infinity
       const lines: string[] = []
       const images: any[] = []
       for (const r of rows) {
@@ -857,18 +857,15 @@ export function apply(ctx: Context, live: LiveConfig): void {
             // 收到时已经下载存好的图片直接用（QQ 链接可能已经过期）
             const local = Array.isArray(all) ? all.filter((c: any) => c?.type === 'Image' && typeof c._local === 'string') : []
             for (const c of local) {
-              if (budget <= 0) break
-              const path = join(mediaDir, String(c._local))
-              if (!/^[0-9a-f]{64}\.[a-z0-9]+$/.test(String(c._local)) || !existsSync(path)) continue
-              images.push({ type: 'image', mediaType: mimeOf(String(c._local)), data: readFileSync(path).toString('base64') })
-              budget -= 1
+              const image = archivedImage(mediaDir, c._local)
+              if (!image) continue
+              images.push(image)
               extra += ' [图片，见下面]'
             }
             const comps = Array.isArray(all) ? all.filter((c: any) => !(c?.type === 'Image' && typeof c._local === 'string')) : []
             if (media?.convert === undefined) throw new Error('没有 dsh-napcat-bridge 的媒体服务')
             if (Array.isArray(comps) && comps.some((c: any) => c?.type === 'Image' || c?.type === 'Record' || c?.type === 'Video')) {
-              const got = await media.convert(comps, budget)
-              budget -= got.used
+              const got = await media.convert(comps, Infinity)
               const imgCount = got.parts.filter((p: any) => p?.type === 'image').length
               if (imgCount > 0) extra += ' [图片×' + imgCount + '，见下面]'
               if (got.text) extra += ' ' + got.text
@@ -957,7 +954,6 @@ export function apply(ctx: Context, live: LiveConfig): void {
 
   //#region 消息存档（插件一的事件）
   const EXT: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp' }
-  const mimeOf = (name: string): string => Object.entries(EXT).find(([, e]) => name.endsWith('.' + e))?.[0] ?? 'image/jpeg'
   /** 收到的图片下载存好（按内容的 SHA-256 命名），在存档的消息段里记下文件名。 */
   const saveImages = async (umo: string, messageId: string, comps: any[], session: ArchiveSession): Promise<void> => {
     const allowed = (): boolean => get('archiveEnabled') && archiveAllowed(napcat(), session)

@@ -17,7 +17,10 @@ export declare function buildIndex(items: Iterable<{
 /**
  * 关键词相关度（0–1）：问题里的词有多少出现在这条记忆里，按"越少见的词越重要"加权。
  * 1 表示问题里的词全都出现了。
+ * 本插件新增：同一次召回共用分词和权重，不为每条候选记忆重复计算查询。
  */
+export declare function keywordScorer(index: KeywordIndex, query: string): (id: number) => number;
+/** 保留单条打分接口，供现有调用者使用。 */
 export declare function keywordScore(index: KeywordIndex, query: string, id: number): number;
 /** 两段文字的相似度（0–1，按词集合的重合）：用来判断"几乎一样"的记忆。 */
 export declare function overlap(a: string, b: string): number;

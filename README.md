@@ -148,7 +148,7 @@ dsh --version                        # 0.2.1-rc.2
 
 # 6. 两个插件（回到家目录）
 cd ~
-dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.20.2 github:Geng-zy/dsh-companion-core#v0.14.2
+dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.20.3 github:Geng-zy/dsh-companion-core#v0.14.3
 #    连不上 GitHub：到两个仓库的 Releases 下载 .tgz，传到 ~/pkgs/ 后
 #    dsh plugin --profile web add ./pkgs/dsh-napcat-bridge-0.19.1.tgz ./pkgs/dsh-companion-core-0.13.0.tgz
 #    （~/pkgs 以后不能删：dsh 的 profile 里记着它）
@@ -264,7 +264,7 @@ sudo systemctl daemon-reload && sudo systemctl enable --now napcat
 ## 安装
 
 ```bash
-dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.14.2
+dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.14.3
 ```
 
 装好后：
@@ -446,3 +446,10 @@ AGPL-3.0-or-later。陪伴模式预设的工具列表照抄 dsh-web-app 的标�
 ### 0.14.2：设置帮助说明
 
 统一重写全部现有中英文设置帮助，并为原先缺少说明的设置补充“？”角标。说明覆盖用途、适用范围、默认值、输入格式及关联条件；唤醒前缀、白名单与存档边界、会话模型生效时间等表述已核实。仅调整帮助文字及角标，功能、配置字段和默认值保持不变。
+
+### 0.14.3：代码审查与精简
+
+- 合并群上下文和主动聊天的存档图片读取，保持图片不限张数及 MIME 回退规则；清理无效分支、未使用导入与重复时间格式处理。
+- 关键词召回共用一次查询分词和权重；复用记忆去重/取代查询，合并统计 SQL，减少分页重复读取和分组数组复制；备份图片使用 Set 去重。
+- 简化设置页状态及规则更新，首次编辑日记只读取一次；读取失败显示原因。启用未使用变量/参数编译检查，完整检查只运行一次单测。
+- 新增五项回归测试；保留全部配置、对外接口、数据库迁移、旧备份兼容、权限边界与现有功能。

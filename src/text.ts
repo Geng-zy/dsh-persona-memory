@@ -70,21 +70,25 @@ export function buildIndex(items: Iterable<{ id: number; content: string }>): Ke
 /**
  * 关键词相关度（0–1）：问题里的词有多少出现在这条记忆里，按"越少见的词越重要"加权。
  * 1 表示问题里的词全都出现了。
+ * 本插件新增：同一次召回共用分词和权重，不为每条候选记忆重复计算查询。
  */
-export function keywordScore(index: KeywordIndex, query: string, id: number): number {
-  const doc = index.docs.get(id)
-  if (doc === undefined) return 0
-  const q = [...new Set(tokens(query))]
-  if (q.length === 0) return 0
+export function keywordScorer(index: KeywordIndex, query: string): (id: number) => number {
   const n = Math.max(1, index.docs.size)
-  let total = 0
-  let hit = 0
-  for (const t of q) {
-    const w = Math.log(1 + n / (1 + (index.df.get(t) ?? 0))) * (STOP.has(t) ? 0.2 : 1)
-    total += w
-    if (doc.has(t)) hit += w
+  const weights = [...new Set(tokens(query))].map(t =>
+    [t, Math.log(1 + n / (1 + (index.df.get(t) ?? 0))) * (STOP.has(t) ? 0.2 : 1)] as const)
+  const total = weights.reduce((sum, [, weight]) => sum + weight, 0)
+  return id => {
+    const doc = index.docs.get(id)
+    if (doc === undefined || !(total > 0)) return 0
+    let hit = 0
+    for (const [term, weight] of weights) if (doc.has(term)) hit += weight
+    return hit / total
   }
-  return total > 0 ? hit / total : 0
+}
+
+/** 保留单条打分接口，供现有调用者使用。 */
+export function keywordScore(index: KeywordIndex, query: string, id: number): number {
+  return index.docs.has(id) ? keywordScorer(index, query)(id) : 0
 }
 
 /** 两段文字的相似度（0–1，按词集合的重合）：用来判断"几乎一样"的记忆。 */

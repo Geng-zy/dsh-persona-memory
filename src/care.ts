@@ -66,12 +66,7 @@ export function similarGroups(items: readonly Memory[], threshold: number, maxGr
       if (overlap(items[i].content, items[j].content) >= threshold) parent.set(find(items[i].id), find(items[j].id))
     }
   }
-  const groups = new Map<number, Memory[]>()
-  for (const m of items) {
-    const root = find(m.id)
-    groups.set(root, [...(groups.get(root) ?? []), m])
-  }
-  return [...groups.values()].filter(g => g.length >= 2).map(g => g.slice(0, 8)).slice(0, Math.max(0, maxGroups))
+  return [...Map.groupBy(items, m => find(m.id)).values()].filter(g => g.length >= 2).map(g => g.slice(0, 8)).slice(0, Math.max(0, maxGroups))
 }
 
 export class Care {
@@ -83,8 +78,8 @@ export class Care {
     const report: CleanupReport = { forgotten: 0, purged: 0 }
     if (!s.cleanupEnabled) return report
     const rows = this.deps.store.list({ status: 'active', limit: 200, offset: 0 })
-    const all: Memory[] = []
-    for (let offset = 0; offset < rows.total; offset += 200) all.push(...this.deps.store.list({ status: 'active', limit: 200, offset }).items)
+    const all = [...rows.items]
+    for (let offset = 200; offset < rows.total; offset += 200) all.push(...this.deps.store.list({ status: 'active', limit: 200, offset }).items)
     for (const m of all) {
       if (m.kind === 'diary') continue
       const idle = (now - (m.lastRecalled ?? m.createdAt)) / DAY

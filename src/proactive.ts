@@ -6,8 +6,7 @@
 //   - 群聊主动时带上群里最近 15 条消息当上下文（含她自己说的，图片用收到时存好的，不限张数）。
 // 需要 dsh-napcat-bridge ≥ 0.7.0 的 ctx.napcat.wake。
 
-import { existsSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { archivedImage } from './archived-image.js'
 import type { Archive } from './archive.js'
 import { localClock } from './diary.js'
 import type { Organizer } from './organizer.js'
@@ -182,18 +181,15 @@ export class Proactive {
       const images: unknown[] = []
       if (scope.category === 'group') {
         const rows = this.deps.archive.recent(umo, Math.max(0, s.groupContextMessages)).filter(r => r.type === 'message')
-        let budget = Infinity
         groupLines = rows.map(r => {
           let extra = ''
-          if (budget > 0 && r.segments) {
+          if (r.segments) {
             try {
               for (const c of JSON.parse(r.segments) as Array<{ type?: string; _local?: string }>) {
-                if (budget <= 0 || c?.type !== 'Image' || typeof c._local !== 'string' || !/^[0-9a-f]{64}\.[a-z0-9]+$/.test(c._local)) continue
-                const path = join(this.deps.mediaDir, c._local)
-                if (!existsSync(path)) continue
-                const ext = c._local.split('.').pop()
-                images.push({ type: 'image', mediaType: ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : ext === 'webp' ? 'image/webp' : 'image/jpeg', data: readFileSync(path).toString('base64') })
-                budget -= 1
+                if (c?.type !== 'Image') continue
+                const image = archivedImage(this.deps.mediaDir, c._local)
+                if (!image) continue
+                images.push(image)
                 extra += ' [图片，见下面]'
               }
             } catch { /* 消息段坏了就只用文字 */ }

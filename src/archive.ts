@@ -328,11 +328,11 @@ export class Archive {
   }
 
   stats(): ArchiveStats {
-    const total = Number((this.db.prepare('SELECT COUNT(*) AS n FROM messages').get() as { n: number }).n)
+    // 同一次扫描取得总数和时间范围，返回值与空库行为不变。
+    const range = this.db.prepare('SELECT COUNT(*) AS n, MIN(time) AS a, MAX(time) AS b FROM messages').get() as { n: number; a: number | null; b: number | null }
     const byKind: Record<string, number> = {}
     for (const r of this.db.prepare('SELECT kind, COUNT(*) AS n FROM messages GROUP BY kind').all() as Array<{ kind: string; n: number }>) byKind[r.kind] = Number(r.n)
-    const range = this.db.prepare('SELECT MIN(time) AS a, MAX(time) AS b FROM messages').get() as { a: number | null; b: number | null }
-    return { total, byKind, ...(range.a !== null ? { oldest: Number(range.a) } : {}), ...(range.b !== null ? { newest: Number(range.b) } : {}) }
+    return { total: Number(range.n), byKind, ...(range.a !== null ? { oldest: Number(range.a) } : {}), ...(range.b !== null ? { newest: Number(range.b) } : {}) }
   }
 
   close(): void {
