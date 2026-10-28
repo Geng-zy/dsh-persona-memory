@@ -282,6 +282,16 @@ export declare class Bridge {
         oldSessionId: string;
         newSessionId: string;
     }>;
+    /** 仅当前管理员的 QQ 私聊；不用存档分类或在线 chats 推测归属。 */
+    masterPrivateBindings(platform: string): Array<{
+        ownerId: string;
+        prefix: string;
+        sessionId: string;
+        cwd: string;
+    }>;
+    /** 恢复后只接管当前管理员的私聊；原会话留存，不触发换会话的整理流程。 */
+    restoreMasterPrivateBinding(platform: string, ownerId: string, sessionId: string): Promise<void>;
+    private readonly restoring;
     /** dsh 会话 id → QQ 会话信息。 */
     sessionInfo(sessionId: string): SessionInfo | undefined;
     /** QQ 会话（unified_msg_origin）→ 当前的会话信息。 */

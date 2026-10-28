@@ -142,6 +142,13 @@ export interface NapcatService {
         umo: string;
         sessionId: string;
     }>;
+    masterPrivateBindings(): Array<{
+        ownerId: string;
+        prefix: string;
+        sessionId: string;
+        cwd: string;
+    }>;
+    restoreMasterPrivateBinding(ownerId: string, sessionId: string): Promise<void>;
     /** dsh 会话 id → 对应的 QQ 会话（私聊/群聊、QQ 号、群号、是不是主人私聊）；不是 QQ 会话时 undefined */
     sessionInfo(sessionId: string): SessionInfo | undefined;
     /** QQ 会话（unified_msg_origin）→ 当前的会话信息 */

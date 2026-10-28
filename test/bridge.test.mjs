@@ -803,3 +803,13 @@ test('关键词不会跨 @ 等非正文消息段拼接，也不会匹配@全体�
   assert.equal(h.followups.length, 1)
   await h.bridge.dispose()
 })
+
+test('主人原始会话备份接口：管理员列表生成私聊绑定，群聊和普通用户不能恢复接管', async () => {
+  const h = harness()
+  assert.deepEqual(h.bridge.masterPrivateBindings('napcat'), [{ ownerId: ADMIN, prefix: 'napcat-napcat-FriendMessage-42', sessionId: 'napcat-napcat-FriendMessage-42', cwd: '/tmp' }])
+  await assert.rejects(h.bridge.restoreMasterPrivateBinding('napcat', '77', 'napcat-napcat-FriendMessage-77-import-test'), /主人的私聊/)
+  await assert.rejects(h.bridge.restoreMasterPrivateBinding('napcat', ADMIN, 'napcat-napcat-GroupMessage-42-import-test'), /主人的私聊/)
+  await assert.rejects(h.bridge.restoreMasterPrivateBinding('napcat', ADMIN, 'napcat-napcat-FriendMessage-42-import-test'), /不存在/)
+  assert.equal(h.events.changed.length, 0)
+  await h.bridge.dispose()
+})

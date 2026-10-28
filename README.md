@@ -151,7 +151,7 @@ dsh --version                        # 0.2.1-rc.2
 
 # 6. 两个插件（回到家目录）
 cd ~
-dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.20.3 github:Geng-zy/dsh-companion-core#v0.16.0
+dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.20.4 github:Geng-zy/dsh-companion-core#v0.17.0
 #    连不上 GitHub：到两个仓库的 Releases 下载 .tgz，传到 ~/pkgs/ 后
 #    dsh plugin --profile web add ./pkgs/dsh-napcat-bridge-0.19.1.tgz ./pkgs/dsh-companion-core-0.13.0.tgz
 #    （~/pkgs 以后不能删：dsh 的 profile 里记着它）
@@ -267,7 +267,7 @@ sudo systemctl daemon-reload && sudo systemctl enable --now napcat
 ## 安装
 
 ```bash
-dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.20.3
+dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.20.4
 ```
 
 然后在 profile 的 `cordis.patch.yml` 里写配置（行 id 固定是 `napcat-bridge`）：
@@ -406,6 +406,8 @@ ctx.on('napcat/session-changed', ({ umo, oldSessionId, newSessionId, reason }) =
 ctx.napcat.callAction('get_group_info', { group_id: 123 })
 ctx.napcat.sendBySession({ platform_name: 'napcat', message_type: 'FriendMessage', session_id: '123' }, { chain: [{ type: 'Plain', text: '你好' }] })
 ctx.napcat.sessions()                  // [{ umo, sessionId }]
+ctx.napcat.masterPrivateBindings()      // 当前管理员 QQ 私聊的 ownerId/prefix/sessionId/cwd（供原始会话备份）
+await ctx.napcat.restoreMasterPrivateBinding(ownerId, sessionId) // 接回已恢复的新日志；仅当前管理员，原会话保留
 ctx.napcat.sessionInfo(dsh会话id)       // { umo, sessionId, platformId, selfId, type: 'private'|'group', userId?, groupId?, adminPrivate }；
                                        // 建会话之前就登记好，预设里的插件在 setup 时就能查到；不是 QQ 会话时 undefined
 ctx.napcat.sessionInfoByUmo(umo)
