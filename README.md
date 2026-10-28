@@ -29,7 +29,6 @@
 
 | | AstrBot | 本插件 |
 |---|---|---|
-| 群聊独立判断 | 未移植此流程 | 默认开启独立模型判断，先看是否该回复；拒绝不进入正式会话，可单独选模型和历史条数 |
 | 消息时间 | 收到的时间 | QQ 上的发送时间 |
 | 重复消息 | 照常处理 | 同一条消息（机器人 QQ + 消息 ID）10 分钟内只处理一次 |
 | @ 查名片 | 每次都查 | 缓存 10 分钟 |
@@ -152,7 +151,7 @@ dsh --version                        # 0.2.1-rc.2
 
 # 6. 两个插件（回到家目录）
 cd ~
-dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.20.0 github:Geng-zy/dsh-companion-core#v0.14.0
+dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.20.1 github:Geng-zy/dsh-companion-core#v0.14.1
 #    连不上 GitHub：到两个仓库的 Releases 下载 .tgz，传到 ~/pkgs/ 后
 #    dsh plugin --profile web add ./pkgs/dsh-napcat-bridge-0.19.1.tgz ./pkgs/dsh-companion-core-0.13.0.tgz
 #    （~/pkgs 以后不能删：dsh 的 profile 里记着它）
@@ -268,7 +267,7 @@ sudo systemctl daemon-reload && sudo systemctl enable --now napcat
 ## 安装
 
 ```bash
-dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.20.0
+dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.20.1
 ```
 
 然后在 profile 的 `cordis.patch.yml` 里写配置（行 id 固定是 `napcat-bridge`）：
@@ -441,19 +440,6 @@ AGPL-3.0-or-later。代码移植自 AstrBot（AGPL-3.0-or-later）和 aiocqhttp�
 
 关键词只在收到的正文（Plain 消息段）中匹配，不匹配 @ 对象的群昵称、名称或QQ号，也不会跨非正文段拼接词语。正文确实提到唤醒词、真实 @机器人、引用机器人和原有前缀唤醒仍按原规则处理；交给模型的消息保留 @对象信息。
 
-### 群聊独立判断（v0.20.0，默认开启）
+### 0.20.1：移除独立判断
 
-普通唤醒规则仍先筛选候选消息，并检查白名单、指令和限频；通过后对群聊单独请求一次 dsh 模型服务。它判断是不是在叫她、是否值得回复，只返回布尔 JSON，不创建 agent、不调用工具、不写正式会话。拒绝、格式错误或超时本次不回复；通过后才进入原来的正式回复流程，正式回复仍可选择 `[不发]`。私聊、内置指令、定时主动唤醒保留原流程。
-
-配合 **dsh-companion-core ≥ 0.14.0**，判断读取人格、公开核心记忆和默认最近 10 条本群文字存档（含她自己的发言、时间、发送者；排除当前消息），不读取主人私密核心记忆。群历史须允许存档且开启未唤醒消息存档；名单外群即使管理员触发，也不会读取旧群存档。没有 core 时仅判断当前消息。当前消息包括正文、@与引用对象、展开的引用和转发文字、语音转文字；判断不分析图片。每次请求独立，连续“不回复”不会累计判断对话，但获准的来信仍按存档设置保存，之后判断可读到。
-
-在「连接和权限 → 唤醒」可修改：
-
-| 设置 | 默认 | 含义 |
-|---|---|---|
-| `groupJudgeEnabled` | `true` | 开关，关闭恢复直接进入正式模型的行为 |
-| `groupJudgeModel` | 空 | `提供方/模型`，留空跟随群聊模型，再跟随 dsh 默认；使用 dsh 已配置的服务商 |
-| `groupJudgeContextCount` | `10` | 最近群聊条数，0～100；0不附带历史 |
-| `groupJudgeTimeoutSeconds` | `30` | 1～120秒，出错或超时本次不回复 |
-
-会多一次模型调用和等待；可选较便宜的判断模型。判断日志只记“回复 / 不回复 / 失败”，不记录完整提示词。
+按用户要求移除独立群聊判断及其设置、额外模型请求和上下文接口。群聊命中正文唤醒词、真实 @机器人、引用机器人或唤醒前缀后，按既有访问规则直接进入正式回复流程。没有额外判断模型调用。正式回复的群上下文、人格和记忆继续沿用原流程。

@@ -17,7 +17,6 @@ const ADMIN = '42'
 
 function settings(over = {}) {
   return {
-    groupJudge: { enabled: false, model: '', contextCount: 10, timeoutSeconds: 30 },
     cwd: '/tmp',
     wake: { wakePrefix: ['/'], ignoreBotSelfMessage: false, friendMessageNeedsWakePrefix: false },
     identifier: true, imageToModel: false, maxImages: 0,
@@ -90,7 +89,6 @@ function harness(over = {}, api = {}, hooks = {}) {
     log: () => {},
   })
   bridge = new Bridge({
-    judge: hooks.judge,
     agents,
     defaultModel: () => ({ currentSelection: () => ({ provider: 'deepseek', model: 'default-model' }) }),
     presets: () => ({ mount: async () => ({}), defaultId: hooks.defaultPreset }),
@@ -804,45 +802,4 @@ test('关键词不会跨 @ 等非正文消息段拼接，也不会匹配@全体�
   await h.groupMsg(9, 555, [text('晚上好，大肥鱼')])
   assert.equal(h.followups.length, 1)
   await h.bridge.dispose()
-})
-
-test('独立判断：拒绝不创建正式会话；通过保留消息对象；私聊和指令不判断', async () => {
-  const judged = []
-  let allow = false
-  const h = harness({ groupJudge: { enabled: true, model: 'cheap/judge', contextCount: 7, timeoutSeconds: 2 } }, memberInfo, {
-    judge: async (p, model, signal) => { judged.push({ p, model, signal }); return allow },
-  })
-  await h.groupMsg(77, 555, [at(BOT), text('是在讨论你')])
-  await h.groupMsg(77, 555, [at(BOT), text('继续讨论')])
-  assert.equal(h.created.length, 0)
-  assert.equal(h.followups.length, 0)
-  assert.equal(h.events.prompt.length, 0)
-  assert.equal(judged.length, 2)
-  assert.equal(judged[0].p.contextCount, 7)
-  assert.deepEqual(judged[0].model, { provider: 'cheap', model: 'judge' })
-  assert.ok(judged[0].p.content.some(p => p.text?.includes('是在讨论你')))
-  allow = true
-  await h.groupMsg(77, 555, [at(BOT), text('想问你个问题')])
-  assert.equal(h.followups.length, 1)
-  await h.privateMsg(77, [text('你好')])
-  await h.groupMsg(ADMIN, 555, [text('/help')])
-  assert.equal(judged.length, 3)
-})
-
-test('独立判断：默认开启、模型跟随群聊；错误、超时、白名单撤销均不进入正式会话', async () => {
-  const h = harness({ groupJudge: undefined, models: { group: 'deepseek/group-model', private: '', adminPrivate: '' } }, memberInfo, {
-    judge: async (_, model) => { assert.equal(model.model, 'group-model'); throw new Error('故障') },
-  })
-  await h.groupMsg(77, 555, [at(BOT), text('你好')])
-  assert.equal(h.created.length, 0)
-  const timed = harness({ groupJudge: { enabled: true, model: '', contextCount: 10, timeoutSeconds: 0.01 } }, memberInfo, { judge: () => new Promise(() => {}) })
-  await timed.groupMsg(77, 555, [at(BOT), text('你好')])
-  assert.equal(timed.created.length, 0)
-  let revoke
-  const changed = harness({ groupJudge: { enabled: true }, whitelist: { enabled: true, groupIds: ['555'] } }, memberInfo, {
-    judge: async () => { revoke(); return true },
-  })
-  revoke = () => changed.set({ whitelist: { enabled: true, groupIds: [] } })
-  await changed.groupMsg(77, 555, [at(BOT), text('你好')])
-  assert.equal(changed.created.length, 0)
 })

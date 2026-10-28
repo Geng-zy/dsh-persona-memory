@@ -2,14 +2,14 @@ import z from '@deepseek-ai/schemastery';
 import type { Context as CordisContext } from '@deepseek-ai/cordis';
 import type { AgentRegistry } from '@deepseek-ai/dsh-agent';
 import { AiocqhttpAdapter, AiocqhttpMessageEvent, MessageType, type AstrBotMessage, type MessageSession } from './adapter.js';
-import { type JudgePayload, type PromptPayload, type SentPayload, type SessionChange, type SessionInfo } from './bridge.js';
+import { type PromptPayload, type SentPayload, type SessionChange, type SessionInfo } from './bridge.js';
 import type { MessageChain } from './components.js';
 import { Media, type ModelPart } from './media.js';
 import { type PushService } from './alert.js';
 import { type TtsMode } from './tts.js';
 export * from './adapter.js';
 export * from './components.js';
-export type { JudgePayload, PromptPayload, SentPayload, SessionChange, SessionInfo } from './bridge.js';
+export type { PromptPayload, SentPayload, SessionChange, SessionInfo } from './bridge.js';
 export type { Converted, Media, ModelPart } from './media.js';
 export { ActionFailed, ApiNotAvailable, NetworkError } from './onebot/errors.js';
 export interface Config {
@@ -18,10 +18,6 @@ export interface Config {
     ws_reverse_port: number;
     ws_reverse_token: string;
     wake_prefix: string[];
-    groupJudgeEnabled: boolean;
-    groupJudgeModel: string;
-    groupJudgeContextCount: number;
-    groupJudgeTimeoutSeconds: number;
     wakeKeywords: string[];
     friend_message_needs_wake_prefix: boolean;
     ignore_bot_self_message: boolean;
@@ -167,11 +163,9 @@ declare module '@deepseek-ai/cordis' {
         napcat: NapcatService;
     }
     interface Events {
-        /** 每条转换好的 OneBot 消息/通知/请求；isWake 表示命中唤醒，仍需白名单和独立判断 */
+        /** 每条转换好的 OneBot 消息/通知/请求；isWake 表示是否会交给模型 */
         'napcat/message'(abm: AstrBotMessage, event: AiocqhttpMessageEvent, isWake: boolean): void;
-        /** 本插件新增：独立判断前只读收集上下文（serial），不创建正式会话。 */
-        'napcat/judge-context'(payload: JudgePayload): void | Promise<void>;
-        /** 交给正式模型之前（serial），监听者可扩展 payload.content。 */
+        /** 交给模型之前（serial）：监听者可以直接改 payload.content，往前后加文字或图片 */
         'napcat/prompt'(payload: PromptPayload): void | Promise<void>;
         /** 她发出了一条 QQ 消息 */
         'napcat/sent'(payload: SentPayload): void;

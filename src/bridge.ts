@@ -52,8 +52,6 @@ export interface WakeConfig {
 }
 
 export interface BridgeDeps {
-  /** 本插件新增：无会话、无工具的独立群聊判断。 */
-  judge?(payload: JudgePayload, model: { provider: string; model: string }, signal: AbortSignal): Promise<boolean>
   agents: AgentRegistry
   /** 新会话用的默认模型（dsh-agent-default-model） */
   defaultModel(): { currentSelection(): { provider: string; model: string; reasoningEffort?: string } | undefined } | undefined
@@ -91,7 +89,6 @@ export interface BridgeDeps {
 }
 
 export interface BridgeSettings {
-  groupJudge?: { enabled: boolean; model: string; contextCount: number; timeoutSeconds: number }
   cwd: string
   wake: WakeConfig
   /** 群消息前面加 [昵称(QQ号)]，让模型知道是谁在说话 */
@@ -167,16 +164,6 @@ export interface PromptPayload {
    * 元素是 { type: 'text', text } 或 { type: 'image', mediaType, data(base64) }，插件一之后统一交给附件服务。
    */
   content: ModelPart[]
-}
-
-/** 本插件新增：只读判断上下文，不建立 dsh 会话，也不写正式对话历史。 */
-export interface JudgePayload {
-  umo: string
-  session: MessageSession
-  message: AstrBotMessage
-  contextCount: number
-  content: ModelPart[]
-  context: string[]
 }
 
 /** 'napcat/sent' 的参数。 */
@@ -509,8 +496,6 @@ export class Bridge {
   private async dispatch(event: AiocqhttpMessageEvent, umo: string, abm: AstrBotMessage, content: ModelPart[]): Promise<void> {
     const target = this.targetOf(event, umo)
     if (!this.canSend(target.session, target.senderId)) return
-    if (!await this.shouldRespond(target, abm, content)) return
-    if (!this.canSend(target.session, target.senderId)) return
     const chat = await this.ensureChat(target)
     chat.send = target.send
     // 本插件新增：交给模型前让其他插件（记忆等）往内容里加东西
@@ -540,36 +525,6 @@ export class Bridge {
       content: admitted as never,
       source: { kind: 'plugin:napcat-bridge', ...(target.isGroup ? { replyTo: { userId: target.senderId, messageId: abm.message_id } } : {}) },
     }))
-  }
-
-  /** 本插件新增：群里被唤醒只是候选；单独判断通过后才进入正式会话。 */
-  private async shouldRespond(target: Target, message: AstrBotMessage, content: ModelPart[]): Promise<boolean> {
-    const cfg = this.deps.settings().groupJudge
-    if (!target.isGroup || cfg?.enabled === false) return true
-    const selection = cfg?.model?.trim() ? parseModel(cfg.model.trim()) : this.modelFor(target).agentOptions
-    const controller = new AbortController()
-    let timer: ReturnType<typeof setTimeout> | undefined
-    try {
-      if (!selection || !this.deps.judge) throw new Error('独立判断模型不可用')
-      const payload: JudgePayload = { umo: target.umo, session: target.session, message,
-        contextCount: cfg?.contextCount ?? 10, content: [...content], context: [] }
-      return await Promise.race([
-        this.deps.judge(payload, selection, controller.signal),
-        new Promise<boolean>((_, reject) => { timer = setTimeout(() => {
-          controller.abort()
-          reject(new Error('独立判断超时'))
-        }, (cfg?.timeoutSeconds ?? 30) * 1000) }),
-      ]).then(ok => {
-        this.deps.log('info', target.umo + (ok ? ' 独立判断：回复' : ' 独立判断：不回复'))
-        return ok
-      })
-    } catch (e) {
-      this.deps.log('warn', '群聊独立判断失败，本次不回复：' + errText(e))
-      return false
-    } finally {
-      if (timer !== undefined) clearTimeout(timer)
-      controller.abort()
-    }
   }
 
   /** QQ 里的指令。返回 true 表示已处理（不再交给模型）。 */

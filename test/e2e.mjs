@@ -51,13 +51,12 @@ const llm = createServer((req, res) => {
     }
     const json = JSON.parse(body || '{}')
     const text = lastUserText(json)
-    const isJudge = text.includes('你负责判断 QQ 群聊中的陪伴角色')
-    if (!isJudge) modelRequests.push(text)
+    modelRequests.push(text)
     const lastUser = [...(json.messages ?? [])].reverse().find(m => m.role === 'user')
     modelFull.push(typeof lastUser?.content === 'string' ? lastUser.content : (lastUser?.content ?? []).filter(b => b.type === 'text').map(b => b.text).join('\n'))
     const user = [...(json.messages ?? [])].reverse().find(m => m.role === 'user')
     modelImages.push(Array.isArray(user?.content) ? user.content.filter(b => b.type === 'image').length : 0)
-    const reply = isJudge ? JSON.stringify({ addressed: true, reply: !text.split('<current_message>')[1]?.includes('JUDGE-SKIP') }) : '回复:' + text
+    const reply = '回复:' + text
     res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' })
     const ev = (type, data) => res.write('event: ' + type + '\ndata: ' + JSON.stringify({ type, ...data }) + '\n\n')
     ev('message_start', { message: { id: 'msg_e2e', type: 'message', role: 'assistant', model: json.model ?? 'e2e', content: [], usage: { input_tokens: 10, output_tokens: 0 } } })
