@@ -31,3 +31,17 @@
 .sc-doc-preview{padding:14px 16px;background:var(--sc-field);min-height:200px;max-height:65vh;overflow:auto}.sc-doc-preview pre{white-space:pre-wrap;overflow-wrap:anywhere;margin:15px 0 0;font:13px/1.85 var(--dsw-font-family-mono,ui-monospace,monospace);color:var(--sc-text)}
 .sc-doc-notice{padding:12px 14px;border:1px solid var(--sc-border);border-radius:8px;background:var(--sc-soft)}.sc-doc-notice p{margin:0 0 9px}.sc-prompt-records{margin-top:10px;border-top:1px solid var(--sc-border);padding-top:10px;font-size:11px}.sc-prompt-records summary{cursor:pointer}.sc-prompt-records ul{list-style:none;padding:0;margin:10px 0 0;display:grid;gap:8px}.sc-prompt-records li{display:flex;flex-wrap:wrap;gap:8px 16px;color:var(--sc-muted)}
 @media(max-width:520px){.sc-doc-toolbar,.sc-doc-actions{align-items:flex-start}.sc-doc-file{display:block}.sc-doc-file span{display:block;margin-top:4px}.sc-doc-actions>.compc-row{gap:4px}.sc-app .sc-doc-panel .sc-doc-text{min-height:260px}.sc-persona-status{padding:12px}}
+
+/* The host settings dialog already owns its outer navigation; use a compact category strip. */
+.sc-settings-entry .sc-app{padding-top:0}.sc-settings-entry .sc-layout{grid-template-columns:1fr;gap:14px}.sc-settings-entry .sc-nav{position:static;display:flex;overflow-x:auto;gap:4px;padding:0 0 7px}.sc-settings-entry .sc-nav-item{flex:none;white-space:nowrap;padding:8px 10px}.sc-settings-entry .sc-nav-number{display:none}.sc-settings-entry .sc-hero{padding:16px;margin-bottom:16px}.sc-settings-entry .sc-hero h2{font-size:20px}.sc-settings-entry .sc-search-row{margin-bottom:16px}
+.sc-settings-entry{min-width:0;max-width:100%}.sc-settings-entry .sc-app{width:100%;min-width:0}.sc-settings-entry .sc-layout{grid-template-columns:minmax(0,1fr)}.sc-settings-entry .sc-nav{min-width:0;max-width:100%}.sc-settings-entry .sc-hero>div:not(.sc-brand-mark){min-width:0}
+/* dsh 0.2.1 keeps a fixed 188px settings sidebar. Reflow only while this entry is active. */
+@media(max-width:600px){
+[data-shortcut-modal="settings"]:has(.sc-settings-entry){max-width:calc(100vw - 16px);height:calc(100dvh - 16px);flex-direction:column}
+[data-shortcut-modal="settings"]:has(.sc-settings-entry)>nav{width:100%;padding:12px 12px 0;gap:8px}
+[data-shortcut-modal="settings"]:has(.sc-settings-entry)>nav>div:last-child{flex-direction:row;overflow-x:auto;overflow-y:hidden}
+[data-shortcut-modal="settings"]:has(.sc-settings-entry)>nav>div:last-child>button{flex:none}
+[data-shortcut-modal="settings"]:has(.sc-settings-entry)>div:last-child{min-height:0}
+[data-shortcut-modal="settings"]:has(.sc-settings-entry)>div:last-child>div:first-child{height:42px;padding:6px 12px}
+[data-shortcut-modal="settings"]:has(.sc-settings-entry)>div:last-child>div:last-child{padding:0 12px 12px}
+}

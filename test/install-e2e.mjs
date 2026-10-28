@@ -30,8 +30,12 @@ try {
  assert.ok([302,303].includes(login.status))
  headers.cookie=login.headers.getSetCookie().map(c=>c.split(';')[0]).join('; ')
  const get=async p=>{const r=await fetch(physical+'api/'+p,{headers});assert.equal(r.status,200,p);return r.json()}
- const bridge=await get('snowluma-bridge/status'),core=await get('companion/state'),models=await get('snowluma-bridge/llm/dsh-models')
- assert.equal(bridge.listening,true);assert.ok(core.archive);assert.equal(core.snowluma,true);assert.equal(core.backupItemsAll.length,9)
+ // The web login URL can be ready before the reverse-WS server finishes binding.
+ let bridge=await get('snowluma-bridge/status')
+ const listeningDeadline=Date.now()+10000
+ while(!bridge.listening&&Date.now()<listeningDeadline){await new Promise(r=>setTimeout(r,100));bridge=await get('snowluma-bridge/status')}
+ const core=await get('companion/state'),models=await get('snowluma-bridge/llm/dsh-models')
+ assert.equal(bridge.listening,true,'reverse WS must become ready: '+JSON.stringify(bridge));assert.ok(core.archive);assert.equal(core.snowluma,true);assert.equal(core.backupItemsAll.length,9)
  assert.equal(models.default.provider,'deepseek-official');assert.equal(models.default.model,'deepseek-flash')
  console.log('[install-e2e] Packed fresh profile, official peer resolution, custom model configuration, public Host/Origin trust, login and plugin/database endpoints passed')
 } finally {

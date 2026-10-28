@@ -18,12 +18,12 @@ curl -fsSL https://raw.githubusercontent.com/Geng-zy/dsh-snowluma-companion/main
 
 ## 安装与升级
 
-要求 dsh **0.2.1-rc.2** 对应 SDK、Node **≥22.13**（使用内置 SQLite）。在 dsh 插件管理页安装本仓库 [v1.3.0](https://github.com/Geng-zy/dsh-snowluma-companion/releases/tag/v1.3.0) 的 `.tgz`。只需安装一个包；QQ 协议端仍由官方 SnowLuma Docker 镜像运行。
+要求 dsh **0.2.1-rc.2** 对应 SDK、Node **≥22.13**（使用内置 SQLite）。在 dsh 插件管理页安装本仓库 [v1.3.1](https://github.com/Geng-zy/dsh-snowluma-companion/releases/tag/v1.3.1) 的 `.tgz`。只需安装一个包；QQ 协议端仍由官方 SnowLuma Docker 镜像运行。
 
 从两个旧插件升级时，停止 dsh，保留现有数据与 profile 配置，以 profile 所属用户执行：
 
 ```sh
-node /解包目录/deploy/migrate-profile.mjs /绝对路径/profiles/web /绝对路径/dsh-snowluma-companion-1.3.0.tgz
+node /解包目录/deploy/migrate-profile.mjs /绝对路径/profiles/web /绝对路径/dsh-snowluma-companion-1.3.1.tgz
 cd /绝对路径/profiles/web
 pnpm install
 ```
@@ -36,7 +36,13 @@ pnpm install
 
 ![人格编辑器](docs/images/persona-editor.png)
 
-## 一个统一设置入口
+## 设置入口
+
+打开 **更多 → 设置 → SnowLuma 陪伴助手**。插件管理中的配置入口仍然可用；两处共用同一套表单和保存操作。主设置页使用横向分组导航，以适应设置面板宽度。
+
+![主设置中的插件入口](docs/images/settings-entry.png)
+
+## 统一设置界面
 
 设置页按用途组织，支持搜索全部设置、独立折叠、全部展开/收起、浏览器记忆展开状态，以及跨分组统一保存设置。已打开的编辑器在分组切换和收起后保留草稿；人格、核心记忆、日记正文使用编辑器内的保存按钮。
 

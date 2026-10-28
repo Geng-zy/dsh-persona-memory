@@ -96,12 +96,18 @@ window.__ModuleLoader__.load({
       }
       refreshSecrets(); scopes.forEach(scope => ctx.effect(() => scope.subscribe(refreshSecrets), "companion: secret state"));
       var editBridge = (field, text) => { actions[0].edit(field, text); if (field === "silenceToken") actions[1].edit(field, text); };
-      ctx.effect(() => ctx.configForms.whileServed(["snowluma-bridge", "companion-core"], () => ctx.slots.inject("plugins.bundle.config", () => ctx.slots.register({ name: "plugins.bundle.config", key: PACKAGE, locale: NS,
-        inject: () => ({ hooks: { snowlumaForm: models[0].store, companionForm: models[1].store },
+      // Both entry points use the same forms and actions; only the host layout differs.
+      var injected = () => ({ hooks: { snowlumaForm: models[0].store, companionForm: models[1].store },
           bridgeEdit: editBridge, companionEdit: actions[1].edit, bridgeReset: field => { actions[0].resetField(field); if (field === "silenceToken") actions[1].resetField(field); }, companionReset: actions[1].resetField,
           saveAll: async () => { if (models.some(m => m.form.shell().invalid || !m.form.shell().writable)) return; for (var model of models) { await model.form.save(); if (model.form.shell().failed) return; } }, discardAll: () => { actions.forEach(a => a.discard()); }
-        })
-      }, SettingsPage))), "companion: unified settings page");
+        });
+      ctx.effect(() => ctx.configForms.whileServed(["snowluma-bridge", "companion-core"], () => ctx.slots.inject("plugins.bundle.config", () => ctx.slots.register({
+        name: "plugins.bundle.config", key: PACKAGE, locale: NS, inject: injected
+      }, SettingsPage))), "companion: plugin settings entry");
+      var translate = ctx.locale.bind(NS);
+      ctx.effect(() => ctx.configForms.whileServed(["snowluma-bridge", "companion-core"], () => ctx.slots.inject("settings.section", () => ctx.slots.register({
+        name: "settings.section", id: PACKAGE, order: 46, label: () => translate("title"), locale: NS, inject: injected
+      }, props => h("div", { className: "sc-settings-entry" }, h(SettingsPage, props))))), "companion: main settings entry");
     }
     return { inject: ["slots", "locale", "configForms", "remote", "remote.settings"], apply: apply, SettingsPage: SettingsPage };
   }

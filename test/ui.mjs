@@ -35,8 +35,18 @@ export async function runUi(session) {
   await min.fill('-1');assert.ok(await save.isDisabled(),'invalid values block a combined save')
   await min.fill(previous);await save.click()
   await page.waitForFunction(()=>document.querySelector('.sc-save strong')?.textContent==='所有设置已保存')
-  await page.reload();await page.getByRole('button',{name:'插件',exact:true}).click();await page.getByText('dsh-snowluma-companion',{exact:true}).click();await app.waitFor();await navigate('聊天与回复');await expand()
+  // Reopen through the host settings navigation, then run all editor/restore tests there.
+  await page.reload();await page.getByRole('button',{name:'插件',exact:true}).waitFor()
+  await page.getByRole('button',{name:'账号菜单',exact:true}).click()
+  await page.getByRole('menuitem',{name:/^设置/}).click()
+  const settingsDialog=page.getByRole('dialog',{name:'设置',exact:true})
+  await settingsDialog.getByRole('button',{name:'SnowLuma 陪伴助手',exact:true}).click()
+  await page.locator('.sc-settings-entry .sc-app').waitFor()
+  assert.equal(await app.count(),1,'one shared settings UI, no duplicate form')
+  await settingsDialog.screenshot({path:join(artifacts,'settings-entry.png')})
+  await navigate('聊天与回复');await expand()
   assert.equal(await keyword.inputValue(),wakeValue);assert.equal(await groupContext.inputValue(),contextValue)
+  console.log('[ui] Host Settings entry opens the same nine-group UI and reads settings saved through the plugin entry')
   const endpoint=path=>session.url+'api/companion/'+path
   const post=async(path,data)=>{const response=await page.request.post(endpoint(path),{data});assert.ok(response.ok(),path);return response.json()}
   const state=async()=>{const response=await page.request.get(endpoint('state'));assert.ok(response.ok());return response.json()}
@@ -100,7 +110,7 @@ export async function runUi(session) {
   await collapse();await app.evaluate(el=>el.scrollIntoView({block:'start'}));await app.screenshot({path:join(artifacts,'settings-desktop.png')})
   await page.emulateMedia({colorScheme:'dark'});await app.screenshot({path:join(artifacts,'settings-dark.png')})
   await page.setViewportSize({width:390,height:844});await page.waitForTimeout(150)
-  assert.ok(await app.evaluate(el=>el.scrollWidth<=el.clientWidth+2),'settings must fit mobile width')
+  assert.ok(await app.evaluate(el=>el.scrollWidth<=el.clientWidth+2),'settings must fit mobile width: '+JSON.stringify(await app.evaluate(el=>({client:el.clientWidth,scroll:el.scrollWidth,overflow:[...el.querySelectorAll('*')].filter(x=>x.getBoundingClientRect().right>el.getBoundingClientRect().right+2).slice(0,8).map(x=>({class:x.className,width:x.clientWidth,scroll:x.scrollWidth}))}))))
   await app.screenshot({path:join(artifacts,'settings-mobile.png')})
   await navigate('人格与核心记忆');await page.setViewportSize({width:390,height:1800});await persona.evaluate(el=>el.scrollIntoView({block:'start'}));await persona.screenshot({path:join(artifacts,'persona-editor-mobile.png')})
   assert.ok(await app.evaluate(el=>el.scrollWidth<=el.clientWidth+2),'persona editor must fit mobile width')
