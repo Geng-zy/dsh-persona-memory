@@ -15,7 +15,9 @@
     "declarationDir": "lib/types",
     "types": [
       "node"
-    ]
+    ],
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
   },
   "include": [
     "src"

@@ -41,8 +41,13 @@ if (bad.length) { console.error("设置页词典里有重名：" + bad.join(", "
 ' || exit 1
 
 echo "== 单元测试"
-"${PNPM[@]}" test 2>&1 | grep -E "^(not ok|ℹ (pass|fail))" || true
-"${PNPM[@]}" test >/dev/null 2>&1 || { echo "单元测试没通过，运行 pnpm test 看详情" >&2; exit 1; }
+TEST_LOG="$(mktemp)"
+trap 'rm -f "$TEST_LOG"' EXIT
+if ! "${PNPM[@]}" test >"$TEST_LOG" 2>&1; then
+  cat "$TEST_LOG" >&2
+  exit 1
+fi
+grep -E "^(not ok|ℹ (pass|fail))" "$TEST_LOG" || true
 
 if [ "${SKIP_E2E:-0}" != "1" ]; then
   echo "== 端到端测试（真实 dsh + 假模型 + 假 NapCat）"

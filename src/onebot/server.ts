@@ -278,7 +278,7 @@ export class CQHttp {
       const state = this.states.get(eventWs)
       if (state !== undefined) apiWs = this.apiClients.get(state.selfId)
     } else if (this.apiClients.size === 1) {
-      apiWs = [...this.apiClients.values()][0]
+      apiWs = this.apiClients.values().next().value
     }
     if (apiWs === undefined) throw new ApiNotAvailable()
 

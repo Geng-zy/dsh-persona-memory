@@ -6,8 +6,7 @@
 window.__ModuleLoader__.load({
 	id: "dsh-napcat-bridge",
 	factory: (require) => {
-		var module = { exports: {} };
-		var exports = module.exports;
+		var exports = {};
 		var reactModule = require("react");
 		var React = typeof reactModule.createElement === "function" ? reactModule : reactModule.default;
 		var P = require("@deepseek-ai/dsh-client-ui-primitives");
@@ -97,8 +96,6 @@ window.__ModuleLoader__.load({
 			modelManual: "手动填写…",
 			modelManualLabel: "模型名（手动填写）",
 			modelPickList: "从列表选",
-			modelNoteArk: "火山方舟的模型可以填模型名，也可以填控制台里建的推理接入点 ID（ep- 开头）。",
-			modelNoteLocal: "本机服务：先在服务器上装好并下载模型；Key 随便填一个（比如 local）。",
 			summary: "把 NapCat（OneBot v11）接到 dsh，照搬 AstrBot 的 aiocqhttp 适配器。",
 			connection: "连接",
 			connectionHint: "本插件作为反向 WebSocket 服务端。请在 NapCat 中创建 WebSocket 客户端，连接 ws://<地址>:<端口>/ws，并使用一致的 Token。保存监听地址或端口后会重新监听，现有连接需重新建立。",
@@ -163,7 +160,6 @@ window.__ModuleLoader__.load({
 			groupWhitelistHint: "填写允许接收普通群成员消息及主动聊天的群号或完整群会话标识，多个值用空格或逗号分隔。白名单开启且列表为空时，不允许普通群回复或群主动聊天。管理员可触发回复，但名单外群的双方消息均不存档。",
 			privateWhitelist: "其他人私聊白名单",
 			privateWhitelistHint: "填写允许普通私聊的 QQ 号或完整私聊会话标识，多个值用空格或逗号分隔。管理员无需添加；白名单开启且列表为空时，仅管理员私聊可通过。",
-			whitelistHint: "旧版混合名单兼容说明：可使用群号、私聊 QQ 号或完整会话标识；使用 /sid 查询会话标识。新配置应分别填写群聊和私聊白名单。",
 			wlAdminGroup: "管理员始终豁免。群主动聊天仍查群白名单，不会因为管理员之前在群里说过话就放行。",
 			wlLog: "不在白名单时记日志",
 			wlLogHint: "记录因回复白名单检查而被拒绝的会话标识，便于核对访问配置。仅影响日志输出，不改变消息处理权限。",
@@ -205,7 +201,6 @@ window.__ModuleLoader__.load({
 			keySet: "已设置 Key。",
 			keyUnset: "没有设置 Key。",
 			sttModel: "模型",
-			sttModelHint: "转录接口使用的模型标识，须与服务商支持的模型名称一致。例如 FunAudioLLM/SenseVoiceSmall；此项不用于选择聊天模型。",
 			video: "视频",
 			videoHint: "通过 ffmpeg 从视频中提取静态画面，并附加视频说明后提交给支持图片输入的模型。抽帧数量计入当前消息的图片上限；未启用或处理失败时保留视频类型标记。",
 			videoFrames: "视频抽帧",
@@ -343,7 +338,6 @@ window.__ModuleLoader__.load({
 			adminPrivateModel: "管理员私聊用的模型",
 			privateModel: "私聊用的模型",
 			groupModel: "群聊用的模型",
-			modelHint: "模型标识格式为“提供方/模型”。管理员私聊未单独设置时使用私聊模型；私聊和群聊模型留空时使用 dsh 默认模型。所选提供方需已在 dsh 配置凭据。",
 			adminPrivateReasoning: "管理员私聊的思考等级",
 			privateReasoning: "其他私聊的思考等级",
 			groupReasoning: "群聊的思考等级",
@@ -465,8 +459,6 @@ window.__ModuleLoader__.load({
 			modelManual: "Type a model…",
 			modelManualLabel: "Model name",
 			modelPickList: "Pick from list",
-			modelNoteArk: "Ark accepts a model name or an endpoint ID (ep-…).",
-			modelNoteLocal: "Local service: install it and pull the model on the server first; any key works (e.g. local).",
 			summary: "Connect NapCat (OneBot v11) to dsh, a port of AstrBot's aiocqhttp adapter.",
 			connection: "Connection",
 			connectionHint: "This plugin hosts the reverse WebSocket server. Configure a NapCat WebSocket client for ws://<host>:<port>/ws with a matching token. Changing the host or port restarts the listener and requires reconnection.",
@@ -531,7 +523,6 @@ window.__ModuleLoader__.load({
 			groupWhitelistHint: "Group IDs or full group conversation IDs allowed for ordinary replies and proactive chat, separated by spaces or commas. With allowlists enabled, an empty list denies both. Administrators may trigger replies in unlisted groups, but neither side is archived there.",
 			privateWhitelist: "Other private chats allowlist",
 			privateWhitelistHint: "QQ IDs or full private conversation IDs allowed for non-administrator private chats, separated by spaces or commas. Administrators need no entry. With allowlists enabled, an empty list permits administrator private chats only.",
-			whitelistHint: "Legacy mixed-allowlist format: group IDs, private QQ IDs, or full conversation IDs. Use /sid to inspect an ID. Configure the separate group and private lists for new setups.",
 			wlAdminGroup: "Admins always bypass. Proactive group chats still need the group allowlist and cannot inherit a previous admin message.",
 			wlLog: "Log blocked chats",
 			wlLogHint: "Log conversation IDs rejected by reply allowlist checks. This helps verify access settings and does not alter permissions.",
@@ -573,7 +564,6 @@ window.__ModuleLoader__.load({
 			keySet: "A key is set.",
 			keyUnset: "No key is set.",
 			sttModel: "Model",
-			sttModelHint: "Model ID accepted by the transcription service, such as FunAudioLLM/SenseVoiceSmall. This selects a transcription model, not the conversation model.",
 			video: "Video",
 			videoHint: "Extract still frames with ffmpeg and submit them with a video description to an image-capable model. Frames count toward the per-message image limit. Disabled or failed processing leaves a video placeholder.",
 			videoFrames: "Grab video frames",
@@ -711,7 +701,6 @@ window.__ModuleLoader__.load({
 			adminPrivateModel: "Model for admin private chats",
 			privateModel: "Model for private chats",
 			groupModel: "Model for group chats",
-			modelHint: "Use provider/model format. Administrator private chats fall back to the private model; blank private or group models use the dsh default. Configure provider credentials in dsh first.",
 			adminPrivateReasoning: "Reasoning for admin private chats",
 			privateReasoning: "Reasoning for other private chats",
 			groupReasoning: "Reasoning for group chats",
@@ -1042,10 +1031,8 @@ window.__ModuleLoader__.load({
 		}
 		function ConnectionTest(props) {
 			var t = props.t;
-			var stateHook = React.useState(null);
-			var result = stateHook[0], setResult = stateHook[1];
-			var busyHook = React.useState(false);
-			var busy = busyHook[0], setBusy = busyHook[1];
+			var [result, setResult] = React.useState(null);
+			var [busy, setBusy] = React.useState(false);
 			function run() {
 				setBusy(true);
 				var url = new URL("api/napcat-bridge/status", document.baseURI).href;
@@ -1068,8 +1055,8 @@ window.__ModuleLoader__.load({
 		/** 语音转文字的「测试」（POST <dsh>/api/napcat-bridge/stt/test，用保存过的设置拿一段静音试）。 */
 		function SttTest(props) {
 			var t = props.t;
-			var stateHook = React.useState(null), result = stateHook[0], setResult = stateHook[1];
-			var busyHook = React.useState(false), busy = busyHook[0], setBusy = busyHook[1];
+			var [result, setResult] = React.useState(null);
+			var [busy, setBusy] = React.useState(false);
 			function run() {
 				setBusy(true);
 				fetch(new URL("api/napcat-bridge/stt/test", document.baseURI).href, { method: "POST", credentials: "same-origin", cache: "no-store" })
@@ -1089,10 +1076,8 @@ window.__ModuleLoader__.load({
 		/** ffmpeg 状态和一键安装（GET/POST <dsh>/api/napcat-bridge/ffmpeg[/install]）。 */
 		function FfmpegStatus(props) {
 			var t = props.t;
-			var stHook = React.useState(null);
-			var st = stHook[0], setSt = stHook[1];
-			var errHook = React.useState(null);
-			var err = errHook[0], setErr = errHook[1];
+			var [st, setSt] = React.useState(null);
+			var [err, setErr] = React.useState(null);
 			var url = function (path) { return new URL("api/napcat-bridge/" + path, document.baseURI).href; };
 			function load(method, path) {
 				return fetch(url(path), { method: method, credentials: "same-origin", cache: "no-store" })
@@ -1108,8 +1093,7 @@ window.__ModuleLoader__.load({
 				return function () { clearInterval(timer); };
 			}, [busy]);
 			// 页面内确认（不用 window.confirm：dsh 桌面端里浏览器弹窗可能不显示）
-			var askHook = React.useState(false);
-			var asking = askHook[0], setAsking = askHook[1];
+			var [asking, setAsking] = React.useState(false);
 			function install() {
 				setAsking(false);
 				load("POST", "ffmpeg/install");
@@ -1164,7 +1148,6 @@ window.__ModuleLoader__.load({
 		}
 
 		function Secret(props) {
-			var t = props.t;
 			var set = props.state.secretSet[props.field] === true;
 			return h(P.SettingsSecretField, {
 				id: "napcat-bridge-" + props.field,
@@ -1180,8 +1163,8 @@ window.__ModuleLoader__.load({
 		/** 手动部署时用：随机生成一个 Token（填进上面的框，保存后生效），并告诉你 NapCat 里该填什么 */
 		function NapcatSetup(props) {
 			var t = props.t;
-			var genHook = React.useState(""), made = genHook[0], setMade = genHook[1];
-			var copiedHook = React.useState(false), copied = copiedHook[0], setCopied = copiedHook[1];
+			var [made, setMade] = React.useState("");
+			var [copied, setCopied] = React.useState(false);
 			var port = (props.state.ws_reverse_port && props.state.ws_reverse_port.text) || "6199";
 			var wsUrl = "ws://127.0.0.1:" + port + "/ws";
 			function generate() {
@@ -1246,8 +1229,8 @@ window.__ModuleLoader__.load({
 			var t = props.t;
 			var url = props.state[props.urlField].text;
 			var cur = providerOf(url);
-			var openHook = React.useState(false), open = openHook[0], setOpen = openHook[1];
-			var qHook = React.useState(""), q = qHook[0], setQ = qHook[1];
+			var [open, setOpen] = React.useState(false);
+			var [q, setQ] = React.useState("");
 			function choose(p) {
 				setOpen(false); setQ("");
 				if (!p) { props.onCustom && props.onCustom(); return; }
@@ -1281,10 +1264,10 @@ window.__ModuleLoader__.load({
 			var url = props.state[props.urlField].text;
 			var cur = providerOf(url);
 			var model = props.state[props.modelField].text;
-			var listHook = React.useState(null), fetched = listHook[0], setFetched = listHook[1];
-			var msgHook = React.useState(null), msg = msgHook[0], setMsg = msgHook[1];
-			var busyHook = React.useState(false), busy = busyHook[0], setBusy = busyHook[1];
-			var manualHook = React.useState(false), manual = manualHook[0], setManual = manualHook[1];
+			var [fetched, setFetched] = React.useState(null);
+			var [msg, setMsg] = React.useState(null);
+			var [busy, setBusy] = React.useState(false);
+			var [manual, setManual] = React.useState(false);
 			function fetchModels() {
 				var typedKey = props.state[props.keyField] ? props.state[props.keyField].text : "";
 				setBusy(true); setMsg(null);
@@ -1319,7 +1302,6 @@ window.__ModuleLoader__.load({
 					h("button", { type: "button", className: "napcatb-pBtn", disabled: busy || props.disabled || !url, onClick: fetchModels }, busy ? t("modelFetching") : t("modelFetch")),
 					showSelect ? null : (options.length > 0 ? h("button", { type: "button", className: "napcatb-pBtn", onClick: function () { setManual(false); } }, t("modelPickList")) : null)),
 				showSelect ? null : h(Value, Object.assign({}, props.common, { field: props.modelField, label: t("modelManualLabel"), hint: t("pModelHint") })),
-				cur && cur.note ? h("p", { className: "napcatb-hint" }, t(cur.note)) : null,
 				msg ? h("p", { className: "napcatb-pill napcatb-result napcatb-" + msg.tone, role: "status" }, msg.text) : null);
 		}
 		//#endregion
@@ -1344,9 +1326,9 @@ window.__ModuleLoader__.load({
 		/** 一类聊天（主人私聊 / 其他私聊 / 群聊）：模型下拉 + 思考等级下拉 */
 		function ChatModelPick(props) {
 			var t = props.t;
-			var listHook = React.useState(null), list = listHook[0], setList = listHook[1];
-			var errHook = React.useState(null), err = errHook[0], setErr = errHook[1];
-			var effHook = React.useState(null), eff = effHook[0], setEff = effHook[1];
+			var [list, setList] = React.useState(null);
+			var [err, setErr] = React.useState(null);
+			var [eff, setEff] = React.useState(null);
 			var value = props.state[props.modelField].text;
 			var effort = props.state[props.effortField].text || props.effortFallback;
 			React.useEffect(function () { loadDshModels().then(setList, function (e) { setErr(e && e.message || String(e)); }); }, []);
@@ -1396,7 +1378,7 @@ window.__ModuleLoader__.load({
 		/** 设置页最上面：小号有问题时醒目地提示 */
 		function WatchBanner(props) {
 			var t = props.t;
-			var stHook = React.useState(null), st = stHook[0], setSt = stHook[1];
+			var [st, setSt] = React.useState(null);
 			React.useEffect(function () {
 				var alive = true;
 				function load() { napcatApi("GET", "watch").then(function (r) { if (alive) setSt(r); }, function () {}); }
@@ -1414,8 +1396,8 @@ window.__ModuleLoader__.load({
 		}
 		function AlertTest(props) {
 			var t = props.t;
-			var rHook = React.useState(null), r = rHook[0], setR = rHook[1];
-			var busyHook = React.useState(false), busy = busyHook[0], setBusy = busyHook[1];
+			var [r, setR] = React.useState(null);
+			var [busy, setBusy] = React.useState(false);
 			function run() {
 				setBusy(true); setR(null);
 				napcatApi("POST", "alert/test", { channel: props.channel, form: formValues(props.state) })
@@ -1431,8 +1413,8 @@ window.__ModuleLoader__.load({
 		/** 掉线提醒这一块 */
 		function WatchSection(props) {
 			var t = props.t, common = props.common, state = props.state;
-			var stHook = React.useState(null), st = stHook[0], setSt = stHook[1];
-			var busyHook = React.useState(false), busy = busyHook[0], setBusy = busyHook[1];
+			var [st, setSt] = React.useState(null);
+			var [busy, setBusy] = React.useState(false);
 			function load(fresh) { setBusy(true); return napcatApi("GET", "watch" + (fresh ? "?fresh=1" : "")).then(setSt, function () {}).finally(function () { setBusy(false); }); }
 			React.useEffect(function () { load(false); }, []);
 			var host = state.smtpHost.text, preset = MAIL_PRESETS.filter(function (m) { return m.host === host; })[0];
@@ -1478,8 +1460,8 @@ window.__ModuleLoader__.load({
 		/** 试听：只用一家念一句，页面上直接播放（POST <dsh>/api/napcat-bridge/tts/test） */
 		function TtsTest(props) {
 			var t = props.t;
-			var rHook = React.useState(null), r = rHook[0], setR = rHook[1];
-			var busyHook = React.useState(false), busy = busyHook[0], setBusy = busyHook[1];
+			var [r, setR] = React.useState(null);
+			var [busy, setBusy] = React.useState(false);
 			function run() {
 				var st = props.state, v = function (f) { return st[f] ? st[f].text : ""; };
 				var form = {};
@@ -1498,8 +1480,8 @@ window.__ModuleLoader__.load({
 		}
 		function TtsSection(props) {
 			var t = props.t, common = props.common, state = props.state;
-			var stHook = React.useState(null), st = stHook[0], setSt = stHook[1];
-			var textHook = React.useState(""), text = textHook[0], setText = textHook[1];
+			var [st, setSt] = React.useState(null);
+			var [text, setText] = React.useState("");
 			function load() { napcatApi("GET", "tts/status").then(setSt, function () {}); }
 			React.useEffect(load, []);
 			var mode = state.ttsMode.text || "tag";
@@ -1558,9 +1540,9 @@ window.__ModuleLoader__.load({
 			var disabled = !state.writable || state.saving;
 			var common = { t: t, state: state, disabled: disabled, edit: props.edit, resetField: props.resetField };
 			var sttMode = state.sttMode.text || "off";
-			var tabHook = React.useState(readTab), tab = tabHook[0], setTab = tabHook[1];
+			var [tab, setTab] = React.useState(readTab);
 			// 找到的 ffmpeg 在哪（「ffmpeg 位置」留空时显示在框里）
-			var ffHook = React.useState(null), ffmpegAt = ffHook[0], setFfmpegAt = ffHook[1];
+			var [ffmpegAt, setFfmpegAt] = React.useState(null);
 			return h(React.Fragment, null, h(P.SettingsForm, {
 				labels: { unavailable: t("unavailable"), readOnly: t("readOnly"), saveFailed: t("saveFailed"), save: t("save"), saving: t("saving") },
 				state: state,
@@ -1714,6 +1696,6 @@ window.__ModuleLoader__.load({
 		exports.inject = inject;
 		exports.apply = apply;
 		exports.SettingsPage = SettingsPage;
-		return module.exports;
+		return exports;
 	}
 });

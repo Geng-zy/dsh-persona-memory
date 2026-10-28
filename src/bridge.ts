@@ -125,9 +125,9 @@ export interface BridgeSettings {
   nudgeOnEmpty: boolean
   /** 发消息的节奏：打字速度、群里的发言频率（本插件新增，见 pacer.ts） */
   pace: PaceSettings
-  /** 分段发送（本插件新增，见 segment.ts） */
   /** 本插件新增：群聊回复首条文字可 @ 来信人、引用来信；默认均关闭。 */
   groupReply: { mention: boolean; quote: boolean }
+  /** 分段发送（本插件新增，见 segment.ts） */
   segment: SegmentSettings
   /** 文字转语音（本插件新增，见 tts.ts） */
   tts: TtsSettings
