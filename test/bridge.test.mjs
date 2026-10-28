@@ -813,3 +813,22 @@ test('主人原始会话备份接口：管理员列表生成私聊绑定，群�
   assert.equal(h.events.changed.length, 0)
   await h.bridge.dispose()
 })
+
+test('群内每人独立会话仍共用本群发送限频，不跨群限频', async () => {
+  const waits = []
+  const h = harness({ uniqueSession: true, pace: { ...settings().pace, groupMinGapSeconds: 5 } }, {}, { sleep: async ms => { waits.push(ms) } })
+  await h.groupMsg('8', '555', [text('/hi')])
+  await h.groupMsg('9', '555', [text('/hi')])
+  h.turn(h.created[0].sessionId, '第一条', 'completed')
+  await new Promise(r => setTimeout(r, 0))
+  h.turn(h.created[1].sessionId, '第二条', 'completed')
+  await new Promise(r => setTimeout(r, 0))
+  assert.equal(h.sent.length, 2)
+  assert.equal(waits.length, 1)
+  assert.ok(waits[0] > 4000)
+  await h.groupMsg('9', '666', [text('/hi')])
+  h.turn(h.created[2].sessionId, '另一群', 'completed')
+  await new Promise(r => setTimeout(r, 0))
+  assert.equal(waits.length, 1)
+  await h.bridge.dispose()
+})

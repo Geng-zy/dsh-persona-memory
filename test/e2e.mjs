@@ -186,6 +186,8 @@ ws.on('message', raw => {
     data = history.get(req.params.message_id) ?? history.get(Number(req.params.message_id ?? req.params.id)) ?? null
   } else if (req.action === 'get_forward_msg') {
     data = forwards.get(String(req.params.message_id ?? req.params.id)) ?? null
+  } else if (req.action === 'get_status') {
+    data = { online: true, good: true }
   } else if (req.action === 'get_login_info') {
     data = { user_id: BOT, nickname: '测试号' }
   }
@@ -265,12 +267,12 @@ await waitFor(() => sent.length > keywordSendsBefore, '正文关键词唤醒')
 if (!modelRequests.slice(keywordRequestsBefore).some(t => t.includes('@大肥鱼 FISH 群友(556)') && t.includes('大肥鱼也来看看'))) await fail('正文关键词或@对象信息丢失')
 log('@别人昵称含唤醒词不误触发，正文关键词仍唤醒 OK')
 
-// 4. 唤醒前缀 / 被去掉；@ 别人（名片为空）时查 get_stranger_info，文字里写成 @昵称(QQ)
+// 4. 唤醒前缀 / 被去掉；@ 别人时复用群昵称，文字里写成 @昵称(QQ)
 const groupSentBefore = sent.filter(s => s.action === 'send_group_msg').length
 groupMsg([text('/问一下'), at(555), text('是谁')])
 const r4 = await waitFor(() => sent.filter(s => s.action === 'send_group_msg')[groupSentBefore], '唤醒前缀回复')
-if (!modelRequests.some(t => t.includes('问一下 @陌生人555(555) 是谁'))) await fail('模型收到的文字不对：' + JSON.stringify(modelRequests.slice(-2)))
-if (!calls.some(c => c.action === 'get_stranger_info' && c.params.user_id === 555)) await fail('名片为空时没查 get_stranger_info')
+if (!modelRequests.some(t => t.includes('问一下 @nick555(555) 是谁'))) await fail('模型收到的文字不对：' + JSON.stringify(modelRequests.slice(-2)))
+if (calls.some(c => c.action === 'get_stranger_info' && c.params.user_id === 555)) await fail('已有群昵称时不应重复查询 get_stranger_info')
 log('唤醒前缀 OK：' + sentText(r4))
 
 // 5. 引用机器人的消息：get_msg 取回被引用消息，sender 是机器人 → 唤醒

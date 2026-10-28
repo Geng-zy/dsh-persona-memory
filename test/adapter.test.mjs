@@ -331,3 +331,30 @@ test('小黄脸名字表：新表情和旧表情都能认出来', async () => {
   ]))
   assert.equal(abm.message_str, '[表情:尊嘟假嘟][表情:被发现了][表情:闪电][表情:99999]')
 })
+
+test('非数组协议消息只记录错误，不绕过白名单发送诊断回复', async () => {
+  let sent = 0
+  const a = adapterWith({ send_msg: () => { sent++ } })
+  await assert.rejects(a.convertMessage(groupEvent('错误的字符串消息')), /更改为 array/)
+  assert.equal(sent, 0)
+})
+
+test('@ 昵称查询失败仍保留结构：@ 她能唤醒，@ 其他人仍传递 QQ', async () => {
+  const a = adapterWith({})
+  const abm = await a.convertMessage(groupEvent([
+    { type: 'at', data: { qq: String(BOT) } },
+    { type: 'at', data: { qq: '9' } },
+    { type: 'text', data: { text: '你好' } },
+  ]))
+  assert.deepEqual(abm.message.slice(0, 2), [
+    { type: 'At', qq: String(BOT), name: '' }, { type: 'At', qq: '9', name: '' },
+  ])
+  assert.equal(abm.message_str, ' @9(9) 你好')
+})
+
+test('@ 优先使用已有群昵称，避免重复查询陌生人接口', async () => {
+  const a = adapterWith({ get_group_member_info: () => ({ card: '', nickname: '群昵称' }) })
+  const abm = await a.convertMessage(groupEvent([{ type: 'at', data: { qq: '9' } }]))
+  assert.equal(abm.message[0].name, '群昵称')
+  assert.equal(abm.message_str, ' @群昵称(9) ')
+})

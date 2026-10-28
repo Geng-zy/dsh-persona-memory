@@ -85,11 +85,13 @@ export class Watchdog {
         try {
           const st = await withTimeout(this.deps.callAction('get_status', { self_id: selfId }))
           if (st && typeof st === 'object' && (st as { online?: unknown }).online === false) this.set('offline', 'QQ 协议端 报告小号不在线', { userId: selfId })
-          else {
+          else if (st?.online === true) {
             let nickname: string | undefined
             try { nickname = String((await withTimeout(this.deps.callAction('get_login_info', { self_id: selfId })))?.nickname ?? '') || undefined } catch { /* 拿不到昵称不要紧 */ }
             // 下线通知之后，要真的问到在线才算恢复
             this.set('ok', undefined, { userId: selfId, ...(nickname ? { nickname } : {}) })
+          } else {
+            this.set('unknown', 'QQ 协议端未返回明确的在线状态', { userId: selfId })
           }
         } catch (e) {
           this.set('unknown', '问 QQ 协议端 没有回应：' + (e instanceof Error ? e.message : String(e)), { userId: selfId })
@@ -146,6 +148,11 @@ export class Watchdog {
   }
 }
 
-function withTimeout<T>(p: Promise<T>): Promise<T> {
-  return Promise.race([p, new Promise<T>((_, reject) => setTimeout(() => reject(new Error(CALL_TIMEOUT / 1000 + ' 秒内没有回应')), CALL_TIMEOUT))])
+async function withTimeout<T>(p: Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([p, new Promise<T>((_, reject) => { timer = setTimeout(() => reject(new Error(CALL_TIMEOUT / 1000 + ' 秒内没有回应')), CALL_TIMEOUT) })])
+  } finally {
+    clearTimeout(timer)
+  }
 }

@@ -258,11 +258,7 @@ export class AiocqhttpAdapter {
     if (!Array.isArray(event.message)) {
       const err = 'aiocqhttp: 无法识别的消息类型: ' + String(event.message) + '，此条消息将被忽略。如果您在使用 go-cqhttp，请将其配置文件中的 message.post-format 更改为 array。'
       this.log('error', err)
-      try {
-        await this.bot.send(event, err)
-      } catch (e) {
-        this.log('error', '回复消息失败: ' + errText(e))
-      }
+      // 格式错误只记日志；适配层不能绕过桥接的唤醒和白名单直接回消息。
       throw new Error(err)
     }
 
@@ -338,33 +334,31 @@ export class AiocqhttpAdapter {
         let firstAtSelfProcessed = false
         const atParts: string[] = []
         for (const m of mGroup) {
+          if (m.data.qq === 'all') {
+            abm.message.push(At({ qq: 'all', name: '全体成员' }))
+            continue
+          }
+          // @ 是消息结构，不依赖昵称查询成功；接口失败时仍保留 QQ 与唤醒语义。
+          let nickname = ''
           try {
-            if (m.data.qq === 'all') {
-              abm.message.push(At({ qq: 'all', name: '全体成员' }))
-              continue
-            }
-            // 改动：两次查询都走缓存
-            let atInfo = await this.memberInfo(event.group_id, m.data.qq, routingParams)
-            if (atInfo) {
-              let nickname = atInfo.card ?? ''
-              if (nickname === '') {
-                atInfo = await this.strangerInfo(m.data.qq, routingParams)
-                nickname = atInfo?.nick || atInfo?.nickname || ''
-              }
-              const isAtSelf = String(m.data.qq) === abm.self_id || String(m.data.qq) === 'all'
-              abm.message.push(At({ qq: m.data.qq, name: nickname }))
-              if (isAtSelf && !firstAtSelfProcessed) {
-                // 第一个@是机器人，不添加到message_str
-                firstAtSelfProcessed = true
-              } else {
-                // 非第一个@机器人或@其他用户，添加到message_str
-                atParts.push(' @' + nickname + '(' + m.data.qq + ') ')
-              }
-            } else {
-              abm.message.push(At({ qq: String(m.data.qq), name: '' }))
-            }
+            const info = await this.memberInfo(event.group_id, m.data.qq, routingParams)
+            nickname = String(info?.card || info?.nickname || '')
           } catch (e) {
-            this.log('error', '获取 @ 用户信息失败: ' + errText(e) + '，此消息段将被忽略。')
+            this.log('debug', '获取 @ 群成员信息失败: ' + errText(e))
+          }
+          if (!nickname) {
+            try {
+              const info = await this.strangerInfo(m.data.qq, routingParams)
+              nickname = String(info?.nick || info?.nickname || '')
+            } catch (e) {
+              this.log('debug', '获取 @ 用户昵称失败: ' + errText(e))
+            }
+          }
+          abm.message.push(At({ qq: m.data.qq, name: nickname }))
+          if (String(m.data.qq) === abm.self_id && !firstAtSelfProcessed) {
+            firstAtSelfProcessed = true
+          } else {
+            atParts.push(' @' + (nickname || String(m.data.qq)) + '(' + m.data.qq + ') ')
           }
         }
         messageStr += atParts.join('')

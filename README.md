@@ -61,7 +61,7 @@
 2. 安装两个插件：
 
 ```sh
-dsh plugin --profile web add github:Geng-zy/dsh-snowluma-bridge#v0.21.1 github:Geng-zy/dsh-companion-core#v0.18.0
+dsh plugin --profile web add github:Geng-zy/dsh-snowluma-bridge#v0.21.2 github:Geng-zy/dsh-companion-core#v0.18.0
 ```
 
 3. 按 [SnowLuma 部署指南](https://github.com/Geng-zy/dsh-snowluma-bridge/blob/main/docs/SNOWLUMA.md)配置 Compose、持久化目录及反向 WebSocket。
@@ -73,7 +73,7 @@ dsh plugin --profile web add github:Geng-zy/dsh-snowluma-bridge#v0.21.1 github:G
 ## 安装
 
 ```bash
-dsh plugin --profile web add github:Geng-zy/dsh-snowluma-bridge#v0.21.1
+dsh plugin --profile web add github:Geng-zy/dsh-snowluma-bridge#v0.21.2
 ```
 
 然后在 profile 的 `cordis.patch.yml` 里写配置（行 id 固定是 `snowluma-bridge`）：
@@ -261,3 +261,7 @@ AGPL-3.0-or-later。代码移植自 AstrBot（AGPL-3.0-or-later）和 aiocqhttp�
 - 清理未使用的设置词条、局部变量和客户端模块包装；简化 React 状态声明、事件订阅、消息段转换及 WebSocket 单连接选择。
 - 启用未使用变量/参数编译检查；测试文件自动发现，完整检查不再重复运行同一套单元测试，失败时保留完整输出。
 - 权限、两份白名单、唤醒、存档接口、群回复目标、媒体和发送行为及默认值保持。
+
+## 与宿主和协议端的功能边界
+
+见[职责、重复与冲突核对](docs/INTEGRATION.md)。特别注意：插件白名单只控制插件存档，SnowLuma/QQ 自身的协议缓存独立存在。

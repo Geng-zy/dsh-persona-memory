@@ -1,7 +1,7 @@
 {
   "name": "dsh-snowluma-bridge",
-  "version": "0.21.1",
-  "description": "通过 OneBot v11 将 SnowLuma 或 SnowLuma 接入 dsh，支持会话、权限、媒体和主动聊天。",
+  "version": "0.21.2",
+  "description": "通过 OneBot v11 将 SnowLuma 接入 dsh，支持会话、权限、媒体和主动聊天。",
   "keywords": [
     "dsh",
     "deepseek-harness",

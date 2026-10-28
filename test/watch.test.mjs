@@ -75,3 +75,18 @@ test('Server酱地址：新版 sctp 开头走 push.ft07.com，旧版走 sctapi.f
   await assert.rejects(sendPush({ service: 'pushplus', key: 'tok' }, { title: 't', text: 'x' }, reply({ code: 903, msg: '无效的用户token' })), /无效的用户token/)
   await assert.rejects(sendPush({ service: 'serverchan', key: '' }, { title: 't', text: 'x' }), /还没填 Key/)
 })
+
+test('get_status 没有明确 online=true 时不能误报恢复在线', async () => {
+  const t = setup()
+  t.tick(5 * MIN)
+  t.w.onOffline({ self_id: 42, message: '下线' })
+  await new Promise(r => setTimeout(r, 0))
+  for (const status of [null, {}, { good: true }]) {
+    t.setStatus(status)
+    assert.equal((await t.w.check()).state, 'unknown')
+    assert.ok(!t.sent.some(x => x.kind === 'recovered'))
+  }
+  t.setStatus({ online: true })
+  await t.w.check()
+  assert.equal(t.sent.at(-1).kind, 'recovered')
+})

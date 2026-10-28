@@ -62,6 +62,8 @@ export declare class CQHttp {
      * 返回 data 字段；status=failed 抛 ActionFailed；超时抛 NetworkError。
      */
     callAction(action: string, params?: Record<string, unknown>, eventWs?: WebSocket): Promise<any>;
+    /** 断线或停止时结束等待，不能清掉计时器后留下永不完成的调用。 */
+    private rejectPending;
     /** 本插件新增：是否正在监听 */
     get listening(): boolean;
     /** 本插件新增：当前连着的客户端（每条连接一项） */

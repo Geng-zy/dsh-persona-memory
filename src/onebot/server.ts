@@ -46,6 +46,8 @@ const nextSeq = (): number => {
 interface Pending {
   resolve: (result: Record<string, any>) => void
   timer: NodeJS.Timeout
+  ws: WebSocket
+  reject(error: Error): void
 }
 
 export interface CQHttpOptions {
@@ -216,6 +218,7 @@ export class CQHttp {
       }
     })
     ws.on('close', () => {
+      this.rejectPending(ws, 'WebSocket API connection closed')
       if (state.isEvent) this.eventClients.delete(ws)
       // 允许通配连接（self_id 可能是 '*'），先检查存在再删除
       if (state.isApi && this.apiClients.get(selfId) === ws) this.apiClients.delete(selfId)
@@ -295,6 +298,8 @@ export class CQHttp {
           resolve(value)
         },
         timer,
+        ws: apiWs,
+        reject,
       })
       apiWs.send(JSON.stringify({ action, params, echo: { seq } }), error => {
         if (error) {
@@ -307,6 +312,16 @@ export class CQHttp {
     // _handle_api_result
     if (result.status === 'failed') throw new ActionFailed(result)
     return result.data
+  }
+
+  /** 断线或停止时结束等待，不能清掉计时器后留下永不完成的调用。 */
+  private rejectPending(ws: WebSocket | undefined, message: string): void {
+    for (const [seq, pending] of this.futures) {
+      if (ws !== undefined && pending.ws !== ws) continue
+      clearTimeout(pending.timer)
+      this.futures.delete(seq)
+      pending.reject(new NetworkError(message))
+    }
   }
 
   /** 本插件新增：是否正在监听 */
@@ -359,10 +374,7 @@ export class CQHttp {
     }
     this.apiClients.clear()
     this.eventClients.clear()
-    for (const [seq, pending] of this.futures) {
-      clearTimeout(pending.timer)
-      this.futures.delete(seq)
-    }
+    this.rejectPending(undefined, 'WebSocket adapter closed')
     this.wss?.close()
     await new Promise<void>(resolve => {
       if (this.http === undefined) return resolve()
