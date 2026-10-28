@@ -50,6 +50,9 @@ if ! "${PNPM[@]}" test >"$TEST_LOG" 2>&1; then
 fi
 grep -E "^(not ok|ℹ (pass|fail))" "$TEST_LOG" || true
 
+echo "== 完整环境备份服务测试"
+python3 -m unittest discover -s test -p "*_test.py"
+
 if [ "${SKIP_E2E:-0}" != "1" ]; then
   echo "== 端到端测试（真实 dsh + 插件一 + 假模型 + 假 NapCat）"
   DSH_BIN="$ENV_DIR/dsh/node_modules/.bin/dsh" node test/e2e.mjs 2>&1 | grep -v "^\s*at " | tail -20

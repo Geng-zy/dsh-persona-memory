@@ -17,6 +17,7 @@ import { applyPrompt, coreBlock, type AssemblyLike } from './prompt.js'
 import { listModels } from './models.js'
 import { archiveAllowed, archiveRule, contextRule, forgetMode, matchRule, scopeOf, type ArchiveSession, type Category, type ContextMode, type ForgetMode, type NapcatLike, type RuleDefaults, type RuleRow, type Scope } from './rules.js'
 import type { BeforeCompactPayload, CompanionService, ContextPolicy } from './service.js'
+import { EnvironmentBackup } from './environment-backup.js'
 import { archivedImage } from './archived-image.js'
 import { coreTool, personaTool, type ToolDeps } from './tools.js'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
@@ -165,6 +166,10 @@ export interface Config {
   backupTime: string
   backupKeep: number
   backupItems: string[]
+  environmentBackupSchedule: 'off' | 'daily' | 'weekly'
+  environmentBackupTime: string
+  environmentBackupWeekday: number
+  environmentBackupKeep: number
   selfCheckQueries: string[]
   logLevel: 'debug' | 'info' | 'warn' | 'error'
 }
@@ -305,6 +310,10 @@ export const Config: z<LiveConfig> = z.object({
   consolidateGroups: z.natural().min(1).default(20).volatile().description('一次最多整合几组'),
   careIntervalDays: z.natural().min(1).default(7).volatile().description('清理和整合每几天做一次'),
   // 备份
+  environmentBackupSchedule: z.union(['off', 'daily', 'weekly']).default('off').volatile().description('完整环境备份计划；需独立系统服务'),
+  environmentBackupTime: z.string().pattern(/^([01]\d|2[0-3]):[0-5]\d$/).default('04:30').volatile().description('完整环境备份时间 HH:MM'),
+  environmentBackupWeekday: z.natural().min(1).max(7).default(7).volatile().description('完整环境备份星期；1周一，7周日'),
+  environmentBackupKeep: z.natural().min(1).max(5).default(5).volatile().description('完整环境备份合计最多保留份数'),
   backupEnabled: z.boolean().default(true).volatile().description('每天自动备份'),
   backupTime: z.string().default('04:00').volatile().description('自动备份时间（HH:MM）'),
   backupKeep: z.natural().min(1).default(5).volatile().description('每一类备份最多留几份'),
@@ -637,6 +646,14 @@ export function apply(ctx: Context, live: LiveConfig): void {
     afterWrite()
     return out
   }
+  const environment = new EnvironmentBackup(process.env.DSH_ENVIRONMENT_BACKUP_DIR || '/var/lib/dsh-environment-backup')
+  const syncEnvironmentSchedule = (): void => environment.schedule({ schedule: get('environmentBackupSchedule'), time: get('environmentBackupTime'), weekday: get('environmentBackupWeekday'), keep: get('environmentBackupKeep'), timezone: get('timezone') })
+  ctx.effect(() => {
+    const sync = (): void => { try { syncEnvironmentSchedule() } catch (e) { log('warn', '同步完整环境备份计划失败：' + errText(e)) } }
+    sync()
+    const timer = setInterval(sync, 15_000)
+    return () => clearInterval(timer)
+  }, 'companion: environment backup schedule')
   const backupsDir = join(dir, 'backups')
   const pluginVersion = (() => { try { return String(JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8')).version) } catch { return '?' } })()
   /** 不含任何 Key 的设置快照 */
@@ -1104,6 +1121,7 @@ export function apply(ctx: Context, live: LiveConfig): void {
     importing: pendingInspect === undefined ? null : { id: pendingInspect.id, manifest: pendingInspect.manifest },
     lastImport: lastImport === undefined ? null : { at: lastImport.at, error: lastImport.error ?? null, manifest: lastImport.manifest ?? null, plan: lastImport.plan ?? null },
     backupItemsAll: ITEMS,
+    environmentBackup: environment.state(),
     selfCheck: (() => { try { return JSON.parse(meta.get('selfcheck:last') ?? 'null') } catch { return null } })(),
     logs: logs.slice(-100),
   })
@@ -1136,6 +1154,23 @@ export function apply(ctx: Context, live: LiveConfig): void {
         const key = parts[1] ?? ''
         const text = /^\d{4}-\d{2}-\d{2}$/.test(key) ? diary.readDay(key) : /^\d{4}-\d{2}$/.test(key) ? diary.readMonth(key) : undefined
         return text === undefined ? json(404, { error: '没有这篇' }) : json(200, { date: key, text })
+      }
+      if (parts[0] === 'environment-backup') {
+        if (req.method === 'GET' && parts[1] === 'status') return json(200, environment.state())
+        if (req.method === 'GET' && parts[1] === 'file' && parts[2]) {
+          const file = environment.file(parts[2])
+          if (!file) return json(404, { error: '没有这个完整环境备份' })
+          res.writeHead(200, { 'content-type': 'application/gzip', 'content-length': String(statSync(file).size), 'content-disposition': 'attachment; filename="' + parts[2] + '"', 'cache-control': 'no-store' })
+          await pipeline(createReadStream(file), res)
+          return
+        }
+        if (req.method !== 'POST') return json(405, { error: '只支持 POST' })
+        if (!String(req.headers['content-type'] ?? '').includes('application/json')) return json(415, { error: '需要 application/json' })
+        if (parts[1] !== 'create') return json(404, { error: 'not found' })
+        await readBody(req)
+        syncEnvironmentSchedule()
+        environment.request()
+        return json(202, environment.state())
       }
       // 下载备份：GET /backup/file/<名字>
       if (req.method === 'GET' && parts[0] === 'backup' && parts[1] === 'file' && parts[2] && safeBackupName(parts[2])) {
