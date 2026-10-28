@@ -1,6 +1,6 @@
 # 完整环境备份
 
-普通 companion 备份仍用于选择性导入，格式不变、不含密钥。完整环境包由管理员安装的独立服务创建，包含凭据，供离线恢复整台应用环境，不可上传普通导入入口。人格和核心记忆仅备份现稿。
+普通 companion 备份仍用于选择性导入，格式不变、不含密钥。完整环境包由管理员安装的独立服务创建，包含凭据，供离线恢复应用数据和配置，不可上传普通导入入口。人格和核心记忆仅备份现稿。
 
 ## 安装（Ubuntu / systemd）
 
@@ -12,11 +12,13 @@
   "uid": 1000,
   "gid": 1000,
   "services": ["dsh", "napcat"],
-  "sources": ["/home/bot/.dsh", "/home/bot/workspace", "/home/bot/pkgs", "/home/bot/.local/dsh", "/home/bot/.local/node", "/home/qq/.config/QQ", "/home/qq/Napcat", "/etc/systemd/system/dsh.service", "/etc/systemd/system/napcat.service"],
+  "sources": ["/home/bot/.dsh", "/home/bot/workspace", "/home/bot/pkgs", "/home/qq/.config/QQ", "/home/qq/Napcat/opt/QQ/resources/app/app_launcher/napcat/config", "/etc/systemd/system/dsh.service", "/etc/systemd/system/napcat.service"],
   "required": ["/home/bot/.dsh", "/home/qq/.config/QQ", "/etc/systemd/system/dsh.service"],
   "exclude": ["/home/bot/.dsh/cache", "/home/bot/.dsh/companion/backups", "/home/bot/.dsh/companion/persona/history", "/home/bot/.dsh/companion/core/history-master", "/home/bot/.dsh/companion/core/history-public"]
 }
 ```
+
+QQ、Node、dsh 程序及运行依赖不进入备份。所有源目录中的 `node_modules` 在复制前统一跳过；不要将程序安装目录加入 `sources`。可在根配置的 `software` 对象记录当前版本号，写入清单以便重装。
 
 `sources` 中加入实际使用的插件旧包目录、服务 drop-in/环境文件、QQ 登录目录，以及备份服务自身的脚本/配置/unit。不要使用 `/` 等全盘根路径，备份目录必须在源目录外。不存在的可选源跳过；`required` 缺失则失败。安装：
 
@@ -44,6 +46,6 @@ sudo python3 scripts/environment-backup.py restore --archive /private/environmen
 sudo python3 scripts/environment-backup.py restore --archive /private/environment-....tar.gz --apply
 ```
 
-恢复首先验证完整清单、所有文件哈希和路径；解开到私有临时目录后，停止目标上原来运行的相关服务，按源目录替换，旧目录保留为 `.before-restore-*`。替换失败会回退已经替换的目录；成功后 daemon-reload 并恢复原来运行的服务。全新服务器需管理员核对安装路径、用户、网络地址并手动 enable/start 相应服务。包内 QQ 登录数据用于恢复原环境，不保证能直接被 SnowLuma 使用，也不保证 QQ 服务端不会要求重新登录。
+恢复首先验证完整清单、所有文件哈希和路径；解开到私有临时目录后，停止目标上原来运行的相关服务，按源目录替换，旧目录保留为 `.before-restore-*`。替换失败会回退已经替换的目录；成功后 daemon-reload 并恢复原来运行的服务。恢复前先安装清单中记录的 QQ、Node、dsh 版本。新包不包含 node_modules；恢复时保留目标机器已安装的同路径依赖，避免替换数据目录时误删。全新服务器需管理员核对安装路径、用户、网络地址，重装 profile 所需依赖并手动 enable/start 相应服务。包内 QQ 登录数据用于恢复原环境，不保证能直接被 SnowLuma 使用，也不保证 QQ 服务端不会要求重新登录。
 
-本功能备份指定的应用目录和运行安装文件，不是可启动的磁盘镜像；操作系统、内核、云安全组、SSH 私钥及未列入源配置的其他目录不在其中。实际恢复前保留目标当前数据；不在正在运行的网页中执行全环境覆盖。
+本功能备份指定的数据、私密配置、服务定义和插件安装包，不包含 QQ 程序、Node、dsh 程序及运行依赖，不是可启动的磁盘镜像；操作系统、内核、云安全组、SSH 私钥及未列入源配置的其他目录不在其中。实际恢复前保留目标当前数据；不在正在运行的网页中执行全环境覆盖。

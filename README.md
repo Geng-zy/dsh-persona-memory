@@ -148,7 +148,7 @@ dsh --version                        # 0.2.1-rc.2
 
 # 6. 两个插件（回到家目录）
 cd ~
-dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.20.3 github:Geng-zy/dsh-companion-core#v0.15.2
+dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.20.3 github:Geng-zy/dsh-companion-core#v0.15.3
 #    连不上 GitHub：到两个仓库的 Releases 下载 .tgz，传到 ~/pkgs/ 后
 #    dsh plugin --profile web add ./pkgs/dsh-napcat-bridge-0.19.1.tgz ./pkgs/dsh-companion-core-0.13.0.tgz
 #    （~/pkgs 以后不能删：dsh 的 profile 里记着它）
@@ -264,7 +264,7 @@ sudo systemctl daemon-reload && sudo systemctl enable --now napcat
 ## 安装
 
 ```bash
-dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.15.2
+dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.15.3
 ```
 
 装好后：
@@ -463,3 +463,5 @@ AGPL-3.0-or-later。陪伴模式预设的工具列表照抄 dsh-web-app 的标�
 0.15.1 修复系统服务严格权限掩码下的进度读取，并加入权限回归测试。
 
 0.15.2 将离机副本说明改为手动下载，服务器备份计划保持。
+
+0.15.3 将私密迁移备份收紧为数据与配置：不打包 QQ、Node、dsh 程序或运行依赖；嵌套 node_modules 复制前跳过，清单可记录程序版本。恢复保留目标已安装依赖。服务器时间及保留策略保持，电脑端仅手动下载。

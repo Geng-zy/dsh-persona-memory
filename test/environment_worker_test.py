@@ -43,6 +43,19 @@ class WorkerTest(unittest.TestCase):
   with patch.object(w,'active',return_value=True),patch.object(w,'control',side_effect=lambda s,a:calls.append((s,a))),patch.object(w,'copy_source',side_effect=OSError('fixture copy failure')):
    with self.assertRaises(OSError):w.make_backup(cfg,self.s,{})
   self.assertEqual(calls,[('dsh','stop'),('napcat','stop'),('napcat','start'),('dsh','start')]);self.assertEqual(before,set((self.base/'archives').glob('*.tar.gz')))
+ def test_dependencies_excluded_but_target_install_preserved(self):
+  dep=self.src/'profile'/'node_modules';dep.mkdir(parents=True);(dep/'runtime.js').write_text('not backup data')
+  (self.src/'profile'/'package.json').write_text('{"private":true}')
+  path=w.make_backup(self.config,self.s,{})
+  m=w.verify(path)
+  self.assertEqual(m['scope'],'data-and-config');self.assertTrue(m['preserveDependencies'])
+  self.assertFalse(any('/node_modules/' in row['path'] for row in m['files']))
+  self.assertTrue(any(row['path'].endswith('/package.json') for row in m['files']))
+  dest=self.root/'target';dest.mkdir();installed=dest/str(self.src).lstrip('/')/'profile'/'node_modules';installed.mkdir(parents=True);(installed/'runtime.js').write_text('target installed runtime')
+  w.restore(path,dest,True)
+  self.assertEqual((installed/'runtime.js').read_text(),'target installed runtime')
+  self.assertEqual((dest/str(self.src).lstrip('/')/'credentials.yml').read_text(),'private-fixture')
+  self.assertEqual((self.src/'profile'/'node_modules'/'runtime.js').read_text(),'not backup data')
  def test_reject_corruption_and_traversal_before_restore(self):
   path=w.make_backup(self.config,self.s,{})
   bad=self.root/'bad.tar.gz'

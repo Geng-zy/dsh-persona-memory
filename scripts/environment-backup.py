@@ -137,15 +137,24 @@ def verify(file):
         return manifest
 
 
-def copy_source(src, dest):
+def copy_source(src, dest, excluded=(), skip_dependencies=True):
+    # Skip dependency trees before copying; never stage them just to discard them later.
+    if (skip_dependencies and src.name == 'node_modules') or any(src == p or src.is_relative_to(p) for p in excluded):
+        return
     dest.parent.mkdir(parents=True, exist_ok=True)
-    if os.uname().sysname == 'Linux':
-        # Preserve owners, modes and symlinks; --reflink=auto accelerates supported filesystems.
-        subprocess.run(['cp', '-a', '--reflink=auto', '--', str(src), str(dest)], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    if src.is_symlink():
+        dest.symlink_to(os.readlink(src))
     elif src.is_dir():
-        shutil.copytree(src, dest, symlinks=True)
+        dest.mkdir(exist_ok=True)
+        for child in src.iterdir():
+            copy_source(child, dest/child.name, excluded, skip_dependencies)
     else:
         shutil.copy2(src, dest, follow_symlinks=False)
+    shutil.copystat(src, dest, follow_symlinks=False)
+    if os.geteuid() == 0:
+        st = src.lstat()
+        os.chown(dest, st.st_uid, st.st_gid, follow_symlinks=False)
+
 
 
 def control(service, action):
@@ -198,8 +207,9 @@ def make_backup(config, s, previous, reason='manual'):
                 # Remember before stopping: even a failed stop may already have taken effect.
                 stopped.append(name)
                 control(name, 'stop')
+            excluded = [Path(p) for p in config.get('exclude', [])]
             for src in roots:
-                copy_source(src, stage / 'root' / str(src).lstrip('/'))
+                copy_source(src, stage / 'root' / str(src).lstrip('/'), excluded)
             for excluded in config.get('exclude', []):
                 target = stage / 'root' / excluded.lstrip('/')
                 if '..' in Path(excluded).parts or not target.resolve().is_relative_to(stage.resolve()):
@@ -220,6 +230,7 @@ def make_backup(config, s, previous, reason='manual'):
         save(phase='packing', servicesRestored=True)
         manifest = dict(format=FORMAT, createdAt=int(now.timestamp()*1000), reason=reason,
                         sources=list(map(str, roots)), excluded=config.get('exclude', []),
+                        scope='data-and-config', software=config.get('software', {}), preserveDependencies=True,
                         services=was_active, containsCredentials=True, files=list(entries(stage)))
         (stage / 'manifest.json').write_text(json.dumps(manifest, ensure_ascii=False), encoding='utf8')
         name = 'environment-' + now.astimezone(ZoneInfo(s['timezone'])).strftime('%Y%m%d-%H%M%S') + '-' + uuid.uuid4().hex[:8] + '.tar.gz'
@@ -357,6 +368,16 @@ def restore(file, target_root, apply=False):
                 # Refuse unexpected symlink parents on the destination server.
                 if not dest.parent.resolve().is_relative_to(target_root):
                     raise ValueError('destination escapes restore root')
+                # Dependency trees are not in new data-only backups. Retain already-installed
+                # dependencies on the target; fresh machines must install the recorded versions first.
+                if manifest.get('preserveDependencies') and dest.is_dir() and not dest.is_symlink():
+                    for parent, dirs, _files in os.walk(dest, followlinks=False):
+                        if 'node_modules' in dirs:
+                            dep = Path(parent)/'node_modules'
+                            out = src/dep.relative_to(dest)
+                            if not out.exists() and not out.is_symlink():
+                                copy_source(dep, out, skip_dependencies=False)
+                            dirs.remove('node_modules')
                 aside = dest.with_name(dest.name+'.before-restore-'+uuid.uuid4().hex[:8])
                 if dest.exists() or dest.is_symlink():
                     dest.rename(aside)
