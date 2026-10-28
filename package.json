@@ -1,6 +1,6 @@
 {
   "name": "dsh-companion-core",
-  "version": "0.15.1",
+  "version": "0.15.2",
   "description": "dsh 陪伴插件：人格和核心记忆对所有会话即时生效、按轮数截断或中文第一人称压缩上下文、消息存档。为「大肥鱼」QQ 陪伴 AI 写，配合 dsh-napcat-bridge 使用。",
   "keywords": [
     "dsh",
