@@ -835,6 +835,22 @@ export function apply(ctx: Context, live: LiveConfig): void {
     organizer.onDshLine(id, text, human, get('organizeEveryRounds'))
   }) as never)
 
+  // 本插件新增：独立判断只读人格、公开核心记忆和获准存档的本群记录；不触发召回/整理或创建会话。
+  ctx.on('napcat/judge-context' as never, ((payload: any) => {
+    payload.context.push('人格：\n' + persona.read(), '公开核心记忆：\n' + corePublic.read())
+    if (!archive || !get('archiveEnabled') || !archiveAllowed(napcat(), payload.session)) return
+    const groupId = String(payload.message?.group?.group_id ?? '')
+    if (!groupId) return
+    const s: Scope = { category: 'group', qq: true, umo: payload.umo, groupId }
+    if (!archiveRule(s, defaults(), rules()).unwoken) return
+    const count = Math.max(0, Math.min(100, Math.floor(Number(payload.contextCount) || 0)))
+    if (!count) return
+    const rows = archive.lastMessages(payload.umo, count, String(payload.message?.message_id ?? ''))
+    payload.context.push('最近群聊（按时间顺序，[我]是角色自己）：\n' + rows.map(r =>
+      '[' + new Date(r.time).toISOString() + '] [' + (r.direction === 'out' ? '我' : (r.senderName || r.senderId) + '(' + r.senderId + ')') + '] '
+      + (r.text || '[图片/语音/视频等]')).join('\n'))
+  }) as never)
+
   // 群聊之前 n 条：她参与群话题时，把群里最近 n 条消息（含她自己说的）一起给她，图片不限张数（原图、语音转文字、视频截图都用插件一的媒体服务）
   ctx.on('napcat/prompt' as never, (async (payload: { info: { type: string; umo: string; groupId?: string; sessionId: string }; message: any; content: any[] }) => {
     try {

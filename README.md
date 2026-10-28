@@ -148,7 +148,7 @@ dsh --version                        # 0.2.1-rc.2
 
 # 6. 两个插件（回到家目录）
 cd ~
-dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.19.1 github:Geng-zy/dsh-companion-core#v0.13.0
+dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.20.0 github:Geng-zy/dsh-companion-core#v0.14.0
 #    连不上 GitHub：到两个仓库的 Releases 下载 .tgz，传到 ~/pkgs/ 后
 #    dsh plugin --profile web add ./pkgs/dsh-napcat-bridge-0.19.1.tgz ./pkgs/dsh-companion-core-0.13.0.tgz
 #    （~/pkgs 以后不能删：dsh 的 profile 里记着它）
@@ -264,7 +264,7 @@ sudo systemctl daemon-reload && sudo systemctl enable --now napcat
 ## 安装
 
 ```bash
-dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.13.0
+dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.14.0
 ```
 
 装好后：
@@ -438,3 +438,7 @@ node scripts/check-upstreams.mjs   # 看 dsh、dsh-napcat-bridge、Node 有没�
 ## 许可证
 
 AGPL-3.0-or-later。陪伴模式预设的工具列表照抄 dsh-web-app 的标准模式（MIT），上下文管理继承 dsh-compaction-basic（MIT），见 [NOTICE.md](NOTICE.md)。
+
+### 独立群聊判断上下文（v0.14.0）
+
+为 dsh-napcat-bridge ≥ 0.20.0 的 `napcat/judge-context` 提供只读上下文：人格、公开核心记忆、最近 N 条本群文字存档（含自己发言和时间、排除当前消息）。遵守存档总开关、未唤醒消息设置和实时群白名单；名单外管理员发言也不读取旧群存档。不提供主人私密核心记忆，不调用长期记忆召回、工具或整理，不创建正式会话。条数及模型在 bridge 的「连接和权限 → 唤醒」设置；默认开启、10条。历史不足时只提供已有记录，未开启存档则没有历史。原有正式回复的群上下文和主动聊天流程保留。
