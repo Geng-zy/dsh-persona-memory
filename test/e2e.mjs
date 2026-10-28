@@ -154,13 +154,6 @@ const imgUrl = 'http://127.0.0.1:' + imgServer.address().port + '/a.png'
 
 // ---- 独立的 DSH_HOME，两个插件都作为 profile bundle
 const home = mkdtempSync(join(tmpdir(), 'dsh-companion-e2e-'))
-const environmentDir = join(home, 'environment-backup')
-mkdirSync(join(environmentDir, 'inbox'), { recursive: true })
-mkdirSync(join(environmentDir, 'archives'))
-writeFileSync(join(environmentDir, 'helper.json'), '{}')
-const environmentFile = 'environment-20261028-043000-1234abcd.tar.gz'
-writeFileSync(join(environmentDir, 'archives', environmentFile), 'private-fixture')
-writeFileSync(join(environmentDir, 'status.json'), JSON.stringify({ phase: 'done', backups: [{ name: environmentFile, size: 15, sha256: 'a'.repeat(64) }] }))
 const profile = join(home, 'profiles', 'web')
 mkdirSync(join(profile, 'node_modules'), { recursive: true })
 symlinkSync(ROOT, join(profile, 'node_modules', 'dsh-companion-core'), 'dir')
@@ -212,7 +205,7 @@ writeFileSync(join(data, 'core', 'master.md'), '- CORE-MASTER：主人爱吃红�
 writeFileSync(join(data, 'core', 'public.md'), '- CORE-PUBLIC：我是一条鱼')
 
 const dsh = spawn(process.env.DSH_BIN ?? 'dsh', ['web', '--host', '127.0.0.1', '--port', process.env.E2E_WEB_PORT ?? '0', '--no-open'], {
-  env: { ...process.env, COMPANION_TEST_CLOCK: '1', DSH_ENVIRONMENT_BACKUP_DIR: environmentDir, DSH_HOME: home, DEEPSEEK_API_KEY: 'sk-e2e-fake', DEEPSEEK_BASE_URL: llmUrl, DSH_TELEMETRY_DISABLED: '1' },
+  env: { ...process.env, COMPANION_TEST_CLOCK: '1', DSH_HOME: home, DEEPSEEK_API_KEY: 'sk-e2e-fake', DEEPSEEK_BASE_URL: llmUrl, DSH_TELEMETRY_DISABLED: '1' },
   stdio: ['ignore', 'pipe', 'pipe'],
 })
 let dshLog = ''
@@ -469,20 +462,6 @@ if (form.status !== 415) await fail('非 JSON 请求也能改人格：' + form.s
 const ok = await fetch(webBase + 'api/companion/doc/persona', { method: 'POST', headers: { cookie, 'content-type': 'application/json' }, body: JSON.stringify({ text: '你是 PERSONA-V3。' }) })
 if (!ok.ok || !readFileSync(personaFile, 'utf-8').includes('PERSONA-V3')) await fail('设置页改人格失败：' + ok.status)
 log('设置页接口 OK（需登录、改文件要 JSON）')
-const envAnon = await fetch(webBase + 'api/companion/environment-backup/file/' + environmentFile)
-if (envAnon.status !== 401) await fail('私密环境包未登录可下载')
-const envForm = await fetch(webBase + 'api/companion/environment-backup/create', { method: 'POST', headers: {cookie,'content-type':'text/plain'},body:'{}' })
-if (envForm.status !== 415) await fail('完整环境备份接受非JSON请求')
-const envCreate = await api('POST', 'environment-backup/create', {})
-if (envCreate.status !== 202 || !envCreate.json?.pending) await fail('完整环境备份排队失败')
-const envDownload = await fetch(webBase + 'api/companion/environment-backup/file/' + environmentFile, {headers:{cookie}})
-if (envDownload.status !== 200 || await envDownload.text() !== 'private-fixture') await fail('完整环境包下载不对')
-const envBad = await fetch(webBase + 'api/companion/environment-backup/file/not-an-archive', {headers:{cookie}})
-if (envBad.status !== 404) await fail('完整环境包路径未校验')
-rmSync(join(environmentDir,'inbox','request.json'))
-log('完整环境备份：独立服务排队、私密下载鉴权、JSON及文件名限制 OK')
-
-
 // ===== 阶段 3 =====
 // 10. 写日记（只写主人的）
 const ran = await api('POST', 'maintenance', { what: 'diary' })

@@ -1,6 +1,6 @@
 {
   "name": "dsh-companion-core",
-  "version": "0.15.3",
+  "version": "0.16.0",
   "description": "dsh 陪伴插件：人格和核心记忆对所有会话即时生效、按轮数截断或中文第一人称压缩上下文、消息存档。为「大肥鱼」QQ 陪伴 AI 写，配合 dsh-napcat-bridge 使用。",
   "keywords": [
     "dsh",
@@ -24,18 +24,14 @@
     "LICENSE",
     "NOTICE.md",
     "README.md",
-    "CHANGELOG.md",
-    "scripts/environment-backup.py",
-    "scripts/install-environment-backup.sh",
-    "docs/environment-backup.md"
+    "CHANGELOG.md"
   ],
   "scripts": {
     "build": "rm -rf lib && tsc -p tsconfig.json && cp src/client/client.js lib/client.js",
     "test": "node --test test/*.test.mjs",
     "e2e": "node test/e2e.mjs",
     "setup-test-env": "scripts/setup-test-env.sh",
-    "check": "scripts/check.sh",
-    "test:environment": "python3 -m unittest discover -s test -p \"*_test.py\""
+    "check": "scripts/check.sh"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",

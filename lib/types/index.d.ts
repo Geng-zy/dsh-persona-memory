@@ -125,10 +125,6 @@ export interface Config {
     backupTime: string;
     backupKeep: number;
     backupItems: string[];
-    environmentBackupSchedule: 'off' | 'daily' | 'weekly';
-    environmentBackupTime: string;
-    environmentBackupWeekday: number;
-    environmentBackupKeep: number;
     selfCheckQueries: string[];
     logLevel: 'debug' | 'info' | 'warn' | 'error';
 }
