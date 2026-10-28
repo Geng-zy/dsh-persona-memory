@@ -34,6 +34,15 @@ export declare class TextDoc {
     constructor(path: string, historyDir: string, keep: () => number);
     /** 当前内容；文件不存在时是空字符串。 */
     read(): string;
+    /** Read-only editor metadata. The revision detects stale saves without putting document text in logs. */
+    snapshot(): {
+        text: string;
+        path: string;
+        revision: string;
+        chars: number;
+        updatedAt: number | null;
+        history: DocVersion[];
+    };
     /** 写入新内容；旧内容不同且不为空时先存成历史版本。返回存下的历史版本（没存时 undefined）。 */
     write(content: string, meta: WriteMeta): DocVersion | undefined;
     /** 历史版本，最新的在前。 */

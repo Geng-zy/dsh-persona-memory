@@ -10,6 +10,11 @@ export const PERSONA_SECTION = 'deployment:persona-prefix'
 export const IDENTITY_SECTION = 'harness:identity'
 export const CORE_SECTION = 'companion:core-memory'
 
+/** Optional Markdown author notes; raw source and history are never rewritten. */
+export function personaText(raw: string, ignoreComments = false): string {
+  return (ignoreComments ? raw.replace(/<!--[\s\S]*?(?:-->|$)/g, '') : raw).trim()
+}
+
 export interface AssembledSection {
   name: string
   text: string

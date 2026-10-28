@@ -37,6 +37,9 @@ export async function runUi(session) {
   await page.waitForFunction(()=>document.querySelector('.sc-save strong')?.textContent==='所有设置已保存')
   await page.reload();await page.getByRole('button',{name:'插件',exact:true}).click();await page.getByText('dsh-snowluma-companion',{exact:true}).click();await app.waitFor();await navigate('聊天与回复');await expand()
   assert.equal(await keyword.inputValue(),wakeValue);assert.equal(await groupContext.inputValue(),contextValue)
+  const endpoint=path=>session.url+'api/companion/'+path
+  const post=async(path,data)=>{const response=await page.request.post(endpoint(path),{data});assert.ok(response.ok(),path);return response.json()}
+  const state=async()=>{const response=await page.request.get(endpoint('state'));assert.ok(response.ok());return response.json()}
   await navigate('人格与核心记忆')
   const persona=app.locator('[data-section="companion-persona"]')
   if(!await persona.evaluate(e=>e.open))await persona.locator('summary').first().click()
@@ -45,6 +48,47 @@ export async function runUi(session) {
   assert.equal(await editor.inputValue(),'UI 草稿：切换分组与收起不会丢失。')
   await navigate('图片、语音与视频');await navigate('人格与核心记忆')
   assert.equal(await editor.inputValue(),'UI 草稿：切换分组与收起不会丢失。')
+  // File editing is independent of settings saves; preview/import must not write the source.
+  const doc=persona.locator('[data-document="persona"]')
+  const imported='# 新人格\n你是 {{name}}。\n<!-- 作者说明，不发送给模型 -->\n温和、直接。'
+  const originalDoc=(await state()).docs.persona
+  await doc.locator('input[type=file]').setInputFiles({name:'persona.md',mimeType:'text/markdown',buffer:Buffer.from('\uFEFF'+imported)})
+  await page.waitForFunction(text=>document.querySelector('[data-document="persona"] textarea')?.value===text,imported)
+  await doc.getByRole('tab',{name:'模型正文预览',exact:true}).click()
+  assert.ok((await doc.locator('.sc-doc-preview pre').innerText()).includes('作者说明'))
+  assert.equal((await state()).docs.persona.revision,originalDoc.revision,'preview and import leave the saved persona unchanged')
+  const downloadPromise=page.waitForEvent('download')
+  await doc.getByRole('button',{name:'导出当前稿',exact:true}).click()
+  const exported=await downloadPromise
+  assert.equal(readFileSync(await exported.path(),'utf8'),imported,'export contains the current draft')
+  await doc.getByRole('tab',{name:'编辑',exact:true}).click()
+  await persona.getByLabel('忽略人格中的 HTML 注释',{exact:true}).click()
+  await save.click()
+  for(let i=0;i<40;i++){if((await state()).personaStatus.ignoreComments)break;await page.waitForTimeout(100)}
+  assert.equal((await state()).personaStatus.ignoreComments,true)
+  await doc.getByRole('tab',{name:'模型正文预览',exact:true}).click()
+  assert.ok(!(await doc.locator('.sc-doc-preview pre').innerText()).includes('作者说明'))
+  assert.ok((await doc.locator('.sc-doc-preview pre').innerText()).includes('{{name}}'))
+  await doc.getByRole('tab',{name:'编辑',exact:true}).click()
+  assert.equal(await editor.inputValue(),imported,'filtering does not rewrite the draft')
+  const externalText='# 服务器新版\n来自另一个编辑器的修改。'
+  await post('doc/persona',{text:externalText,revision:originalDoc.revision})
+  await persona.locator('.sc-persona-status').getByRole('button',{name:'刷新',exact:true}).click()
+  await doc.getByText('服务器文档已更新。请先导出草稿，再载入服务器版本并合并，避免覆盖其他修改。',{exact:true}).waitFor()
+  assert.ok(await doc.getByRole('button',{name:'保存人格',exact:true}).isDisabled())
+  assert.equal((await state()).docs.persona.text,externalText,'a stale editor cannot overwrite the server document')
+  await doc.getByRole('button',{name:'载入服务器版本',exact:true}).click()
+  await doc.locator('.sc-doc-notice').getByRole('button',{name:'确认',exact:true}).click()
+  await page.waitForFunction(text=>document.querySelector('[data-document="persona"] textarea')?.value===text,externalText)
+  await editor.fill(imported)
+  await doc.getByRole('button',{name:'保存人格',exact:true}).click()
+  await page.waitForFunction(()=>document.querySelector('.sc-save strong')?.textContent==='所有设置已保存')
+  assert.equal((await state()).docs.persona.text,imported,'successful save retains the raw Markdown including comments')
+  await page.setViewportSize({width:1440,height:1800});await persona.evaluate(el=>el.scrollIntoView({block:'start'}));
+  await persona.screenshot({path:join(artifacts,'persona-editor.png')})
+  await page.emulateMedia({colorScheme:'dark'});await persona.screenshot({path:join(artifacts,'persona-editor-dark.png')})
+  await page.emulateMedia({colorScheme:'light'});await page.setViewportSize({width:1440,height:1050})
+  console.log('[ui] Persona Markdown import/export, raw-source preservation, model preview, optional note filtering, stale-save conflict and native editor passed')
   const search=app.getByRole('searchbox');await search.fill('语音')
   assert.ok(await app.locator('.sc-section:not([hidden])').count()>0)
   await search.fill('找不到的设置XYZ')
@@ -58,11 +102,10 @@ export async function runUi(session) {
   await page.setViewportSize({width:390,height:844});await page.waitForTimeout(150)
   assert.ok(await app.evaluate(el=>el.scrollWidth<=el.clientWidth+2),'settings must fit mobile width')
   await app.screenshot({path:join(artifacts,'settings-mobile.png')})
+  await navigate('人格与核心记忆');await page.setViewportSize({width:390,height:1800});await persona.evaluate(el=>el.scrollIntoView({block:'start'}));await persona.screenshot({path:join(artifacts,'persona-editor-mobile.png')})
+  assert.ok(await app.evaluate(el=>el.scrollWidth<=el.clientWidth+2),'persona editor must fit mobile width')
   // Exercise upload -> detected files -> multi-select -> actual selective restore, only in this disposable profile.
   await page.setViewportSize({width:1440,height:1050});await navigate('备份与迁移');await expand()
-  const endpoint=path=>session.url+'api/companion/'+path
-  const post=async(path,data)=>{const response=await page.request.post(endpoint(path),{data});assert.ok(response.ok(),path);return response.json()}
-  const state=async()=>{const response=await page.request.get(endpoint('state'));assert.ok(response.ok());return response.json()}
   const before=await state()
   const made=await post('backup/create',{items:['persona','core','memory','diary']})
   const download=await page.request.get(endpoint('backup/file/'+made.name));assert.ok(download.ok())

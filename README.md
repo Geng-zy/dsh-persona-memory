@@ -18,17 +18,23 @@ curl -fsSL https://raw.githubusercontent.com/Geng-zy/dsh-snowluma-companion/main
 
 ## 安装与升级
 
-要求 dsh **0.2.1-rc.2** 对应 SDK、Node **≥22.13**（使用内置 SQLite）。在 dsh 插件管理页安装本仓库 [v1.2.1](https://github.com/Geng-zy/dsh-snowluma-companion/releases/tag/v1.2.1) 的 `.tgz`。只需安装一个包；QQ 协议端仍由官方 SnowLuma Docker 镜像运行。
+要求 dsh **0.2.1-rc.2** 对应 SDK、Node **≥22.13**（使用内置 SQLite）。在 dsh 插件管理页安装本仓库 [v1.3.0](https://github.com/Geng-zy/dsh-snowluma-companion/releases/tag/v1.3.0) 的 `.tgz`。只需安装一个包；QQ 协议端仍由官方 SnowLuma Docker 镜像运行。
 
 从两个旧插件升级时，停止 dsh，保留现有数据与 profile 配置，以 profile 所属用户执行：
 
 ```sh
-node /解包目录/deploy/migrate-profile.mjs /绝对路径/profiles/web /绝对路径/dsh-snowluma-companion-1.2.1.tgz
+node /解包目录/deploy/migrate-profile.mjs /绝对路径/profiles/web /绝对路径/dsh-snowluma-companion-1.3.0.tgz
 cd /绝对路径/profiles/web
 pnpm install
 ```
 
 随后启动 dsh。迁移脚本合并 bundle 与包引用，并更新 profile 中显式的旧模块路径。内部 `snowluma-bridge`、`companion-core` 配置行继续使用原命名空间，已保存设置和凭据无需重新填写。平台 ID、QQ 会话绑定、存储目录、SQLite schema 5 和备份格式 3 保持；不要通过清空数据重新安装来合并。
+
+## 人格编辑与生效
+
+编辑人格后，受管会话的下一次模型请求读取最新稿；主人和公开核心记忆继续按会话权限隔离。新版显示文件来源及真实组装记录，支持Markdown导入导出、正文预览、可选HTML注释过滤和旧稿覆盖保护。[机制、使用步骤及与dsh-agent-md的对比](docs/PERSONA.md)。
+
+![人格编辑器](docs/images/persona-editor.png)
 
 ## 一个统一设置入口
 

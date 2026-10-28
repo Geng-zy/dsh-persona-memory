@@ -16,6 +16,7 @@ export interface Config {
     personaPresets: string[];
     pluginAccess: 'all' | 'public' | 'off';
     personaOnly: boolean;
+    personaIgnoreComments: boolean;
     selfEdit: boolean;
     historyKeep: number;
     coreMasterMaxChars: number;

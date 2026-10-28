@@ -2,6 +2,8 @@
 export declare const PERSONA_SECTION = "deployment:persona-prefix";
 export declare const IDENTITY_SECTION = "harness:identity";
 export declare const CORE_SECTION = "companion:core-memory";
+/** Optional Markdown author notes; raw source and history are never rewritten. */
+export declare function personaText(raw: string, ignoreComments?: boolean): string;
 export interface AssembledSection {
     name: string;
     text: string;

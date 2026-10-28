@@ -13,7 +13,7 @@ import type { Context as CordisContext } from '@deepseek-ai/cordis'
 import { join } from 'node:path'
 import { Archive, type ArchivedMessage } from './archive.js'
 import { TextDoc, defaultDataDir, writeAtomic } from './docs.js'
-import { applyPrompt, coreBlock, type AssemblyLike } from './prompt.js'
+import { applyPrompt, coreBlock, personaText, type AssemblyLike } from './prompt.js'
 import { listModels } from '../models.js'
 import { archiveAllowed, archiveRule, contextRule, forgetMode, matchRule, scopeOf, type ArchiveSession, type Category, type ContextMode, type ForgetMode, type SnowlumaLike, type RuleDefaults, type RuleRow, type Scope } from './rules.js'
 import type { BeforeCompactPayload, CompanionService, ContextPolicy } from './service.js'
@@ -57,6 +57,7 @@ export interface Config {
   personaPresets: string[]
   pluginAccess: 'all' | 'public' | 'off'
   personaOnly: boolean
+  personaIgnoreComments: boolean
   selfEdit: boolean
   historyKeep: number
   coreMasterMaxChars: number
@@ -180,6 +181,7 @@ export const Config: z<LiveConfig> = z.object({
   excludedPresets: z.array(z.string()).default([]).volatile().description('不生效的预设 id（例如写代码用的预设）'),
   pluginAccess: z.union(['all', 'public', 'off']).default('all').volatile().description('给其他插件用：all = 人格、核心记忆和记忆都能取（含主人的）；public = 只给公开的；off = 不给'),
   personaOnly: z.boolean().default(true).volatile().description('只用人格：去掉 dsh 的编程助手身份句'),
+  personaIgnoreComments: z.boolean().default(false).volatile().description('注入人格时忽略HTML注释；默认关闭，保留现有正文行为，不修改原文件'),
   selfEdit: z.boolean().default(true).volatile().description('让她能自己改人格和核心记忆（只在主人的会话里）'),
   historyKeep: z.natural().default(5).volatile().description('人格、核心记忆各保留几份历史版本'),
   coreMasterMaxChars: z.natural().min(100).default(5000).volatile().description('主人的核心记忆最多几个字（不算空白；超过后只许变短）'),
@@ -346,7 +348,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
   const dir = defaultDataDir()
   const keep = (): number => get('historyKeep')
   const persona = new TextDoc(join(dir, 'persona', 'persona.md'), join(dir, 'persona', 'history'), keep)
-  const personaDoc = persona
+  const readPersona = () => personaText(persona.read(), get('personaIgnoreComments'))
   const coreMaster = new TextDoc(join(dir, 'core', 'master.md'), join(dir, 'core', 'history-master'), keep)
   const corePublic = new TextDoc(join(dir, 'core', 'public.md'), join(dir, 'core', 'history-public'), keep)
   const docs: Record<string, TextDoc> = { persona, 'core-master': coreMaster, 'core-public': corePublic }
@@ -418,7 +420,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
     },
     identity(target) {
       const t = pluginTarget(target)
-      const persona = personaDoc.read().trim()
+      const persona = readPersona()
       const core = coreFor(t.scope.category).trim()
       return { persona, core, audience: t.audience, prompt: [persona, core ? coreBlock(core) : ''].filter(Boolean).join('\n\n') }
     },
@@ -429,7 +431,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
     },
     async prompt(options) {
       const t = pluginTarget(options)
-      const persona = personaDoc.read().trim()
+      const persona = readPersona()
       const core = coreFor(t.scope.category).trim()
       const query = String(options?.query ?? '').trim()
       const found = query === '' ? [] : await search(t.scope, query, Math.max(1, Math.min(20, options?.topK ?? 5)))
@@ -457,14 +459,23 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
   //#endregion
 
   //#region 人格、核心记忆：所有会话每一步现读
+  const promptAssemblies: Array<{ at: number; sessionId: string; preset: string; category: string; result: string; personaChars: number; coreChars: number; revision?: string }> = []
+  const recordPrompt = (entry: (typeof promptAssemblies)[number]) => { promptAssemblies.unshift(entry); promptAssemblies.length = Math.min(promptAssemblies.length, 10) }
   ctx.on('system-prompt/assemble' as never, (async (_assembly: AssemblyLike, context: { agent?: any }, next: () => Promise<AssemblyLike>) => {
     const assembly = await next()
     const agent = context.agent
     if (agent === undefined) return assembly
     try {
-      if (excluded(agent.session?.meta?.agentPreset)) return assembly
-      const s = scope(String(agent.session.id))
-      return applyPrompt(assembly, { persona: persona.read(), core: coreFor(s.category), personaOnly: get('personaOnly') })
+      const preset = String(agent.session?.meta?.agentPreset ?? '')
+      const sessionId = String(agent.session?.id ?? '')
+      const category = scope(sessionId).category
+      const entry = { at: Date.now(), sessionId, preset, category, personaChars: 0, coreChars: 0 }
+      if (excluded(preset)) { recordPrompt({ ...entry, result: 'excluded' }); return assembly }
+      const text = readPersona(), core = coreFor(category)
+      const result = applyPrompt(assembly, { persona: text, core, personaOnly: get('personaOnly') })
+      recordPrompt({ ...entry, result: text || core.trim() ? 'applied' : 'empty', personaChars: Array.from(text).length,
+        coreChars: Array.from(core.trim()).length, revision: createHash('sha256').update(text).digest('hex') })
+      return result
     } catch (e) {
       log('warn', '放人格时出错，这一步用 dsh 原来的提示词: ' + errText(e))
       return assembly
@@ -1098,7 +1109,9 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
   const state = (): Record<string, unknown> => ({
     dataDir: dir,
     snowluma: snowluma() !== undefined,
-    docs: Object.fromEntries(DOC_NAMES.map(n => [n, { text: docs[n].read(), history: docs[n].history() }])),
+    docs: Object.fromEntries(DOC_NAMES.map(n => [n, docs[n].snapshot()])),
+    personaStatus: { chars: Array.from(readPersona()).length, ignoreComments: get('personaIgnoreComments'),
+      presets: get('personaPresets'), excludedPresets: get('excludedPresets'), assemblies: promptAssemblies.slice() },
     archive: archive?.stats() ?? null,
     memory: memories?.stats() ?? null,
     pending: organizer?.pending() ?? null,
@@ -1433,13 +1446,20 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
         if (req.method !== 'POST') return json(405, { error: '只支持 POST' })
         // 要求 JSON 请求：跨站表单提交带不了这个类型，防止别的网页借你的登录改人格
         if (!String(req.headers['content-type'] ?? '').includes('application/json')) return json(415, { error: '需要 application/json' })
+        const body = await readBody(req)
+        if (body?.revision !== undefined && body.revision !== doc.snapshot().revision) {
+          return json(409, { error: '文档已被其他页面、编辑器或模型修改。请先导出当前草稿，再载入服务器版本后合并。' })
+        }
         if (parts[2] === 'restore' && parts[3]) {
           const ok = doc.restore(parts[3])
           if (ok) log('info', '设置页把' + parts[1] + '回退到 ' + parts[3])
           return ok ? json(200, state()) : json(404, { error: '没有这个版本' })
         }
-        const body = await readBody(req)
         if (typeof body?.text !== 'string') return json(400, { error: '缺少 text' })
+        if (parts[2] === 'preview') {
+          const text = parts[1] === 'persona' ? personaText(body.text, get('personaIgnoreComments')) : body.text.trim()
+          return json(200, { text, chars: Array.from(text).length })
+        }
         if (parts[1] !== 'persona') {
           const max = parts[1] === 'core-public' ? get('corePublicMaxChars') : get('coreMasterMaxChars')
           if (countChars(body.text) > max) return json(400, { error: '超过核心记忆上限（' + countChars(body.text) + ' 字 > ' + max + ' 字）' })

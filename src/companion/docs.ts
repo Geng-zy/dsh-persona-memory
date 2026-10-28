@@ -4,6 +4,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import { createHash } from 'node:crypto'
 
 /** 插件数据目录：<DSH_HOME>/companion */
 export function defaultDataDir(): string {
@@ -42,7 +43,7 @@ export interface WriteMeta {
 
 /** 一个带历史版本的文本文件。 */
 export class TextDoc {
-  private cache: { mtimeMs: number; size: number; text: string } | undefined
+  private cache: { mtimeMs: number; ctimeMs: number; ino: number; size: number; text: string } | undefined
 
   /**
    * @param path - 文件路径
@@ -53,17 +54,24 @@ export class TextDoc {
 
   /** 当前内容；文件不存在时是空字符串。 */
   read(): string {
-    let st: { mtimeMs: number; size: number }
+    let st: import('node:fs').Stats
     try {
       st = statSync(this.path)
     } catch {
       this.cache = undefined
       return ''
     }
-    if (this.cache !== undefined && this.cache.mtimeMs === st.mtimeMs && this.cache.size === st.size) return this.cache.text
+    if (this.cache !== undefined && this.cache.mtimeMs === st.mtimeMs && this.cache.ctimeMs === st.ctimeMs && this.cache.ino === st.ino && this.cache.size === st.size) return this.cache.text
     const text = readFileSync(this.path, 'utf-8')
-    this.cache = { mtimeMs: st.mtimeMs, size: st.size, text }
+    this.cache = { mtimeMs: Number(st.mtimeMs), ctimeMs: Number(st.ctimeMs), ino: Number(st.ino), size: Number(st.size), text }
     return text
+  }
+
+  /** Read-only editor metadata. The revision detects stale saves without putting document text in logs. */
+  snapshot() {
+    const text = this.read()
+    return { text, path: this.path, revision: createHash('sha256').update(text).digest('hex'),
+      chars: Array.from(text).length, updatedAt: this.cache?.mtimeMs ?? null, history: this.history() }
   }
 
   /** 写入新内容；旧内容不同且不为空时先存成历史版本。返回存下的历史版本（没存时 undefined）。 */

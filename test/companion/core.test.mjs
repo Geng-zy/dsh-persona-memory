@@ -1,14 +1,14 @@
 // 单元测试：带历史版本的文本文件、改一段文字、会话分类和例外规则、放人格和核心记忆、按轮挑范围、消息存档。
 // 用法：node --test test/（先 pnpm run build）
 import assert from 'node:assert/strict'
-import { mkdtempSync, readdirSync } from 'node:fs'
+import { mkdtempSync, readdirSync, statSync, writeFileSync, utimesSync, renameSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
 
 import { Archive } from '../../lib/companion/archive.js'
 import { TextDoc, applyEdit } from '../../lib/companion/docs.js'
-import { applyPrompt, CORE_SECTION, IDENTITY_SECTION, PERSONA_SECTION } from '../../lib/companion/prompt.js'
+import { applyPrompt, personaText, CORE_SECTION, IDENTITY_SECTION, PERSONA_SECTION } from '../../lib/companion/prompt.js'
 import { countRounds, pendingHumanTurn, selectRounds, truncationNote } from '../../lib/companion/rounds.js'
 import { archiveRule, contextRule, matchRule, scopeOf } from '../../lib/companion/rules.js'
 
@@ -168,4 +168,32 @@ test('存档权限接口缺失、拒绝、异常均禁止；允许时使用实�
   assert.equal(archiveAllowed(service, session), false)
   allowed = true
   assert.equal(archiveAllowed(service, session), true)
+})
+
+
+test('TextDoc：同长度、同mtime原子替换会更新正文和修订标识', () => {
+  const dir = tmp(), path = join(dir, 'persona.md')
+  const doc = new TextDoc(path, join(dir, 'history'), () => 5)
+  doc.write('old identity', { by: 'settings' })
+  const before = doc.snapshot(), time = statSync(path).mtime
+  const replacement = join(dir, 'replacement.md')
+  writeFileSync(replacement, 'new identity')
+  utimesSync(replacement, time, time)
+  renameSync(replacement, path)
+  const after = doc.snapshot()
+  assert.equal(after.text, 'new identity')
+  assert.equal(after.path, path)
+  assert.notEqual(after.revision, before.revision)
+  assert.equal(after.revision.length, 64)
+  assert.equal(doc.read(), 'new identity')
+})
+
+test('人格注释过滤默认保留原文，启用时过滤多行与未闭合注释，变量和Markdown保持原样', () => {
+  const text = '# 身份\n你是 {{name}}。\n<!-- 注释\n不是角色设定 -->\n正常正文'
+  assert.equal(personaText(text), text)
+  assert.equal(personaText(text, true), '# 身份\n你是 {{name}}。\n\n正常正文')
+  assert.equal(personaText('<!-- 只有说明 -->', true), '')
+  assert.equal(personaText('正文<!-- 未闭合', true), '正文')
+  const out = applyPrompt(assembly(), { persona: personaText('<!-- 说明 -->', true), core: '', personaOnly: true })
+  assert.deepEqual(out, assembly(), '有效人格为空时保留原有人格及身份')
 })

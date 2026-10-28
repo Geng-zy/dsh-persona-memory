@@ -17,6 +17,38 @@ window.__ModuleLoader__.load({
 		var PACKAGE = "dsh-snowluma-companion";
 
 		var zh = {
+			docView: "文档视图",
+			docEdit: "编辑",
+			docPreview: "模型正文预览",
+			docPreviewHint: "只预览当前草稿按已保存设置处理后的正文，不会保存或调用模型。实际请求还会按会话权限加入核心记忆、召回等内容。",
+			docReload: "载入服务器版本",
+			docNotWritten: "尚未保存文件",
+			docEmpty: "正文为空；人格为空时保留预设原有人格。",
+			docImport: "导入 Markdown",
+			docExport: "导出当前稿",
+			docTooLarge: "请选择不超过512KB的UTF-8文本文件。",
+			docDiscardConfirm: "当前有未保存草稿。确认放弃草稿并载入服务器最新版本？可先导出当前稿保留副本。",
+			docConflict: "服务器文档已更新。请先导出草稿，再载入服务器版本并合并，避免覆盖其他修改。",
+			personaPlaceholder: "# 身份与性格\n\n在这里写下稳定的角色设定。\n\n# 语气与表达\n\n描述称呼、说话习惯和表达偏好。",
+			personaIgnoreComments: "忽略人格中的 HTML 注释",
+			personaIgnoreCommentsHint: "仅在组装人格正文和对外人格服务时排除<!-- ... -->注释，原文件、历史和备份保持原样。默认关闭，兼容现有人格；开启后保存设置即可。未闭合注释会排除其后全部内容，可在模型正文预览中检查。",
+			personaCurrent: "已保存的人格",
+			personaHostConnected: "已读取宿主状态",
+			personaReady: "正文 {n} 字符；受管会话的后续模型请求会读取最新保存内容。",
+			personaBlank: "人格正文为空，受管会话保留预设原有人格；核心记忆单独生效。",
+			personaApplies: "生效预设：",
+			personaExcludes: "排除：",
+			personaAllPresets: "全部",
+			personaTraceHint: "记录本插件组装阶段，保留最近10次元数据，重启清空；其他人格插件仍可能后续覆盖。",
+			personaTrace: "最近组装记录",
+			personaNoTrace: "尚无组装记录。打开设置页或预览不会产生记录。",
+			personaDefaultPreset: "默认预设",
+			scope_master: "主人范围",
+			scope_private: "其他私聊",
+			scope_group: "群聊",
+			trace_applied: "人格 {persona} / 核心记忆 {core} 字符",
+			trace_excluded: "预设已排除，未应用",
+			trace_empty: "正文为空，保留原提示词",
 			sharedSilence: "静默标记与“聊天与回复”中的设置共用。",
 			unsavedBar: "有改动还没保存：点「保存」才生效，离开这个页面会丢掉",
 			discardChanges: "放弃改动",
@@ -574,6 +606,38 @@ window.__ModuleLoader__.load({
 			noteHint: "规则备注，仅用于说明配置用途，不改变匹配或权限行为。",
 		};
 		var en = {
+			docView: "Document view",
+			docEdit: "Edit",
+			docPreview: "Model text preview",
+			docPreviewHint: "Preview the draft using saved settings without saving or calling a model. Actual requests also include core memory and recall according to session access.",
+			docReload: "Load server version",
+			docNotWritten: "File not saved yet",
+			docEmpty: "Empty text; an empty persona preserves the preset persona.",
+			docImport: "Import Markdown",
+			docExport: "Export current draft",
+			docTooLarge: "Choose a UTF-8 text file no larger than 512KB.",
+			docDiscardConfirm: "Discard this unsaved draft and load the latest server version? Export your draft first if you need a copy.",
+			docConflict: "The server document changed. Export your draft, then load the server version and merge before saving.",
+			personaPlaceholder: "# Identity and personality\n\nWrite the stable character here.\n\n# Voice and expression\n\nDescribe names, speaking habits and preferences.",
+			personaIgnoreComments: "Ignore HTML comments in persona",
+			personaIgnoreCommentsHint: "Exclude <!-- ... --> notes from assembled persona and the persona service, preserving source, history and backups. Disabled by default for compatibility. Unclosed comments exclude all remaining text; check the model text preview.",
+			personaCurrent: "Saved persona",
+			personaHostConnected: "Host state received",
+			personaReady: "{n} characters; subsequent model requests in managed sessions read the latest saved content.",
+			personaBlank: "Empty persona preserves the preset identity; core memory applies separately.",
+			personaApplies: "Included presets:",
+			personaExcludes: "Excluded:",
+			personaAllPresets: "All",
+			personaTraceHint: "Tracks this plugin’s assembly stage, keeping the latest 10 metadata entries until restart. Other persona plugins can still override later.",
+			personaTrace: "Recent assembly records",
+			personaNoTrace: "No assembly records yet. Opening settings or preview does not create one.",
+			personaDefaultPreset: "Default preset",
+			scope_master: "Master scope",
+			scope_private: "Other private chat",
+			scope_group: "Group chat",
+			trace_applied: "Persona {persona} / core memory {core} characters",
+			trace_excluded: "Excluded preset; unchanged",
+			trace_empty: "Empty text; original prompt preserved",
 			sharedSilence: "The silence marker is shared with Chat & replies.",
 			unsavedBar: "Unsaved changes: click Save to apply; leaving the page discards them",
 			discardChanges: "Discard",
@@ -1306,7 +1370,7 @@ window.__ModuleLoader__.load({
 		}
 		var MODES = ["truncate", "llm"];
 		var LOG_LEVELS = ["debug", "info", "warn", "error"];
-		var BOOLS = ["personaOnly", "selfEdit", "archiveEnabled", "archiveUnwoken", "recallEnabled", "activeMemory", "organizeBeforeCompact", "cleanupEnabled", "cleanupAutoPurge",
+		var BOOLS = ["personaOnly", "personaIgnoreComments", "selfEdit", "archiveEnabled", "archiveUnwoken", "recallEnabled", "activeMemory", "organizeBeforeCompact", "cleanupEnabled", "cleanupAutoPurge",
 			"diaryEnabled", "monthlyEnabled", "diaryOnNewSession", "rotateSessions", "deleteOldSessions", "archiveImages",
 			"proactiveEnabled", "proactivePrivate", "proactiveGroup", "graphEnabled", "personaGuard", "personaReview", "autoCleanup", "purgeForgotten", "consolidateEnabled", "backupEnabled"];
 		var TEXTS = ["diaryEffort", "summaryModel", "memoryModel", "graphModel", "summaryEffort", "summaryApiUrl", "summaryApiModel", "memoryEffort", "memoryApiUrl", "memoryApiModel", "graphEffort", "graphApiUrl", "graphApiModel", "embedApiUrl", "embedModel", "diaryTime", "timezone", "quietStart", "quietEnd", "silenceToken", "backupTime"];
@@ -1486,44 +1550,108 @@ window.__ModuleLoader__.load({
 		}
 
 		function DocEditor(props) {
-			var t = props.t;
-			var doc = props.doc || { text: "", history: [] };
-			var [draft, setDraft] = React.useState(null);
-			var [busy, setBusy] = React.useState(false);
-			var [msg, setMsg] = React.useState(null);
-			// A confirmed restore replaces selected editors, while ordinary navigation preserves drafts.
-			React.useEffect(function () { if (props.restoreStamp !== undefined) { setDraft(null); setMsg(null); } }, [props.restoreStamp]);
-			var value = draft === null ? doc.text : draft;
-			var dirty = draft !== null && draft !== doc.text;
+			var t = props.t, doc = props.doc || { text: "", history: [] };
+			var Layout = require("dsh-snowluma-companion/ui-layout"), view = React.useContext(Layout.Context);
+			var [draft, setDraft] = React.useState(null), [baseRevision, setBaseRevision] = React.useState(null);
+			var [busy, setBusy] = React.useState(false), [msg, setMsg] = React.useState(null);
+			var [preview, setPreview] = React.useState(null), [asking, setAsking] = React.useState(false);
+			var fileInput = React.useRef(null);
+			var value = draft === null ? doc.text : draft, dirty = draft !== null && draft !== doc.text;
+			var conflict = dirty && baseRevision !== null && doc.revision !== baseRevision;
+			function reset() { setDraft(null); setBaseRevision(null); setPreview(null); setAsking(false); setMsg(null); }
+			// Restore replaces only selected editors; normal refreshes preserve unfinished drafts.
+			React.useEffect(function () { if (props.restoreStamp !== undefined) reset(); }, [props.restoreStamp]);
+			React.useEffect(function () {
+				if (view.documentChanged) view.documentChanged(props.name, dirty);
+				return function () { if (view.documentChanged) view.documentChanged(props.name, false); };
+			}, [dirty, view.documentChanged, props.name]);
+			function edit(text) {
+				if (draft === null) setBaseRevision(doc.revision);
+				setDraft(text); setPreview(null); setMsg(null);
+			}
 			function save() {
+				var submitted = value;
 				setBusy(true); setMsg(null);
-				api("POST", "doc/" + props.name, { text: value }).then(function (st) {
-					setDraft(null); props.onState(st); setMsg({ tone: "ok", text: t("saved") });
+				api("POST", "doc/" + props.name, { text: submitted, revision: baseRevision === null ? doc.revision : baseRevision }).then(function (st) {
+					reset(); props.onState(st); setMsg({ tone: "ok", text: t("saved") });
 				}, function (e) { setMsg({ tone: "error", text: t("saveDocFailed", { error: e.message }) }); }).finally(function () { setBusy(false); });
 			}
 			function restore(id) {
 				setBusy(true); setMsg(null);
-				api("POST", "doc/" + props.name + "/restore/" + encodeURIComponent(id), {}).then(function (st) {
-					setDraft(null); props.onState(st); setMsg({ tone: "ok", text: t("saved") });
+				api("POST", "doc/" + props.name + "/restore/" + encodeURIComponent(id), { revision: doc.revision }).then(function (st) {
+					reset(); props.onState(st); setMsg({ tone: "ok", text: t("saved") });
 				}, function (e) { setMsg({ tone: "error", text: t("saveDocFailed", { error: e.message }) }); }).finally(function () { setBusy(false); });
 			}
-			return h("div", { className: "compc-field" },
+			function reload() {
+				setBusy(true);
+				api("GET", "state").then(function (st) { reset(); props.onState(st); }, function (e) { setMsg({ tone: "error", text: e.message }); }).finally(function () { setBusy(false); });
+			}
+			function showPreview() {
+				setBusy(true); setMsg(null);
+				api("POST", "doc/" + props.name + "/preview", { text: value }).then(setPreview, function (e) {
+					setMsg({ tone: "error", text: e.message });
+				}).finally(function () { setBusy(false); });
+			}
+			function importFile(event) {
+				var file = event.target.files[0]; event.target.value = "";
+				if (!file) return;
+				if (file.size > 512 * 1024) { setMsg({ tone: "error", text: t("docTooLarge") }); return; }
+				setBusy(true);
+				file.text().then(function (text) { edit(text.replace(/^\uFEFF/, "")); }, function (e) {
+					setMsg({ tone: "error", text: e.message });
+				}).finally(function () { setBusy(false); });
+			}
+			function exportFile() {
+				var url = URL.createObjectURL(new Blob([value], { type: "text/markdown;charset=utf-8" })), link = document.createElement("a");
+				link.href = url; link.download = props.name + ".md"; link.click(); setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+			}
+			return h("div", { className: "compc-field compc-document", "data-document": props.name },
 				props.title ? h("h4", { className: "compc-subtitle" }, props.title) : null,
-				h("textarea", {
-					className: "compc-textarea" + (props.small ? " compc-small" : ""),
-					value: value,
-					"aria-label": props.title || props.ariaLabel,
-					spellCheck: false,
-					onChange: function (e) { setDraft(e.target.value); setMsg(null); }
-				}),
-				h("div", { className: "compc-row" },
-					h(P.Button, { size: "sm", disabled: busy || !dirty, onClick: save }, busy ? t("saving") : props.saveLabel),
-					h("span", { className: "compc-hint" }, t("chars", { n: value.length }) + (dirty ? " · " + t("unsaved") : ""))),
+				h("div", { className: "sc-doc-panel" },
+					h("div", { className: "sc-doc-toolbar" },
+						h("div", { className: "sc-doc-tabs", role: "tablist", "aria-label": (props.title || props.ariaLabel) + " · " + t("docView") },
+							h("button", { type: "button", role: "tab", "aria-selected": preview === null, disabled: busy, onClick: function () { setPreview(null); } }, t("docEdit")),
+							h("button", { type: "button", role: "tab", "aria-selected": preview !== null, disabled: busy, onClick: showPreview }, t("docPreview"))),
+						h("span", { className: "sc-doc-count" }, t("chars", { n: Array.from(value).length }) + (dirty ? " · " + t("unsaved") : ""))),
+					h("div", { className: "sc-doc-file" }, h("code", { title: doc.path || props.name + ".md" }, doc.path || props.name + ".md"),
+						h("span", null, doc.updatedAt ? new Date(doc.updatedAt).toLocaleString() : t("docNotWritten"))),
+					preview === null ? h("textarea", {
+						className: "compc-textarea sc-doc-text" + (props.small ? " compc-small" : ""), value: value, disabled: busy,
+						"aria-label": props.title || props.ariaLabel, spellCheck: false,
+						placeholder: props.name === "persona" ? t("personaPlaceholder") : undefined,
+						onChange: function (e) { edit(e.target.value); }
+					}) : h("div", { className: "sc-doc-preview" }, h("p", { className: "compc-hint" }, t("docPreviewHint")),
+						h("pre", { "aria-label": t("docPreview") }, preview.text || t("docEmpty"))),
+					h("div", { className: "sc-doc-actions" },
+						h("div", { className: "compc-row" },
+							h(P.Button, { size: "sm", disabled: busy || !dirty || conflict, onClick: save }, busy ? t("saving") : props.saveLabel),
+							h("button", { type: "button", className: "sc-tool", disabled: busy, onClick: function () { if (dirty) setAsking(true); else reload(); } }, t("docReload"))),
+						h("div", { className: "compc-row" },
+							h("input", { type: "file", ref: fileInput, hidden: true, accept: ".md,.markdown,.txt,text/plain,text/markdown", onChange: importFile, "aria-label": t("docImport") }),
+							h("button", { type: "button", className: "sc-tool", disabled: busy, onClick: function () { fileInput.current.click(); } }, t("docImport")),
+							h("button", { type: "button", className: "sc-tool", disabled: busy, onClick: exportFile }, t("docExport"))))),
+				asking ? h("div", { className: "sc-doc-notice", role: "status" }, h("p", null, t("docDiscardConfirm")), h("div", { className: "compc-row" },
+					h(P.Button, { size: "sm", onClick: reload }, t("confirm")), h(P.Button, { size: "sm", onClick: function () { setAsking(false); } }, t("cancel")))) : null,
+				conflict ? h("p", { className: "compc-result compc-error", role: "alert" }, t("docConflict")) : null,
 				msg ? h("p", { className: "compc-result compc-" + msg.tone, role: "status" }, msg.text) : null,
 				h("details", { className: "compc-details" },
 					h("summary", { className: "compc-summary" }, h("span", { className: "compc-chevron", "aria-hidden": true }, "›"), t("history") + "（" + (doc.history || []).length + "）"),
 					h("div", { className: "compc-detailsBody" }, h(HistoryList, { t: t, name: props.name, history: doc.history, busy: busy, onRestore: restore }))));
 		}
+
+		function PersonaStatus(props) {
+			var t = props.t, status = props.data.personaStatus || {}, records = status.assemblies || [];
+			return h("div", { className: "sc-persona-status" },
+				h("div", { className: "sc-doc-status-head" }, h("strong", null, t("personaCurrent")), h("span", { className: "sc-host-status" }, h("i", { "aria-hidden": true }), t("personaHostConnected"))),
+				h("p", null, t(status.chars ? "personaReady" : "personaBlank", { n: status.chars || 0 })),
+				h("p", { className: "compc-hint" }, t("personaApplies") + " " + ((status.presets || []).length ? status.presets.join(", ") : t("personaAllPresets")) + (status.excludedPresets && status.excludedPresets.length ? " / " + t("personaExcludes") + " " + status.excludedPresets.join(", ") : "")),
+				h("div", { className: "compc-row" }, h("span", { className: "compc-hint" }, t("personaTraceHint")), h("button", { type: "button", className: "sc-tool", onClick: props.onRefresh }, t("refresh"))),
+				records.length ? h("details", { className: "sc-prompt-records" }, h("summary", null, t("personaTrace") + " · " + new Date(records[0].at).toLocaleTimeString()),
+					h("ul", null, records.map(function (record, i) { return h("li", { key: i }, h("time", null, new Date(record.at).toLocaleTimeString()),
+						h("span", null, t("scope_" + record.category) + " / " + (record.preset || t("personaDefaultPreset"))),
+						h("span", null, t("trace_" + record.result, { persona: record.personaChars, core: record.coreChars }))); }))) : h("p", { className: "compc-hint" }, t("personaNoTrace")));
+		}
+
 		//#endregion
 
 		//#region 例外规则表
@@ -2529,8 +2657,10 @@ window.__ModuleLoader__.load({
 						h(Value, Object.assign({ field: "excludedPresets", label: t("excludedPresets"), hint: t("excludedPresetsHint") }, common)),
 						h(Select, Object.assign({ field: "pluginAccess", label: t("pluginAccess"), hint: t("pluginAccessHint"), fallback: "all", options: [{ value: "all", label: t("pluginAccessAll") }, { value: "public", label: t("pluginAccessPublic") }, { value: "off", label: t("pluginAccessOff") }] }, common))),
 					h(Toggle, Object.assign({ field: "personaOnly", label: t("personaOnly"), hint: t("personaOnlyHint") }, common))),
-				h(Section, { sectionId: "companion-persona", category: "persona", title: t("persona"), hint: t("personaHint") },
+				h(Section, { sectionId: "companion-persona", category: "persona", defaultOpen: true, title: t("persona"), hint: t("personaHint") },
+					data ? h(PersonaStatus, { t: t, data: data, onRefresh: load }) : null,
 					data ? h(DocEditor, { t: t, restoreStamp: data.lastImport && data.lastImport.plan && data.lastImport.plan.items.indexOf("persona") >= 0 ? data.lastImport.at : undefined, name: "persona", doc: docs.persona, ariaLabel: t("persona"), saveLabel: t("savePersona"), onState: setData }) : null,
+					h(Toggle, Object.assign({ field: "personaIgnoreComments", label: t("personaIgnoreComments"), hint: t("personaIgnoreCommentsHint") }, common)),
 					h(Toggle, Object.assign({ field: "selfEdit", label: t("selfEdit"), hint: t("selfEditHint") }, common)),
 					h(Value, Object.assign({ field: "historyKeep", label: t("historyKeep"), hint: t("historyKeepHint"), numeric: true, invalidLabel: t("invalidCount") }, common))),
 				h(Section, { sectionId: "companion-personaGuardSec", category: "persona", title: t("personaGuardSec"), hint: t("personaGuardHint") },

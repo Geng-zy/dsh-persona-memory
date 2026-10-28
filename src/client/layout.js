@@ -5,7 +5,7 @@ window.__ModuleLoader__.load({
     var R = require("react"), React = R.createElement ? R : R.default, h = React.createElement;
     var Context = React.createContext({ category: "overview", query: "", expansion: null });
     function readOpen(id, fallback) {
-      try { var value = window.localStorage.getItem("snowluma-companion:fold:" + id); return value === null ? fallback : value === "open"; } catch (_) { return false; }
+      try { var value = window.localStorage.getItem("snowluma-companion:fold:" + id); return value === null ? fallback : value === "open"; } catch (_) { return fallback; }
     }
     function searchable(node) {
       if (node == null || typeof node === "boolean") return "";
@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     }
     function Section(props) {
       var view = React.useContext(Context), id = props.sectionId;
-      var [open, setOpen] = React.useState(() => readOpen(id, props.category === "overview"));
+      var [open, setOpen] = React.useState(() => readOpen(id, props.defaultOpen || props.category === "overview"));
       var [visited, setVisited] = React.useState(open);
       var query = view.query.trim().toLowerCase();
       var matches = !query || (String(props.title) + " " + String(props.hint || "") + " " + searchable(props.children)).toLowerCase().includes(query);

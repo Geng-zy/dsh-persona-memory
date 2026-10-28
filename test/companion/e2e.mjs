@@ -317,6 +317,18 @@ const api = async (method, path, body) => {
   return { status: res.status, json: await res.json().catch(() => null) }
 }
 
+// Runtime provenance contains metadata only and is produced by actual assembly, not opening settings.
+const provenance = (await api('GET', 'state')).json
+if (!provenance.personaStatus?.assemblies.some(x => x.category === 'master' && x.result === 'applied') || !provenance.personaStatus?.assemblies.some(x => x.category === 'group' && x.result === 'applied')) await fail('缺少主人/群聊真实组装记录')
+if (JSON.stringify(provenance.personaStatus.assemblies).includes('CORE-MASTER')) await fail('组装记录不应保存核心记忆正文')
+const previewInput = '# 人格预览\n<!-- 作者说明 -->\n你是 {{unknown}}。'
+const previewed = await api('POST', 'doc/persona/preview', { text: previewInput })
+if (previewed.status !== 200 || previewed.json.text !== previewInput) await fail('预览默认行为不兼容现有人格')
+if ((await api('GET', 'state')).json.docs.persona.revision !== provenance.docs.persona.revision) await fail('预览修改了已保存的人格')
+const staleWrite = await api('POST', 'doc/persona', { text: '不应被写入的旧稿', revision: 'stale-revision' })
+if (staleWrite.status !== 409 || readFileSync(personaFile, 'utf-8') !== provenance.docs.persona.text) await fail('旧修订保存覆盖了服务器人格')
+log('人格来源元数据、真实组装记录、无写入预览及过期修订保护 OK')
+
 // 2c. 召回：设置页加一条主人记忆，主人问相关的事时，这一轮的消息里带着它（不在系统提示词里）
 const added = await api('POST', 'memory/add', { scope: 'master', content: '主人最爱吃的是红烧肉 MEM-1', kind: 'preference', importance: 0.8 })
 if (added.json?.action !== 'added') await fail('加记忆失败：' + JSON.stringify(added))
@@ -649,6 +661,13 @@ log('备份、下载、还原（插件重新加载）、自检 OK')
 }
 
 if (process.env.E2E_UI === '1') { try { const { runUi } = await import('../ui.mjs'); await runUi({ url: webBase0, cookie: cookie0 }) } catch (e) { await fail('浏览器 UI 检查失败：' + e.message) } }
+if (process.env.E2E_UI === '1') {
+  await say(() => privateMsg([text('验证人格注释过滤 persona-filter-check')]), '注释过滤后的真实请求')
+  const filtered = reqWith('persona-filter-check')
+  if (!filtered?.all.includes('你是 {{name}}。') || filtered.all.includes('作者说明，不发送给模型')) await fail('真实模型请求没有应用已保存的人格过滤设置')
+  if (!readFileSync(personaFile, 'utf-8').includes('作者说明，不发送给模型')) await fail('过滤不应改写人格原文件')
+  log('真实模型请求使用过滤后人格，变量保持字面量，原文件保留注释 OK')
+}
 
 // 14. 删过会话以后重启 dsh：能正常起来、不报错、设置页接口照常
 if (!process.env.E2E_HOLD) {
