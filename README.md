@@ -148,7 +148,7 @@ dsh --version                        # 0.2.1-rc.2
 
 # 6. 两个插件（回到家目录）
 cd ~
-dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.20.3 github:Geng-zy/dsh-companion-core#v0.15.0
+dsh plugin --profile web add github:Geng-zy/dsh-napcat-bridge#v0.20.3 github:Geng-zy/dsh-companion-core#v0.15.1
 #    连不上 GitHub：到两个仓库的 Releases 下载 .tgz，传到 ~/pkgs/ 后
 #    dsh plugin --profile web add ./pkgs/dsh-napcat-bridge-0.19.1.tgz ./pkgs/dsh-companion-core-0.13.0.tgz
 #    （~/pkgs 以后不能删：dsh 的 profile 里记着它）
@@ -264,7 +264,7 @@ sudo systemctl daemon-reload && sudo systemctl enable --now napcat
 ## 安装
 
 ```bash
-dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.15.0
+dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.15.1
 ```
 
 装好后：
@@ -459,3 +459,5 @@ AGPL-3.0-or-later。陪伴模式预设的工具列表照抄 dsh-web-app 的标�
 在「备份和日志」新增完整环境备份入口。普通备份仍不含密钥并支持选择性导入；完整环境包含私密配置、原始会话、QQ 登录数据及管理员配置的运行环境，由独立系统服务停服复制后恢复服务。人格/核心记忆仅保留现稿。支持手动/每日/每周计划，自动与手动总共最多保留五份，校验成功后删除最早超额包。
 
 安装系统服务、私密下载、离机副本及离线验证/恢复见 [完整环境备份文档](docs/environment-backup.md)。插件不获取 sudo 权限，完整环境包不得上传普通导入入口。
+
+0.15.1 修复系统服务严格权限掩码下的进度读取，并加入权限回归测试。

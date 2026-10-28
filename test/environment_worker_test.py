@@ -19,6 +19,11 @@ class WorkerTest(unittest.TestCase):
   self.config=dict(directory=str(self.base),gid=os.getgid(),sources=[str(self.src)],required=[str(self.src)],exclude=[str(self.src/'history')],services=[])
   self.s=w.schedule(dict(schedule='daily',time='04:30',weekday=7,keep=5,timezone='Asia/Shanghai'))
  def tearDown(self):self.temp.cleanup()
+ def test_atomic_status_with_restrictive_service_umask(self):
+  previous=os.umask(0o077)
+  try:w.atomic(self.base/'status.json',{'phase':'done'},os.getgid())
+  finally:os.umask(previous)
+  self.assertEqual((self.base/'status.json').stat().st_mode & 0o777,0o640)
  def test_schedule(self):
   before=dt.datetime.fromisoformat('2026-10-27T20:29:00+00:00');after=dt.datetime.fromisoformat('2026-10-27T20:30:00+00:00')
   self.assertFalse(w.due(self.s,None,before));self.assertTrue(w.due(self.s,None,after));self.assertFalse(w.due(self.s,'2026-10-28',after))

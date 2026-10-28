@@ -38,6 +38,7 @@ def atomic(path, value, gid):
     tmp = path.with_name('.' + path.name + '.' + uuid.uuid4().hex)
     fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o640)
     try:
+        os.fchmod(fd, 0o640)  # systemd UMask=0077 must not hide status from the dsh group.
         if os.geteuid() == 0:
             os.fchown(fd, 0, gid)
         with os.fdopen(fd, 'w') as stream:
