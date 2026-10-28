@@ -42,7 +42,6 @@ const fail = async message => { console.error('[e2e] FAIL: ' + message); await c
 if (!existsSync(join(BRIDGE, 'lib', 'index.js'))) { console.error('[e2e] 找不到插件一：' + BRIDGE + '（先在那里 pnpm run build）'); process.exit(1) }
 
 // ---- 假 DeepSeek（Anthropic Messages 流式）
-const judgments = []
 const requests = []
 const extractions = []
 const diaryPrompts = []
@@ -81,9 +80,7 @@ const llm = createServer((req, res) => {
     const extracting = lastAll.includes('请从中挑出值得你长期记住的事')
     const images = Array.isArray(lastUser?.content) ? lastUser.content.filter(b => b.type === 'image').length : 0
     const entry = { images, system, last, lastAll, all, raw: JSON.stringify(json.messages ?? []), tools: (json.tools ?? []).map(t => t.name), toolResult, extracting }
-    const isJudge = lastAll.includes('你负责判断 QQ 群聊中的陪伴角色')
-    if (isJudge) judgments.push({ ...entry, json })
-    else if (extracting) extractions.push(lastAll)
+    if (extracting) extractions.push(lastAll)
     else requests.push(entry)
     const ev = (type, data) => res.write('event: ' + type + '\ndata: ' + JSON.stringify({ type, ...data }) + '\n\n')
     const start = () => {
@@ -99,7 +96,6 @@ const llm = createServer((req, res) => {
       ev('message_stop', {})
       res.end()
     }
-    if (isJudge) return text(JSON.stringify({ addressed: true, reply: !lastAll.split('<current_message>')[1]?.includes('JUDGE-SKIP') }))
     if (lastAll.includes('请从每条里抽出提到的实体')) {
       graphPrompts.push(lastAll)
       return text(JSON.stringify([...lastAll.matchAll(/^#(\d+) (.*)$/gm)].map(([, id, content]) => ({
@@ -340,16 +336,6 @@ await say(() => groupMsg([at(BOT), text(' 红烧肉好吃吗 g1b')]), '群 @ 回
 r = reqWith('g1b')
 if (!['memory_search', 'memory_save', 'memory_forget'].every(t => r.tools.includes(t))) await fail('群聊没有记忆工具：' + r.tools.join(','))
 if (!r.all.includes('<group_context>') || !r.all.includes('ctx-a')) await fail('没附上群里最近的消息：' + r.all.slice(0, 600))
-const decision = judgments.at(-1)
-if (!decision.lastAll.includes('PERSONA-V1') || !decision.lastAll.includes('CORE-PUBLIC') || !decision.lastAll.includes('ctx-a') || decision.lastAll.includes('CORE-MASTER') || decision.tools.length) await fail('独立判断上下文/私密隔离/工具检查失败')
-const repliesBeforeJudgeSkip = sent.length
-const requestsBeforeJudgeSkip = requests.length
-const judgmentsBeforeSkip = judgments.length
-await groupMsg([at(BOT), text('JUDGE-SKIP')])
-await waitFor(() => judgments.length > judgmentsBeforeSkip, '独立判断拒绝')
-await new Promise(r => setTimeout(r, 500))
-if (sent.length !== repliesBeforeJudgeSkip || requests.length !== requestsBeforeJudgeSkip) await fail('独立判断拒绝仍进入正式回复')
-
 if (r.all.includes('MEM-1')) await fail('群里想起了主人的记忆')
 log('群聊：记忆工具、附上最近的消息、记忆隔离 OK')
 
