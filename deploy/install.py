@@ -22,11 +22,12 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-VERSION = '1.2.0'
+VERSION = '1.2.1'
 DSH_VERSION = '0.2.1-rc.2'
 NODE_VERSION = '24.22.1'
 PNPM_VERSION = '11.28.5'
 REPO = 'Geng-zy/dsh-snowluma-companion'
+SUPPORTED_UBUNTU = ('22.04', '24.04', '26.04')
 VOLUMES = ['qq-gateway-data', 'qq-client-config', 'qq-client-data']
 
 class InstallError(Exception):
@@ -228,8 +229,8 @@ class Installer:
         if platform.system() != 'Linux' or not Path('/run/systemd/system').is_dir():
             raise InstallError('只支持运行systemd的Ubuntu服务器；不能在Mac或容器壳中直接部署。')
         release = dict(line.split('=', 1) for line in Path('/etc/os-release').read_text().splitlines() if '=' in line)
-        if (release.get('ID', '').strip('"') != 'ubuntu' or release.get('VERSION_ID', '').strip('"') not in ['22.04', '24.04']) or platform.machine() not in ['x86_64', 'aarch64', 'arm64']:
-            raise InstallError('当前仅支持Ubuntu22.04/24.04的amd64/arm64。')
+        if (release.get('ID', '').strip('"') != 'ubuntu' or release.get('VERSION_ID', '').strip('"') not in SUPPORTED_UBUNTU) or platform.machine() not in ['x86_64', 'aarch64', 'arm64']:
+            raise InstallError('当前仅支持Ubuntu22.04/24.04/26.04的amd64/arm64。')
         if os.geteuid() != 0:
             raise InstallError('请使用sudo或root运行安装入口。')
         if self.resuming:

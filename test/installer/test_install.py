@@ -17,6 +17,20 @@ def config(directory='/opt/test-companion'):
     return {'user':'companion-test','directory':directory,'host':'example.test','bind':'10.0.0.10','dsh_port':3080,'bridge_port':6199,'webui_port':5099,'vnc_port':6081,'http_port':3000,'ws_port':3001,'admin_qq':'10001','web_password':'Fake$Password!123','vnc_password':'Fake$123','token':'test-token-123456789','model_url':'https://api.example.test/anthropic','model':'deepseek-flash','api_key':'fake-key-"$\\value','image':'motricseven7/snowluma:latest'}
 
 class Tests(unittest.TestCase):
+    def test_supported_ubuntu_releases(self):
+        # Exercise the real preflight gate, stopping before any installation or mutation.
+        import platform
+        for version, accepted in [('22.04', True), ('24.04', True), ('26.04', True), ('20.04', False), ('26.10', False)]:
+            with self.subTest(version=version):
+                original_read = Path.read_text
+                def read(path, *args, **kwargs):
+                    if str(path) == '/etc/os-release': return 'ID=ubuntu\nVERSION_ID="' + version + '"\n'
+                    return original_read(path, *args, **kwargs)
+                with patch.object(platform, 'system', return_value='Linux'), patch.object(Path, 'exists', return_value=True), patch.object(Path, 'read_text', read), patch.object(platform, 'machine', return_value='x86_64'), patch('os.geteuid', return_value=0), patch.object(Path, 'is_dir', return_value=True):
+                    with self.assertRaises(installer.InstallError) as error:
+                        installer.Installer(config(), None).preflight()
+                    self.assertIn('已有部署目录' if accepted else '当前仅支持', str(error.exception))
+
     def test_bootstrap_pins_the_installer_digest(self):
         import hashlib,re
         expected=re.search(r'INSTALLER_SHA256=([a-f0-9]{64})', (ROOT/'install.sh').read_text()).group(1)

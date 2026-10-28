@@ -4,7 +4,11 @@
 
 ## 全新服务器一键部署
 
-在Ubuntu22.04/24.04服务器执行：
+支持Ubuntu22.04/24.04/26.04。可以选择[一键安装](docs/INSTALL.md)或[手动安装图文教程](docs/MANUAL-INSTALL.md)。
+
+![部署结构与端口](docs/images/deployment.svg)
+
+在服务器执行：
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/Geng-zy/dsh-snowluma-companion/main/install.sh | sudo bash
@@ -14,12 +18,12 @@ curl -fsSL https://raw.githubusercontent.com/Geng-zy/dsh-snowluma-companion/main
 
 ## 安装与升级
 
-要求 dsh **0.2.1-rc.2** 对应 SDK、Node **≥22.13**（使用内置 SQLite）。在 dsh 插件管理页安装本仓库 [v1.2.0](https://github.com/Geng-zy/dsh-snowluma-companion/releases/tag/v1.2.0) 的 `.tgz`。只需安装一个包；QQ 协议端仍由官方 SnowLuma Docker 镜像运行。
+要求 dsh **0.2.1-rc.2** 对应 SDK、Node **≥22.13**（使用内置 SQLite）。在 dsh 插件管理页安装本仓库 [v1.2.1](https://github.com/Geng-zy/dsh-snowluma-companion/releases/tag/v1.2.1) 的 `.tgz`。只需安装一个包；QQ 协议端仍由官方 SnowLuma Docker 镜像运行。
 
 从两个旧插件升级时，停止 dsh，保留现有数据与 profile 配置，以 profile 所属用户执行：
 
 ```sh
-node /解包目录/deploy/migrate-profile.mjs /绝对路径/profiles/web /绝对路径/dsh-snowluma-companion-1.2.0.tgz
+node /解包目录/deploy/migrate-profile.mjs /绝对路径/profiles/web /绝对路径/dsh-snowluma-companion-1.2.1.tgz
 cd /绝对路径/profiles/web
 pnpm install
 ```
