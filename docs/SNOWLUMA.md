@@ -1,61 +1,59 @@
-# SnowLuma 部署与数据迁移
+# SnowLuma 官方默认部署与 dsh 接入
 
-当前统一插件为`dsh-snowluma-companion`。QQ内部设置id仍为`snowluma-bridge`，服务为`ctx.snowluma`，事件以`snowluma/`开头；陪伴核心已包含在同一安装包中。
+统一插件为dsh-snowluma-companion。SnowLuma使用官方Docker Compose默认值，本模板仅增加容器访问宿主所需的host-gateway映射；OneBot配置中另保留接入dsh的反向WS客户端。
 
-## 保持会话与记忆
+## 启动
 
-平台`id`统一为`snowluma`。从既有部署迁移时，先停止dsh，通过宿主会话存储接口重建会话ID及日志内宿主关联，再同步数据库UMO、记忆来源、整理游标、轮换记录、会话映射、工作区和插件配置。聊天正文、人格及记忆文本保留原文。不能只改一个设置字段后继续使用未迁移的旧日志。
-
-## Compose部署
-
-由管理用户安装Docker和Compose，在独立目录放置`deploy/snowluma.compose.yml`、`deploy/start-snowluma.sh`与`snowluma.env.example`，后者复制为`.env`，然后：
+将deploy/snowluma.compose.yml和snowluma.env.example放到部署目录，后者复制为.env，然后执行：
 
 ```sh
 sudo docker compose --env-file .env -f snowluma.compose.yml up -d
 ```
 
-模板使用SnowLuma官方`motricseven7/snowluma:v2.2.1`；生产应核对官方镜像digest并固定版本。`data`保存SnowLuma配置，`qq-config`与`qq-share`保存QQ数据。它们与容器生命周期分开，普通重建会保留；迁移服务器时需单独妥善转移这些目录，不由companion普通备份代管。
+默认镜像motricseven7/snowluma:latest、容器名snowluma，使用原官方启动入口，无自定义启动包装、内存上限、日志轮转或固定QQ账号参数。默认发布6081远程桌面、5099管理页、3000 OneBot HTTP和3001 OneBot正向WS；宿主未指定绑定IP，遵循Docker默认发布范围。公网访问还取决于安全组和网络。
 
-管理端口5099/6081显式发布到宿主0.0.0.0，与官方模板默认的所有IPv4网卡发布范围一致；可使用服务器IP访问，公网是否可达取决于安全组、防火墙和网络。OneBot HTTP/正向WS端口不发布。模板设置host.docker.internal映射为宿主网关，供反向WS访问宿主dsh监听的6199端口。
+通过http://服务器IP:5099/管理SnowLuma；通过http://服务器IP:6081/vnc.html打开QQ远程桌面并扫码。VNC密码与管理页密码独立，保留现有凭据，不重置用户已修改的管理密码。
 
-## 接入配置
+## 默认存储
 
-在SnowLuma的OneBot配置中添加WebSocket客户端：
+官方三个命名卷：qq-gateway-data挂载/app/data、qq-client-config挂载/app/.config、qq-client-data挂载/app/.local/share。卷与容器生命周期独立；更新时保留这些卷。迁移到其他服务器需要同时迁移卷数据及dsh的配置/用户资料，不能只复制Compose文件就认为登录、会话和记忆也已迁移。
+
+从之前的宿主目录挂载方案改为命名卷时，先停止SnowLuma、复制并校验三个目录的全部数据，再启用新卷。不要启动空卷后删除原目录。本次生产迁移3694个文件校验一致，反向WS和凭据保留。
+
+## OneBot配置
+
+HTTP API及正向WS是官方默认提供的接口，分别使用3000和3001；并不是额外加入的模型服务。本插件当前通过反向WS交换事件和调用，不依赖HTTP API。
+
+在全局config/onebot.json的networks.wsClients中添加：
 
 ```json
 {
   "name": "dsh",
   "url": "ws://host.docker.internal:6199/ws",
   "role": "Universal",
-  "accessToken": "填写原桥接插件的Token",
+  "accessToken": "与dsh插件Token一致",
   "messageFormat": "array",
   "reportSelfMessage": false,
   "reconnectIntervalMs": 3000
 }
 ```
 
-对应配置文件`config/onebot.json`的`networks.wsClients`；已存在账号独立配置`config/onebot_<QQ>.json`时，也需核对生效的账号配置。关闭SnowLuma自带的`statusCommand.enabled`，避免`#sl`在桥接白名单之外产生额外回复。
+若有config/onebot_<QQ>.json账号独立配置，也需核对该客户端是否生效。宿主dsh监听6199并可从Docker网络访问。不要把URL中的主机名改成容器内127.0.0.1；那指向容器自身。
 
-先准备镜像、容器和QQ登录界面，正式切换时停止原协议端，确保同一QQ只有一个协议端向桥接上报。登录SnowLuma并确认注入成功，检查桥接设置页显示一条连接、QQ信息正常。不要同时让两个协议端连同一个桥接实例。
+按用户要求恢复官方默认后，statusCommand.enabled=true，内置#sl会由SnowLuma直接回复，独立于dsh插件白名单/唤醒规则。插件本身的白名单和存档限制仍按原规则运行。此前x11vnc的alwaysshared修复已移除，远程桌面现在按官方启动行为运行。
 
-宿主6199需要可从Docker网关访问，仍须配置Token。本模板不发布OneBot HTTP/正向WS端口。管理界面可直接访问服务器5099/6081，也可继续使用可选SSH转发：
+## 宿主访问方法与迁移
 
-```sh
-ssh -L 15099:127.0.0.1:5099 -L 16081:127.0.0.1:6081 ubuntu@你的服务器
-```
+| 方法 | 是否能照搬及前提 |
+|---|---|
+| host.docker.internal:host-gateway | 当前采用。Docker启动容器时解析到本机宿主网关，不写死服务器IP；另一台支持host-gateway的Linux Docker主机可沿用同一URL和映射。仍需宿主dsh监听对应端口、Token匹配。 |
+| 宿主内网IP | 可以连接，但换服务器通常要修改URL。 |
+| Linux host网络+127.0.0.1 | 容器共享宿主网络，可用回环地址；要更改网络模式并移除端口映射，偏离官方bridge部署，当前不采用。 |
+| dsh也容器化，加入同一自定义网络 | 可以通过Compose服务名如dsh:6199连接，适合两者均容器化的方案；当前dsh运行在宿主，不适用现有部署。 |
+| 自有域名/其他可路由宿主地址 | 需要维持DNS或地址指向、路由及端口可达，迁移后需相应维护。 |
 
-直接访问http://服务器IP:6081/vnc.html扫码、http://服务器IP:5099管理SnowLuma；使用上述转发时分别访问http://127.0.0.1:16081/vnc.html和http://127.0.0.1:15099。首次生成的管理/远程桌面密码只保存在私有部署数据中，不写进公开仓库。若界面要求协议确认或扫码，请由账号本人完成。
+这里“可照搬”指网络配置不写死某台主机的IP，并不代表可以省去新服务器的Docker安装、dsh安装和数据迁移。
 
-## 媒体及回退
+图片、语音等继续通过OneBot可下载地址/base64处理，宿主视频处理使用宿主ffmpeg；不要求dsh读取QQ登录卷。普通插件备份不覆盖QQ登录卷、Docker镜像或操作系统，不新增完整环境备份和电脑自动同步。
 
-图片、语音优先使用OneBot可下载地址或返回的base64；dsh不会因为容器返回`/app/...`而要求读取QQ登录目录。宿主发送文件/视频会内联文件内容，转发节点同样处理。外部URL维持原样。视频抽帧仍在dsh一侧执行。
-
-迁移期间保留私有回退副本，验证数据关联及新端登录后清理原协议端程序、服务、配置和安装包。原有数据先验证后切换，不能以删除聊天记录代替标识迁移。普通备份不增加QQ登录态、运行环境或电脑同步功能。
-
-参考：[SnowLuma官方Docker文档](https://snowluma.github.io/zh/docs/guide/deploy/docker)、[官方Compose镜像仓库](https://github.com/SnowLuma/SnowLuma.Docker.Framework)。接口核对版本：SnowLuma v2.2.1（8ffd314），镜像框架3f388b1。
-
-首次扫码时使用默认QQ启动参数。带`-q`的快速登录若失败，登录窗口可能最小化；先恢复QQ窗口后刷新二维码。启动包装脚本启用VNC的alwaysshared，允许通过认证的新连接接入，不会因遗留连接被拒绝。
-
-## 官方默认与本部署
-
-原模板曾额外把宿主映射限制为127.0.0.1；现按用户要求改为0.0.0.0。其他差异、原因和实际启动方式见[部署差异清单](DEPLOYMENT-DIFFERENCES.md)。后续以官方默认为基准，不在用户任务之外自行更改监听范围、资源限制或部署行为；必要适配需先明确说明。
+来源：[官方Compose](https://github.com/SnowLuma/SnowLuma.Docker.Framework/blob/3f388b1/docker-compose.yml)、[官方OneBot默认配置](https://github.com/SnowLuma/SnowLuma/blob/v2.2.1/packages/onebot/src/config.ts)、[Docker host-gateway](https://docs.docker.com/reference/cli/docker/container/run/#add-entries-to-container-hosts-file---add-host)。当前latest核验仍对应SnowLuma2.2.1；latest不是后台自动更新机制，后续拉取可能取得新版本。

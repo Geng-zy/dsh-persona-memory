@@ -1,13 +1,13 @@
 # 与 dsh、SnowLuma 及依赖的职责边界
 
-核对日期：2026-10-28。目标版本：dsh/SDK 0.2.1-rc.2、SnowLuma v2.2.1、dsh-snowluma-companion 1.0.0（桥接与陪伴核心已合并）。
+核对日期：2026-10-28。目标版本：dsh/SDK 0.2.1-rc.2、SnowLuma v2.2.1、dsh-snowluma-companion 1.1.2（桥接与陪伴核心已合并）。
 
 ## 功能重叠和冲突
 
 | 功能 | 分工与结论 |
 |---|---|
 | QQ 收发和重连 | SnowLuma 实现 QQ 协议、媒体上传下载和 WS 客户端重连；bridge 提供 OneBot WS 服务端与 dsh 会话映射。两端是同一连接的两侧。 |
-| 自动回复 | SnowLuma 默认的 `#sl` 状态命令会直接回复，绕过 bridge 的唤醒和白名单。因此接入时关闭 `statusCommand.enabled`，并核对账号独立配置。bridge 的协议格式错误仅记录诊断，不直接回复。 |
+| 自动回复 | SnowLuma 默认的 `#sl` 状态命令会直接回复，绕过 bridge 的唤醒和白名单。当前按用户明确要求恢复官方默认，`statusCommand.enabled=true`；该命令的直接回复独立于插件白名单，不能再表述为已关闭。bridge 的协议格式错误仅记录诊断，不直接回复。 |
 | 白名单 | 由 bridge 控制模型入口和插件发送。companion-core 复用实时权限，分别约束存档和主动聊天；主动群发没有管理员来信豁免。其他独立 OneBot 客户端或直接调用协议 API 的程序不归这套规则管。 |
 | 自己的消息 | 建议 SnowLuma 上报配置 `reportSelfMessage=false`。bridge 的忽略自己消息选项是入口控制，短期去重缓存用于重复上报，均不替代协议端配置。 |
 | 消息存储 | SnowLuma 的消息库用于 `get_msg`、引用和协议功能；QQ 客户端也维护自身数据。core 的 SQLite 存档保存业务聊天，dsh 会话日志保存交给模型的消息、工具及压缩事件。用途不同，存在内容交集。**插件白名单仅控制插件存档，不能保证 SnowLuma/QQ 本地零留存。**`historySync.enabled=false` 仅关闭历史同步，不关闭实时协议缓存。 |
