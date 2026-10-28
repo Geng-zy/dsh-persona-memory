@@ -56,7 +56,7 @@
 2. 安装两个插件：
 
 ```sh
-dsh plugin --profile web add github:Geng-zy/dsh-snowluma-bridge#v0.21.0 github:Geng-zy/dsh-companion-core#v0.18.0
+dsh plugin --profile web add github:Geng-zy/dsh-snowluma-bridge#v0.21.1 github:Geng-zy/dsh-companion-core#v0.18.0
 ```
 
 3. 按 [SnowLuma 部署指南](https://github.com/Geng-zy/dsh-snowluma-bridge/blob/main/docs/SNOWLUMA.md)配置 Compose、持久化目录及反向 WebSocket。
