@@ -1,11 +1,12 @@
 // dsh 插件入口：照 AstrBot 的 aiocqhttp（OneBot v11）适配器，把 NapCat 接到 dsh。
 
+import { judgeResponse } from './judge.js'
 import z from '@deepseek-ai/schemastery'
 import type { Context as CordisContext } from '@deepseek-ai/cordis'
 import type { AgentRegistry } from '@deepseek-ai/dsh-agent'
 import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
 import { AiocqhttpAdapter, AiocqhttpMessageEvent, MessageType, sessionToString, type AstrBotMessage, type MessageSession } from './adapter.js'
-import { Bridge, legacyWhitelistFor, type PromptPayload, type SentPayload, type SessionChange, type SessionInfo } from './bridge.js'
+import { Bridge, legacyWhitelistFor, type JudgePayload, type PromptPayload, type SentPayload, type SessionChange, type SessionInfo } from './bridge.js'
 import type { MessageChain } from './components.js'
 import { listModels } from './models.js'
 import { findFfmpeg, installFfmpeg, platformTag, type InstallState } from './ffmpeg.js'
@@ -20,7 +21,7 @@ import { join } from 'node:path'
 
 export * from './adapter.js'
 export * from './components.js'
-export type { PromptPayload, SentPayload, SessionChange, SessionInfo } from './bridge.js'
+export type { JudgePayload, PromptPayload, SentPayload, SessionChange, SessionInfo } from './bridge.js'
 export type { Converted, Media, ModelPart } from './media.js'
 export { ActionFailed, ApiNotAvailable, NetworkError } from './onebot/errors.js'
 
@@ -30,6 +31,10 @@ export interface Config {
   ws_reverse_port: number
   ws_reverse_token: string
   wake_prefix: string[]
+  groupJudgeEnabled: boolean
+  groupJudgeModel: string
+  groupJudgeContextCount: number
+  groupJudgeTimeoutSeconds: number
   wakeKeywords: string[]
   friend_message_needs_wake_prefix: boolean
   ignore_bot_self_message: boolean
@@ -142,6 +147,10 @@ export const Config: z<LiveConfig> = z.object({
   ws_reverse_port: z.natural().max(65535).default(6199).volatile().description('反向 WebSocket 端口（AstrBot 默认 6199）'),
   ws_reverse_token: z.string().role('secret').volatile().description('反向 WebSocket Token，与 NapCat 里填的一致；留空则不校验'),
   wake_prefix: z.array(z.string()).default(['/']).volatile().description('唤醒前缀（AstrBot 默认 ["/"]）'),
+  groupJudgeEnabled: z.boolean().default(true).volatile().description('群聊独立判断（默认开启）'),
+  groupJudgeModel: z.string().default('').volatile().description('判断模型（提供方/模型；留空跟随群聊模型）'),
+  groupJudgeContextCount: z.number().min(0).max(100).step(1).default(10).volatile().description('判断读取最近多少条群聊存档'),
+  groupJudgeTimeoutSeconds: z.number().min(1).max(120).step(1).default(30).volatile().description('判断超时秒数；失败或超时本次不回复'),
   wakeKeywords: z.array(z.string()).default(['大肥鱼', '肥鱼']).volatile().description('唤醒词：群消息正文里出现这些词（不用 @）也唤醒她；不匹配 @对象昵称'),
   friend_message_needs_wake_prefix: z.boolean().default(false).volatile().description('私聊是否也需要唤醒前缀'),
   ignore_bot_self_message: z.boolean().default(false).volatile().description('是否忽略机器人自己发出的消息'),
@@ -286,9 +295,11 @@ declare module '@deepseek-ai/cordis' {
     napcat: NapcatService
   }
   interface Events {
-    /** 每条转换好的 OneBot 消息/通知/请求；isWake 表示是否会交给模型 */
+    /** 每条转换好的 OneBot 消息/通知/请求；isWake 表示命中唤醒，仍需白名单和独立判断 */
     'napcat/message'(abm: AstrBotMessage, event: AiocqhttpMessageEvent, isWake: boolean): void
-    /** 交给模型之前（serial）：监听者可以直接改 payload.content，往前后加文字或图片 */
+    /** 本插件新增：独立判断前只读收集上下文（serial），不创建正式会话。 */
+    'napcat/judge-context'(payload: JudgePayload): void | Promise<void>
+    /** 交给正式模型之前（serial），监听者可扩展 payload.content。 */
     'napcat/prompt'(payload: PromptPayload): void | Promise<void>
     /** 她发出了一条 QQ 消息 */
     'napcat/sent'(payload: SentPayload): void
@@ -349,6 +360,11 @@ export function apply(ctx: Context, live: LiveConfig): void {
   })
 
   const bridge: Bridge = new Bridge({
+    judge: async (payload, model, signal) => {
+      await ctx.serial('napcat/judge-context', payload)
+      if (signal.aborted) throw new Error('独立判断已取消')
+      return judgeResponse(ctx.get('llm' as never) as never, model, payload, signal)
+    },
     agents: ctx.agents,
     defaultModel: () => ctx.get('agentDefaultModel' as never) as Context['agentDefaultModel'],
     presets: () => ctx.get('agentPresets' as never) as Context['agentPresets'],
@@ -364,6 +380,7 @@ export function apply(ctx: Context, live: LiveConfig): void {
     selfId: () => adapter.bot.connections()[0]?.selfId as string | undefined,
     store: new SessionStore(join(defaultDataDir(), 'sessions.json')),
     settings: () => ({
+      groupJudge: { enabled: get('groupJudgeEnabled'), model: get('groupJudgeModel'), contextCount: get('groupJudgeContextCount'), timeoutSeconds: get('groupJudgeTimeoutSeconds') },
       cwd: get('workspacePath') || process.cwd(),
       wake: {
         wakePrefix: [...get('wake_prefix')],

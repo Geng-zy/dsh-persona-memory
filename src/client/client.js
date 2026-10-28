@@ -21,6 +21,13 @@ window.__ModuleLoader__.load({
 		var SECTION = "napcat-bridge";
 
 		var zh = {
+			groupJudgeEnabled: "群聊独立判断",
+			groupJudgeHint: "默认开启。群聊唤醒后先单独判断是不是叫她、是否需要回复；不回复的判断不进入正式会话。私聊、定时主动聊天和内置指令保持原流程。失败或超时本次不回复。",
+			groupJudgeModel: "判断模型（提供方/模型）",
+			groupJudgeModelHint: "留空跟随群聊模型，再跟随 dsh 默认模型。可填 dsh 已配置的便宜模型。判断不使用工具，只读取当前文字、@/引用对象、人格、公开核心记忆及最近群聊文字；不读取主人私密记忆，不分析图片。需要新版 dsh-companion-core 提供人格和历史上下文。",
+			groupJudgeContextCount: "判断上下文条数",
+			groupJudgeContextHint: "默认10条，最多100条。来自本群获准存档的记录，包含她的发言；未开启存档或未唤醒存档、名单外群没有这部分历史。0表示不带历史。",
+			groupJudgeTimeoutSeconds: "判断超时（秒）",
 			nudgeOnEmpty: "她只想没说时提醒她说出来",
 			nudgeOnEmptyHint: "思考等级高时，模型偶尔会把要回的话只写在思考里，这一轮什么都没发出去。开着时自动提醒她一次把话说出来（同一条消息只提醒一次；被 /stop 打断的不提醒）。会多一次模型调用。",
 			alertTestUsesForm: "用的是现在页面上填的（还没保存也行），记得保存。",
@@ -369,6 +376,13 @@ window.__ModuleLoader__.load({
 			saveFailed: "没有保存成功，修改已保留，请检查后重试。"
 		};
 		var en = {
+			groupJudgeEnabled: "Independent group reply judgment",
+			groupJudgeHint: "On by default. Judge addressedness and whether to reply before entering the main session. Declined turns do not enter it. Private chats, scheduled proactive wakes and commands keep their current flow. Errors and timeouts skip this reply.",
+			groupJudgeModel: "Judge model (provider/model)",
+			groupJudgeModelHint: "Blank follows the group model, then the dsh default. Uses current text, mention/quote targets, persona, public core memory and recent group text via updated companion-core. No tools, private master memory or image analysis.",
+			groupJudgeContextCount: "Recent messages for judgment",
+			groupJudgeContextHint: "Default 10, maximum 100. Uses permitted group archives including her replies. No history when archiving/unwoken archiving is off or the group is unlisted. Zero omits history.",
+			groupJudgeTimeoutSeconds: "Judge timeout (seconds)",
 			nudgeOnEmpty: "Nudge her when she says nothing",
 			nudgeOnEmptyHint: "With high reasoning the model sometimes keeps the reply in its thinking and sends nothing. When on, she is reminded once to say it (once per message; not after /stop). Costs one more model call.",
 			alertTestUsesForm: "Uses what is on the page now (saved or not); remember to save.",
@@ -849,7 +863,7 @@ window.__ModuleLoader__.load({
 		var PUSH_SERVICES = ["off", "serverchan", "pushplus"];
 		var TTS_MODES = ["tag", "always", "chance"];
 		var BOOLS = [
-			"nudgeOnEmpty", "groupReplyMention", "groupReplyQuote",
+			"groupJudgeEnabled", "nudgeOnEmpty", "groupReplyMention", "groupReplyQuote",
 			"watchEnabled", "alertOnRecover", "mailEnabled",
 			"friend_message_needs_wake_prefix", "ignore_bot_self_message", "identifier", "imageToModel",
 			"whitelistEnabled", "whitelistLog",
@@ -861,13 +875,13 @@ window.__ModuleLoader__.load({
 		var TEXTS = [
 			"ws_reverse_host", "id", "workspacePath", "agentPreset", "timezone",
 			"privateAgentPreset", "groupAgentPreset", "adminPrivateAgentPreset",
-			"privateModel", "groupModel", "adminPrivateModel", "adminPrivateReasoning", "privateReasoning", "groupReasoning",
+			"groupJudgeModel", "privateModel", "groupModel", "adminPrivateModel", "adminPrivateReasoning", "privateReasoning", "groupReasoning",
 			"sttCommand", "sttApiUrl", "sttModel", "ffmpegPath", "silenceToken", "smtpHost", "smtpUser", "mailTo",
 			"breezeVoiceId", "breezeModel", "breezeLanguage", "inworldVoiceId", "inworldModel"
 		];
 		/** 整数字段：[字段, 最小值] */
 		var INTS = [
-			["ws_reverse_port", 1, 65535], ["maxImages", 0], ["rateLimitCount", 0], ["rateLimitSeconds", 1],
+			["groupJudgeContextCount", 0, 100], ["groupJudgeTimeoutSeconds", 1, 120], ["ws_reverse_port", 1, 65535], ["maxImages", 0], ["rateLimitCount", 0], ["rateLimitSeconds", 1],
 			["videoMaxFrames", 1], ["videoSecondsPerFrame", 1], ["videoMaxEdge", 64], ["videoMaxMB", 1],
 			["videoMaxMinutes", 1], ["videoTimeoutSeconds", 5],
 			["typingCharsPerMinute", 0], ["typingMinSeconds", 0], ["typingMaxSeconds", 0], ["groupMinGapSeconds", 0], ["groupMaxPerWindow", 0], ["groupWindowSeconds", 1], ["sendMaxWaitSeconds", 0], ["segmentMax", 1], ["segmentMaxSeconds", 1],
@@ -1555,7 +1569,11 @@ window.__ModuleLoader__.load({
 					h(WatchSection, { key: "w", t: t, common: common, state: state, edit: props.edit, disabled: disabled }),
 					h(Section, { key: "w", title: t("wake"), hint: t("wakeHint") },
 						G(h(Value, Object.assign({ field: "wakeKeywords", label: t("wakeKeywords"), hint: t("wakeKeywordsHint") }, common)),
-							h(Value, Object.assign({ field: "wake_prefix", label: t("wakePrefix"), hint: t("wakePrefixHint") }, common))),
+                            h(Value, Object.assign({ field: "wake_prefix", label: t("wakePrefix"), hint: t("wakePrefixHint") }, common))),
+                        h(Toggle, Object.assign({ field: "groupJudgeEnabled", label: t("groupJudgeEnabled"), hint: t("groupJudgeHint") }, common)),
+                        G(h(Value, Object.assign({ field: "groupJudgeModel", label: t("groupJudgeModel"), hint: t("groupJudgeModelHint") }, common)),
+                            h(Value, Object.assign({ field: "groupJudgeContextCount", label: t("groupJudgeContextCount"), hint: t("groupJudgeContextHint"), numeric: true }, common))),
+                        h(Value, Object.assign({ field: "groupJudgeTimeoutSeconds", label: t("groupJudgeTimeoutSeconds"), hint: t("groupJudgeHint"), numeric: true }, common)),
 						h(Toggle, Object.assign({ field: "friend_message_needs_wake_prefix", label: t("friendNeedsPrefix"), hint: t("friendNeedsPrefixHint") }, common)),
 						h(Toggle, Object.assign({ field: "ignore_bot_self_message", label: t("ignoreSelf"), hint: t("ignoreSelfHint") }, common)),
 						h(Toggle, Object.assign({ field: "emptyMentionWaiting", label: t("emptyWaiting"), hint: t("emptyWaitingHint") }, common)),

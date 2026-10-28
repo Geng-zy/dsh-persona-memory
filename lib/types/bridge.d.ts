@@ -43,6 +43,11 @@ export interface WakeConfig {
     friendMessageNeedsWakePrefix: boolean;
 }
 export interface BridgeDeps {
+    /** 本插件新增：无会话、无工具的独立群聊判断。 */
+    judge?(payload: JudgePayload, model: {
+        provider: string;
+        model: string;
+    }, signal: AbortSignal): Promise<boolean>;
     agents: AgentRegistry;
     /** 新会话用的默认模型（dsh-agent-default-model） */
     defaultModel(): {
@@ -94,6 +99,12 @@ export interface BridgeDeps {
     };
 }
 export interface BridgeSettings {
+    groupJudge?: {
+        enabled: boolean;
+        model: string;
+        contextCount: number;
+        timeoutSeconds: number;
+    };
     cwd: string;
     wake: WakeConfig;
     /** 群消息前面加 [昵称(QQ号)]，让模型知道是谁在说话 */
@@ -205,6 +216,15 @@ export interface PromptPayload {
      */
     content: ModelPart[];
 }
+/** 本插件新增：只读判断上下文，不建立 dsh 会话，也不写正式对话历史。 */
+export interface JudgePayload {
+    umo: string;
+    session: MessageSession;
+    message: AstrBotMessage;
+    contextCount: number;
+    content: ModelPart[];
+    context: string[];
+}
 /** 'napcat/sent' 的参数。 */
 export interface SentPayload {
     /** unified_msg_origin */
@@ -273,6 +293,8 @@ export declare class Bridge {
     private isEmptyMention;
     private targetOf;
     private dispatch;
+    /** 本插件新增：群里被唤醒只是候选；单独判断通过后才进入正式会话。 */
+    private shouldRespond;
     /** QQ 里的指令。返回 true 表示已处理（不再交给模型）。 */
     private command;
     /** /new、/reset、rotateSession：换一个新的 dsh 会话，旧的留在 dsh 里。返回新旧会话 id。 */
