@@ -2,14 +2,24 @@
 
 将 SnowLuma 的 QQ 接入、人格与核心记忆、长期记忆、日记、主动聊天和备份整合为一个 dsh 插件。包名及仓库为 **dsh-snowluma-companion**，由原 bridge 仓库继续维护，合入 companion-core 的代码与提交历史。
 
+## 全新服务器一键部署
+
+在Ubuntu22.04/24.04服务器执行：
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Geng-zy/dsh-snowluma-companion/main/install.sh | sudo bash
+```
+
+交互填写账号、端口、主人QQ、SnowLuma/VNC密码、Token和模型配置，安装dsh、统一插件、官方SnowLuma及系统服务。结束时输出所有访问网址和凭证，并保存为私有文件；已有环境停止以免覆盖。QQ扫码由本人完成。[详细安装、续装与查看凭证](docs/INSTALL.md)。
+
 ## 安装与升级
 
-要求 dsh **0.2.1-rc.2** 对应 SDK、Node **≥22.13**（使用内置 SQLite）。在 dsh 插件管理页安装本仓库 [v1.1.2](https://github.com/Geng-zy/dsh-snowluma-companion/releases/tag/v1.1.2) 的 `.tgz`。只需安装一个包；QQ 协议端仍由官方 SnowLuma Docker 镜像运行。
+要求 dsh **0.2.1-rc.2** 对应 SDK、Node **≥22.13**（使用内置 SQLite）。在 dsh 插件管理页安装本仓库 [v1.2.0](https://github.com/Geng-zy/dsh-snowluma-companion/releases/tag/v1.2.0) 的 `.tgz`。只需安装一个包；QQ 协议端仍由官方 SnowLuma Docker 镜像运行。
 
 从两个旧插件升级时，停止 dsh，保留现有数据与 profile 配置，以 profile 所属用户执行：
 
 ```sh
-node /解包目录/deploy/migrate-profile.mjs /绝对路径/profiles/web /绝对路径/dsh-snowluma-companion-1.1.2.tgz
+node /解包目录/deploy/migrate-profile.mjs /绝对路径/profiles/web /绝对路径/dsh-snowluma-companion-1.2.0.tgz
 cd /绝对路径/profiles/web
 pnpm install
 ```

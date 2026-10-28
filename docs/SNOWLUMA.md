@@ -2,6 +2,8 @@
 
 统一插件为dsh-snowluma-companion。SnowLuma使用官方Docker Compose默认值，本模板仅增加容器访问宿主所需的host-gateway映射；OneBot配置中另保留接入dsh的反向WS客户端。
 
+新服务器可使用[一键交互安装](INSTALL.md)，自动安装dsh与本插件并提示填写凭据；以下为手动Compose部署。
+
 ## 启动
 
 将deploy/snowluma.compose.yml和snowluma.env.example放到部署目录，后者复制为.env，然后执行：

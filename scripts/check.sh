@@ -46,6 +46,7 @@ if [ "${SKIP_E2E:-0}" != "1" ]; then
   [ "${PIPESTATUS[0]}" = "0" ] || { echo "端到端测试没通过" >&2; exit 1; }
   DSH_BIN="$ENV_DIR/dsh/node_modules/.bin/dsh" node test/companion/e2e.mjs 2>&1 | grep -v "^\s*at " | tail -20
   [ "${PIPESTATUS[0]}" = "0" ] || { echo "陪伴端到端测试没通过" >&2; exit 1; }
+  DSH_BIN="$ENV_DIR/dsh/node_modules/.bin/dsh" node test/install-e2e.mjs
 else
   echo "== 跳过端到端测试（SKIP_E2E=1）"
 fi
