@@ -37,6 +37,8 @@ export interface ProactiveDeps {
     mediaDir: string;
     log(level: 'debug' | 'info' | 'warn', message: string): void;
     random?: () => number;
+    /** 主动聊天权限在读取历史与图片之前检查；最终发送仍由桥接复查。 */
+    allowed?(umo: string): boolean;
 }
 /** 现在是不是免打扰时间。 */
 export declare function inQuiet(clock: string, start: string, end: string): boolean;

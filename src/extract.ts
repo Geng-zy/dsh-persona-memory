@@ -13,6 +13,12 @@ import { KINDS, type Memory, type MemoryKind } from './memory.js'
  */
 export interface ModelTarget { provider: string; model: string; effort?: string; api?: ApiTarget }
 
+/** 状态接口只需要模型标识，不回传任务配置中的接口密钥。 */
+export function targetInfo(target: ModelTarget | undefined): Pick<ModelTarget, 'provider' | 'model' | 'effort'> | null {
+  if (!target) return null
+  return { provider: target.provider, model: target.model, ...(target.effort ? { effort: target.effort } : {}) }
+}
+
 export interface LlmLike {
   stream(options: Record<string, unknown>): AsyncIterable<unknown>
   resolveModelInfo?(provider: string, model: string): Promise<{ reasoning?: { efforts: ReadonlyArray<{ id: string; name?: string }>; defaultEffort?: string } }>

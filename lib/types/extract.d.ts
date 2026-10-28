@@ -10,6 +10,8 @@ export interface ModelTarget {
     effort?: string;
     api?: ApiTarget;
 }
+/** 状态接口只需要模型标识，不回传任务配置中的接口密钥。 */
+export declare function targetInfo(target: ModelTarget | undefined): Pick<ModelTarget, 'provider' | 'model' | 'effort'> | null;
 export interface LlmLike {
     stream(options: Record<string, unknown>): AsyncIterable<unknown>;
     resolveModelInfo?(provider: string, model: string): Promise<{

@@ -23,7 +23,7 @@ import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { embed, embedEnabled, Indexer, testEmbed, type EmbedSettings } from './embed.js'
 import { DEFAULT_ALLOWED, DEFAULT_FORBIDDEN, guardPersonaEdit, countChars } from './persona-guard.js'
 import { GraphBuilder, graphScores, GraphStore, type GraphSettings } from './graph.js'
-import { cleanupPrompt, complete, parseCleanup, type LlmLike, type ModelTarget } from './extract.js'
+import { cleanupPrompt, complete, parseCleanup, targetInfo, type LlmLike, type ModelTarget } from './extract.js'
 import { KINDS, MemoryStore, defaultTrust, type MemoryKind } from './memory.js'
 import { forgetTool, saveTool, searchTool, type MemoryToolDeps } from './memory-tools.js'
 import { Organizer } from './organizer.js'
@@ -219,7 +219,7 @@ export const Config: z<LiveConfig> = z.object({
     proactive: z.union(['', 'on', 'off']).default(''),
     note: z.string(),
   })).default([]).volatile().description('例外规则：按 QQ 号或群号单独设置'),
-  archiveEnabled: z.boolean().default(true).volatile().description('消息存档'),
+  archiveEnabled: z.boolean().default(true).volatile().description('本插件的消息存档；不控制 SnowLuma 或 QQ 客户端的协议缓存'),
   archiveUnwoken: z.boolean().default(true).volatile().description('保存没唤醒她的群消息'),
   archiveDaysMaster: z.natural().min(1).default(365).volatile().description('主人私聊存档保留天数'),
   archiveDaysOthers: z.natural().min(1).default(5).volatile().description('其他私聊和群聊存档保留天数'),
@@ -574,6 +574,11 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
   const proactive = archive !== undefined && organizer !== undefined
     ? new Proactive({
       archive, organizer, mediaDir, meta, log,
+      allowed: umo => {
+        const [platform_name, message_type, session_id, ...extra] = umo.split(':')
+        return extra.length === 0 && (message_type === 'GroupMessage' || message_type === 'FriendMessage')
+          && archiveAllowed(snowluma(), { platform_name, message_type, session_id })
+      },
       wake: () => (snowluma() as any)?.wake?.bind(snowluma()),
       settings: () => ({
         enabled: get('proactiveEnabled'), masterMinMinutes: get('proactiveMinMinutes'), masterMaxMinutes: get('proactiveMaxMinutes'),
@@ -1100,7 +1105,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
     index: indexer?.state() ?? null,
     graph: graphBuilder === undefined ? null : { ...graphBuilder.state(), sample: graphStore?.sample(15) ?? [] },
     embedKeySet: get('embedApiKey').trim() !== '',
-    modelTarget: modelTarget() ?? null,
+    modelTarget: targetInfo(modelTarget()),
     cleanup: lastCleanup,
     diary: { days: diary.days().length, months: diary.months().length, latest: diary.days()[0] ?? null, nextDay: meta.get('maint:day') ?? null },
     maintenance: maintenance?.last ?? null,
@@ -1315,7 +1320,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
         if (parts[1] === 'efforts') {
           // 给了 provider/model 就查它；没给就查这个任务「跟随 dsh 配置」时会用的模型
           const t = typeof body?.provider === 'string' && typeof body?.model === 'string' && body.provider && body.model ? { provider: body.provider, model: body.model } : (task === 'diary' ? masterChatModel().target : task === 'summary' ? dshDefault() : taskTarget(task === 'graph' ? 'memory' : task))
-          if (l === undefined || t === undefined || (t as ModelTarget).api !== undefined) return json(200, { efforts: [], model: t ?? null })
+          if (l === undefined || t === undefined || (t as ModelTarget).api !== undefined) return json(200, { efforts: [], model: targetInfo(t) })
           try {
             const info = await l.resolveModelInfo(t.provider, t.model)
             return json(200, { efforts: (info?.reasoning?.efforts ?? []).map((e: any) => ({ id: String(e.id), name: String(e.name ?? e.id) })), defaultEffort: info?.reasoning?.defaultEffort ?? null, model: { provider: t.provider, model: t.model }, ...(task === 'diary' ? { from: masterChatModel().from } : {}) })

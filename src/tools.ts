@@ -50,15 +50,18 @@ export function personaTool(deps: ToolDeps) {
     async execute(args, exec) {
       const sessionId = sessionOf(exec)
       if (!deps.isMaster(sessionId)) return { ok: false, message: '这个会话不能修改人格。' }
-      const edit = applyEdit(deps.persona.read(), String(args.old_text ?? ''), String(args.new_text ?? ''))
+      const current = deps.persona.read()
+      const edit = applyEdit(current, String(args.old_text ?? ''), String(args.new_text ?? ''))
       if (!edit.ok) return { ok: false, message: edit.error }
       if (edit.text.trim() === '') return { ok: false, message: '人格不能改成空的。' }
-      const current = deps.persona.read()
       const refused = await deps.guardPersona?.(current, edit.text, String(args.old_text ?? ''), String(args.new_text ?? ''), String(args.reason ?? ''))
       if (refused !== undefined) {
         deps.log('info', '她想改人格，被退回（会话 ' + sessionId + '）：' + refused)
         return { ok: false, message: refused }
       }
+      // 审核可能等待模型；期间设置页或另一会话的修改不能被旧草稿覆盖。
+      if (!deps.isMaster(sessionId)) return { ok: false, message: '这个会话不能修改人格。' }
+      if (deps.persona.read() !== current) return { ok: false, message: '审核期间人格已被修改，请读取最新人格后重试。' }
       deps.persona.write(edit.text, { by: 'tool', sessionId, reason: String(args.reason ?? '') })
       deps.log('info', '她修改了人格（会话 ' + sessionId + '）：' + String(args.reason ?? ''))
       return { ok: true, message: '人格已更新，从下一句开始生效。旧版本已保存。' }

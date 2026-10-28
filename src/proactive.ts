@@ -49,6 +49,8 @@ export interface ProactiveDeps {
   mediaDir: string
   log(level: 'debug' | 'info' | 'warn', message: string): void
   random?: () => number
+  /** 主动聊天权限在读取历史与图片之前检查；最终发送仍由桥接复查。 */
+  allowed?(umo: string): boolean
 }
 
 /** 现在是不是免打扰时间。 */
@@ -122,6 +124,7 @@ export class Proactive {
 
   /** 这个会话要不要主动找。 */
   private eligible(scope: Scope, lastTime: number | undefined, now: number): boolean {
+    if (scope.umo && this.deps.allowed?.(scope.umo) === false) return false
     const s = this.deps.settings()
     const o = s.override(scope)
     if (o === false) return false
@@ -168,6 +171,7 @@ export class Proactive {
 
   /** 唤醒一次（设置页「试一次」也用它）。 */
   async fire(umo: string, scope: Scope, now = Date.now()): Promise<boolean> {
+    if (this.busy.has(umo) || this.deps.allowed?.(umo) === false) return false
     const wake = this.deps.wake()
     if (wake === undefined) {
       this.deps.log('warn', '主动聊天需要 dsh-snowluma-bridge ≥ 0.7.0（没有 ctx.snowluma.wake）')

@@ -56,7 +56,7 @@
 2. 安装两个插件：
 
 ```sh
-dsh plugin --profile web add github:Geng-zy/dsh-snowluma-bridge#v0.21.1 github:Geng-zy/dsh-companion-core#v0.18.0
+dsh plugin --profile web add github:Geng-zy/dsh-snowluma-bridge#v0.21.1 github:Geng-zy/dsh-companion-core#v0.18.1
 ```
 
 3. 按 [SnowLuma 部署指南](https://github.com/Geng-zy/dsh-snowluma-bridge/blob/main/docs/SNOWLUMA.md)配置 Compose、持久化目录及反向 WebSocket。
@@ -68,7 +68,7 @@ dsh plugin --profile web add github:Geng-zy/dsh-snowluma-bridge#v0.21.1 github:G
 ## 安装
 
 ```bash
-dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.18.0
+dsh plugin --profile web add github:Geng-zy/dsh-companion-core#v0.18.1
 ```
 
 装好后：
@@ -271,3 +271,7 @@ AGPL-3.0-or-later。陪伴模式预设的工具列表照抄 dsh-web-app 的标�
 ### SnowLuma 接入
 
 bridge ≥ 0.21.0 可将协议端切换为 SnowLuma。平台ID、桥接服务/事件及会话标识统一使用snowluma。既有部署须停机迁移标识及关联，保留聊天正文、人格和记忆文本；新部署直接使用新标识。部署步骤见 [bridge 的 SnowLuma 迁移指南](https://github.com/Geng-zy/dsh-snowluma-bridge/blob/main/docs/SNOWLUMA.md)。
+
+## 与宿主和协议端的功能边界
+
+陪伴模式以 companion/context 替换默认压缩引擎，并在系统提示组装时放入人格与核心记忆。插件存档、dsh 会话日志和 SnowLuma/QQ 协议缓存用途不同；插件白名单不能关闭协议端自身的实时缓存。详见[职责、重复与冲突核对](https://github.com/Geng-zy/dsh-snowluma-bridge/blob/main/docs/INTEGRATION.md)。

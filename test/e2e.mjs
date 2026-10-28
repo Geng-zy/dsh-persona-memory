@@ -254,6 +254,8 @@ ws.on('message', raw => {
     data = { user_id: req.params.user_id, nickname: '陌生人' }
   } else if (req.action === 'get_group_info') {
     data = { group_id: GROUP, group_name: '测试群' }
+  } else if (req.action === 'get_status') {
+    data = { online: true, good: true }
   } else if (req.action === 'get_login_info') {
     data = { user_id: BOT, nickname: '测试号' }
   }

@@ -283,10 +283,12 @@ export class MemoryStore {
   embeddings(model: string, ids: readonly number[]): Map<number, Uint8Array> {
     const out = new Map<number, Uint8Array>()
     if (ids.length === 0) return out
-    const stmt = this.db.prepare('SELECT embedding FROM memories WHERE id = ? AND embed_model = ?')
-    for (const id of ids) {
-      const r = stmt.get(id, model) as { embedding: Uint8Array | null } | undefined
-      if (r?.embedding) out.set(id, r.embedding)
+    // 批量读取，避免每轮召回为每条候选记忆单独执行 SQL；分批限制绑定参数数目。
+    for (let start = 0; start < ids.length; start += 500) {
+      const batch = ids.slice(start, start + 500)
+      const rows = this.db.prepare('SELECT id, embedding FROM memories WHERE embed_model = ? AND id IN (' + batch.map(() => '?').join(',') + ')')
+        .all(model, ...batch) as Array<{ id: number; embedding: Uint8Array | null }>
+      for (const r of rows) if (r.embedding) out.set(Number(r.id), r.embedding)
     }
     return out
   }
