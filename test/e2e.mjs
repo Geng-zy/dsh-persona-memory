@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // 端到端测试：真实的 dsh web 加载本插件，假的 DeepSeek 接口回答模型请求，
-// 假的 NapCat 作为客户端连插件的反向 WebSocket。
+// 假的 SnowLuma 作为客户端连插件的反向 WebSocket。
 //
 // 检查：Token 缺失 401、错误 403；私聊直接交给模型并用 send_private_msg 回复；
 // 群里不 @ 不回；@ 机器人会回（@ 用 get_group_member_info 查名片）；唤醒前缀 / 会被去掉；
@@ -77,7 +77,7 @@ const llm = createServer((req, res) => {
 })
 await new Promise(r => llm.listen(0, '127.0.0.1', r))
 
-// ---- 图片服务器：给假 NapCat 的图片地址用（1x1 PNG）
+// ---- 图片服务器：给假 SnowLuma 的图片地址用（1x1 PNG）
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')
 const imgServer = createServer((_req, res) => res.writeHead(200, { 'content-type': 'image/png' }).end(PNG))
 await new Promise(r => imgServer.listen(0, '127.0.0.1', r))
@@ -85,25 +85,25 @@ const imgUrl = 'http://127.0.0.1:' + imgServer.address().port + '/a.png'
 const llmUrl = 'http://127.0.0.1:' + llm.address().port + '/anthropic'
 
 // ---- 独立的 DSH_HOME，本仓库作为 profile bundle
-const home = mkdtempSync(join(tmpdir(), 'dsh-napcat-e2e-'))
+const home = mkdtempSync(join(tmpdir(), 'dsh-snowluma-e2e-'))
 const profile = join(home, 'profiles', 'web')
 mkdirSync(join(profile, 'node_modules'), { recursive: true })
-symlinkSync(ROOT, join(profile, 'node_modules', 'dsh-napcat-bridge'), 'dir')
+symlinkSync(ROOT, join(profile, 'node_modules', 'dsh-snowluma-bridge'), 'dir')
 writeFileSync(join(profile, 'package.json'), JSON.stringify({
   name: 'dsh-profile-web', private: true,
-  dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', 'dsh-napcat-bridge'] } },
-  dependencies: { 'dsh-napcat-bridge': 'link:' + ROOT },
+  dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', 'dsh-snowluma-bridge'] } },
+  dependencies: { 'dsh-snowluma-bridge': 'link:' + ROOT },
 }, null, 2))
 const workspace = join(home, 'workspace')
 mkdirSync(workspace)
-writeFileSync(join(profile, 'cordis.patch.yml'), `- id: napcat-bridge
+writeFileSync(join(profile, 'cordis.patch.yml'), `- id: snowluma-bridge
   config:
     ws_reverse_host: 127.0.0.1
     ws_reverse_port: ${WS_PORT}
     ws_reverse_token: ${TOKEN}
     workspacePath: ${workspace}
     admins: ['${USER}', '${USER + 1}']
-    whitelist: ['napcat:GroupMessage:${GROUP}', 'napcat:FriendMessage:${USER + 2}']
+    whitelist: ['snowluma:GroupMessage:${GROUP}', 'snowluma:FriendMessage:${USER + 2}']
     whitelistIgnoreAdminOnGroup: false
     whitelistIgnoreAdminOnFriend: false
     logLevel: debug
@@ -134,7 +134,7 @@ async function cleanup() {
   if (!process.env.E2E_KEEP) rmSync(home, { recursive: true, force: true })
 }
 
-// ---- 假 NapCat
+// ---- 假 SnowLuma
 const url = 'ws://127.0.0.1:' + WS_PORT + '/ws'
 const headers = token => ({
   'X-Self-ID': String(BOT),
@@ -317,15 +317,15 @@ const quotedSeen = modelFull.slice(before10).join('\n')
 if (!quotedSeen.includes('<Quoted Message>') || !quotedSeen.includes('甲: 第一层') || !quotedSeen.includes('丙: 第二层')) await fail('模型没看到引用的聊天记录：' + quotedSeen.slice(0, 600))
 log('引用聊天记录展开 OK')
 
-// 10. 测试连接接口：要先登录 dsh；NapCat 已连上时返回 QQ 号
+// 10. 测试连接接口：要先登录 dsh；SnowLuma 已连上时返回 QQ 号
 const tokenUrl = (dshLog.match(/http:\/\/127\.0\.0\.1:\d+\/\?token=[A-Za-z0-9_-]+/) ?? [])[0]
 if (!tokenUrl) await fail('dsh 日志里找不到登录网址')
 const webBase = tokenUrl.slice(0, tokenUrl.indexOf('?'))
-const anon = await fetch(webBase + 'api/napcat-bridge/status')
+const anon = await fetch(webBase + 'api/snowluma-bridge/status')
 if (anon.status !== 401) await fail('没登录也能访问状态接口：' + anon.status)
 const login = await fetch(tokenUrl, { redirect: 'manual' })
 const cookie = (login.headers.getSetCookie?.() ?? []).map(c => c.split(';')[0]).join('; ')
-const statusRes = await fetch(webBase + 'api/napcat-bridge/status', { headers: { cookie } })
+const statusRes = await fetch(webBase + 'api/snowluma-bridge/status', { headers: { cookie } })
 const st = statusRes.ok ? await statusRes.json() : null
 if (!st || !st.listening || st.connections.length < 1 || st.login?.user_id !== BOT || st.tokenSet !== true) await fail('状态接口返回不对：' + statusRes.status + ' ' + JSON.stringify(st))
 if (JSON.stringify(st).includes(TOKEN)) await fail('状态接口泄露了 Token')
@@ -350,39 +350,39 @@ if (modelRequests.slice(before13)[0] !== '[视频]') await fail('视频消息模
 log('视频占位 OK')
 
 // 13b. 语音转文字的测试按钮：要先登录；测试环境里关着，就说关着
-const anonStt = await fetch(webBase + 'api/napcat-bridge/stt/test', { method: 'POST' })
+const anonStt = await fetch(webBase + 'api/snowluma-bridge/stt/test', { method: 'POST' })
 if (anonStt.status !== 401) await fail('没登录也能访问语音测试接口：' + anonStt.status)
-const sttRes = await fetch(webBase + 'api/napcat-bridge/stt/test', { method: 'POST', headers: { cookie } })
+const sttRes = await fetch(webBase + 'api/snowluma-bridge/stt/test', { method: 'POST', headers: { cookie } })
 const sttJson = sttRes.ok ? await sttRes.json() : null
 if (!sttJson || sttJson.ok !== false || sttJson.error !== '语音转文字关着') await fail('语音测试接口返回不对：' + sttRes.status + ' ' + JSON.stringify(sttJson))
 log('语音转文字测试接口 OK（需登录）')
 
 // 13c. 文字转语音：状态和试听接口要登录；没填 Key 时试听说没填，不会真的去请求外面
-const anonTts = await fetch(webBase + 'api/napcat-bridge/tts/status')
+const anonTts = await fetch(webBase + 'api/snowluma-bridge/tts/status')
 if (anonTts.status !== 401) await fail('没登录也能访问文字转语音状态接口：' + anonTts.status)
-const ttsSt = await (await fetch(webBase + 'api/napcat-bridge/tts/status', { headers: { cookie } })).json()
+const ttsSt = await (await fetch(webBase + 'api/snowluma-bridge/tts/status', { headers: { cookie } })).json()
 if (!ttsSt.today || ttsSt.today.breeze !== 0 || ttsSt.lastFallback !== undefined) await fail('文字转语音状态不对：' + JSON.stringify(ttsSt))
-const ttsTest = await (await fetch(webBase + 'api/napcat-bridge/tts/test', { method: 'POST', headers: { cookie, 'content-type': 'application/json' }, body: JSON.stringify({ provider: 'inworld' }) })).json()
+const ttsTest = await (await fetch(webBase + 'api/snowluma-bridge/tts/test', { method: 'POST', headers: { cookie, 'content-type': 'application/json' }, body: JSON.stringify({ provider: 'inworld' }) })).json()
 if (ttsTest.ok !== false || !/还没填 Inworld 的 Key/.test(ttsTest.error)) await fail('文字转语音试听接口返回不对：' + JSON.stringify(ttsTest))
 log('文字转语音接口 OK（需登录、没填 Key 时说没填）')
 
 // 14. ffmpeg 状态接口：要先登录；返回有没有 ffmpeg、能不能一键安装
-const anonFf = await fetch(webBase + 'api/napcat-bridge/ffmpeg')
+const anonFf = await fetch(webBase + 'api/snowluma-bridge/ffmpeg')
 if (anonFf.status !== 401) await fail('没登录也能访问 ffmpeg 接口：' + anonFf.status)
-const ffRes = await fetch(webBase + 'api/napcat-bridge/ffmpeg', { headers: { cookie } })
+const ffRes = await fetch(webBase + 'api/snowluma-bridge/ffmpeg', { headers: { cookie } })
 const ff = ffRes.ok ? await ffRes.json() : null
 if (!ff || !('found' in ff) || typeof ff.installSupported !== 'boolean' || ff.install?.state !== 'idle') await fail('ffmpeg 状态接口返回不对：' + ffRes.status + ' ' + JSON.stringify(ff))
 log('ffmpeg 状态接口 OK（' + (ff.found ? '找到 ' + ff.found.version : '没找到') + '）')
 
-// 15. 掉线检测：要先登录；假 NapCat 连着、小号在线时是 ok；没设置提醒渠道时测试按钮说清楚
-const anonWatch = await fetch(webBase + 'api/napcat-bridge/watch')
+// 15. 掉线检测：要先登录；假 SnowLuma 连着、小号在线时是 ok；没设置提醒渠道时测试按钮说清楚
+const anonWatch = await fetch(webBase + 'api/snowluma-bridge/watch')
 if (anonWatch.status !== 401) await fail('没登录也能访问掉线检测接口：' + anonWatch.status)
-const watch = await (await fetch(webBase + 'api/napcat-bridge/watch?fresh=1', { headers: { cookie } })).json()
+const watch = await (await fetch(webBase + 'api/snowluma-bridge/watch?fresh=1', { headers: { cookie } })).json()
 if (watch.state !== 'ok' || watch.account?.userId !== String(BOT)) await fail('掉线检测状态不对：' + JSON.stringify(watch))
-const alertTest = await (await fetch(webBase + 'api/napcat-bridge/alert/test', { method: 'POST', headers: { cookie, 'content-type': 'application/json' }, body: JSON.stringify({ channel: 'mail' }) })).json()
+const alertTest = await (await fetch(webBase + 'api/snowluma-bridge/alert/test', { method: 'POST', headers: { cookie, 'content-type': 'application/json' }, body: JSON.stringify({ channel: 'mail' }) })).json()
 if (alertTest.ok !== false || !String(alertTest.results).includes('还没填')) await fail('提醒测试接口返回不对：' + JSON.stringify(alertTest))
 // 测试按钮带上页面上还没保存的值：选了 Server酱 但没填 Key，应该说「还没填 Key」而不是「没有选推送服务」
-const pushForm = await (await fetch(webBase + 'api/napcat-bridge/alert/test', { method: 'POST', headers: { cookie, 'content-type': 'application/json' }, body: JSON.stringify({ channel: 'push', form: { pushService: 'serverchan', pushKey: '' } }) })).json()
+const pushForm = await (await fetch(webBase + 'api/snowluma-bridge/alert/test', { method: 'POST', headers: { cookie, 'content-type': 'application/json' }, body: JSON.stringify({ channel: 'push', form: { pushService: 'serverchan', pushKey: '' } }) })).json()
 if (pushForm.ok !== false || !String(pushForm.results).includes('还没填 Key')) await fail('提醒测试没用页面上的值：' + JSON.stringify(pushForm))
 log('掉线检测、提醒测试接口 OK')
 
@@ -412,7 +412,7 @@ log('管理员私聊/群聊默认豁免、旧名单迁移、普通人不继承�
 
 log('全部通过')
 if (process.env.E2E_HOLD) {
-  // 保留 dsh 和假 NapCat，方便在浏览器里看设置页；Ctrl-C 结束
+  // 保留 dsh 和假 SnowLuma，方便在浏览器里看设置页；Ctrl-C 结束
   log('保留运行中，dsh 网页：http://127.0.0.1:' + (process.env.E2E_WEB_PORT ?? '?') + '/')
   await new Promise(() => {})
 }

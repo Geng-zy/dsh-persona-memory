@@ -23,7 +23,7 @@ type CallAction = (action: string, params: Record<string, unknown>) => Promise<a
 const TIMEOUT_MS = 60_000
 const MAX_BYTES = 25 * 1024 * 1024
 
-/** 取语音字节：先让 NapCat 转成 wav（get_record），不行再按 url 下载。 */
+/** 取语音字节：先让 QQ 协议端转成 wav（get_record），不行再按 url 下载。 */
 async function loadRecord(comp: Component, callAction: CallAction): Promise<{ bytes: Uint8Array; ext: string }> {
   const file = String(comp.file || '')
   if (file !== '') {
@@ -31,9 +31,17 @@ async function loadRecord(comp: Component, callAction: CallAction): Promise<{ by
       try {
         const ret = await callAction('get_record', { file, out_format: format })
         if (ret?.base64) return { bytes: Buffer.from(String(ret.base64), 'base64'), ext: format }
-        if (ret?.file) {
-          const path = String(ret.file).startsWith('file://') ? fileURLToPath(String(ret.file)) : String(ret.file)
-          return { bytes: await readFile(path), ext: format }
+        for (const value of [ret?.file, ret?.url]) {
+          if (!value) continue
+          const source = String(value)
+          try {
+            if (/^https?:\/\//.test(source)) {
+              const res = await fetch(source, { signal: AbortSignal.timeout(TIMEOUT_MS) })
+              if (!res.ok) throw new Error('下载语音失败 HTTP ' + res.status)
+              return { bytes: new Uint8Array(await res.arrayBuffer()), ext: String(ret.out_format || format) }
+            }
+            return { bytes: await readFile(source.startsWith('file://') ? fileURLToPath(source) : source), ext: format }
+          } catch { /* 容器内路径不可见，继续尝试 URL 或下一种格式。 */ }
         }
       } catch {
         // 换一种格式或改用 url
@@ -106,7 +114,7 @@ export async function testStt(s: SttSettings): Promise<{ ok: true; ms: number; t
       return { ok: true, ms: Date.now() - start, text }
     }
     if (s.command.trim() === '') return { ok: false, error: '还没填命令' }
-    const dir = await mkdtemp(join(tmpdir(), 'napcat-stt-test-'))
+    const dir = await mkdtemp(join(tmpdir(), 'snowluma-stt-test-'))
     try {
       const path = join(dir, 'test.wav')
       await writeFile(path, silentWav())
@@ -125,7 +133,7 @@ export async function transcribe(comp: Component, s: SttSettings, callAction: Ca
   const { bytes, ext } = await loadRecord(comp, callAction)
   if (bytes.length > MAX_BYTES) throw new Error('语音太大 ' + bytes.length)
   if (s.mode === 'openai') return (await callOpenAI(s, bytes, ext)).trim()
-  const dir = await mkdtemp(join(tmpdir(), 'napcat-stt-'))
+  const dir = await mkdtemp(join(tmpdir(), 'snowluma-stt-'))
   try {
     const path = join(dir, 'voice.' + ext)
     await writeFile(path, bytes)

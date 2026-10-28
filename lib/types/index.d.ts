@@ -126,16 +126,16 @@ export type LiveConfig = {
     };
 };
 export declare const Config: z<LiveConfig>;
-export declare const name = "dsh-napcat-bridge";
+export declare const name = "dsh-snowluma-bridge";
 export declare const inject: string[];
-/** 给其他插件（如记忆插件）用的服务：ctx.napcat */
-export interface NapcatService {
+/** 给其他插件（如记忆插件）用的服务：ctx.snowluma */
+export interface SnowlumaService {
     /** 是否允许消息存档；群必须在群名单内，管理员仅私聊豁免；关闭白名单时都允许。 */
     canArchive(session: MessageSession): boolean;
     adapter: AiocqhttpAdapter;
     /** 调用任意 OneBot API */
     callAction(action: string, params?: Record<string, unknown>): Promise<any>;
-    /** 按会话主动发送（AstrBot send_by_session）；发出后也会发 'napcat/sent' */
+    /** 按会话主动发送（AstrBot send_by_session）；发出后也会发 'snowluma/sent' */
     sendBySession(session: MessageSession, chain: MessageChain): Promise<void>;
     /** 已建立的会话 */
     sessions(): Array<{
@@ -167,17 +167,17 @@ export interface NapcatService {
 }
 declare module '@deepseek-ai/cordis' {
     interface Context {
-        napcat: NapcatService;
+        snowluma: SnowlumaService;
     }
     interface Events {
         /** 每条转换好的 OneBot 消息/通知/请求；isWake 表示是否会交给模型 */
-        'napcat/message'(abm: AstrBotMessage, event: AiocqhttpMessageEvent, isWake: boolean): void;
+        'snowluma/message'(abm: AstrBotMessage, event: AiocqhttpMessageEvent, isWake: boolean): void;
         /** 交给模型之前（serial）：监听者可以直接改 payload.content，往前后加文字或图片 */
-        'napcat/prompt'(payload: PromptPayload): void | Promise<void>;
+        'snowluma/prompt'(payload: PromptPayload): void | Promise<void>;
         /** 她发出了一条 QQ 消息 */
-        'napcat/sent'(payload: SentPayload): void;
+        'snowluma/sent'(payload: SentPayload): void;
         /** QQ 会话换了新的 dsh 会话（/new、/reset 或 rotateSession） */
-        'napcat/session-changed'(change: SessionChange): void;
+        'snowluma/session-changed'(change: SessionChange): void;
     }
 }
 type Context = CordisContext & {

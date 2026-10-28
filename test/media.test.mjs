@@ -142,7 +142,7 @@ test('在 PATH 里找出程序的完整路径', async () => {
   const { mkdtempSync, writeFileSync, chmodSync, mkdirSync } = await import('node:fs')
   const { join, delimiter } = await import('node:path')
   const { tmpdir } = await import('node:os')
-  const root = mkdtempSync(join(tmpdir(), 'napcatb-path-'))
+  const root = mkdtempSync(join(tmpdir(), 'snowlumab-path-'))
   mkdirSync(join(root, 'a')); mkdirSync(join(root, 'b'))
   writeFileSync(join(root, 'b', 'ffmpeg'), '#!/bin/sh\n'); chmodSync(join(root, 'b', 'ffmpeg'), 0o755)
   writeFileSync(join(root, 'a', 'ffmpeg'), 'not executable'); chmodSync(join(root, 'a', 'ffmpeg'), 0o644)

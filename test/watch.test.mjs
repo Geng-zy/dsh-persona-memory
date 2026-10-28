@@ -37,7 +37,7 @@ test('在线时不提醒；刚启动的头几分钟不提醒', async () => {
   assert.deepEqual(sent, [{ kind: 'problem', state: 'disconnected' }])
 })
 
-test('NapCat 报下线：过了启动宽限就马上提醒；没恢复不重复吵，过了几小时再提醒；恢复发一条', async () => {
+test('SnowLuma 报下线：过了启动宽限就马上提醒；没恢复不重复吵，过了几小时再提醒；恢复发一条', async () => {
   const { w, sent, tick, setStatus } = setup()
   tick(5 * MIN)
   w.onOffline({ notice_type: 'bot_offline', self_id: 42, tag: '被踢下线', message: '账号在别处登录' })

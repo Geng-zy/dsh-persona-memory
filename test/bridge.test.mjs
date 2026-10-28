@@ -1,5 +1,5 @@
 // 单元测试：桥接（白名单、管理员、指令、只 @ 等待、频率限制、提示、按类型选预设、语音转文字、
-// 给其他插件的接口：napcat/prompt、会话信息、换会话、napcat/sent，视频截图）。
+// 给其他插件的接口：snowluma/prompt、会话信息、换会话、snowluma/sent，视频截图）。
 // 用法：node --test test/（先 pnpm run build）
 import assert from 'node:assert/strict'
 import { mkdtempSync, writeFileSync, chmodSync } from 'node:fs'
@@ -45,7 +45,7 @@ function settings(over = {}) {
   }
 }
 
-/** 搭一个桥：假的 agent 注册表记下每次 followup，假的 NapCat 记下发出的消息。 */
+/** 搭一个桥：假的 agent 注册表记下每次 followup，假的 SnowLuma 记下发出的消息。 */
 function harness(over = {}, api = {}, hooks = {}) {
   const followups = []
   const pending = new Map()
@@ -71,7 +71,7 @@ function harness(over = {}, api = {}, hooks = {}) {
     get: id => hooks.live?.[String(id)],
   }
   let bridge
-  const adapter = new AiocqhttpAdapter({ id: 'napcat', ws_reverse_host: '127.0.0.1', ws_reverse_port: 0, log: () => {}, onMessage: (abm, ev) => bridge.handle(abm, ev) })
+  const adapter = new AiocqhttpAdapter({ id: 'snowluma', ws_reverse_host: '127.0.0.1', ws_reverse_port: 0, log: () => {}, onMessage: (abm, ev) => bridge.handle(abm, ev) })
   adapter.bot.callAction = async (action, params) => {
     if (action === 'send_private_msg' || action === 'send_group_msg') {
       sent.push({ action, message: params.message, text: params.message.map(m => m.type === 'record' ? '[语音:' + Buffer.from(String(m.data.file).replace('base64://', ''), 'base64').toString() + ']' : m.data.text ?? '').join('') })
@@ -103,7 +103,7 @@ function harness(over = {}, api = {}, hooks = {}) {
     sendBySession: (session, chain) => adapter.sendBySession(session, chain),
     selfId: () => String(BOT),
     settings: () => s,
-    store: new SessionStore(join(mkdtempSync(join(tmpdir(), 'napcat-store-')), 'sessions.json')),
+    store: new SessionStore(join(mkdtempSync(join(tmpdir(), 'snowluma-store-')), 'sessions.json')),
     log: () => {},
     tts: hooks.tts,
     sleep: hooks.sleep,
@@ -174,10 +174,10 @@ test('白名单清空时普通群聊和私聊全部禁用；完整会话标识�
   assert.equal(h.followups.length, 0)
   await h.privateMsg(8, [text('普通私聊不能回')])
   assert.equal(h.followups.length, 0)
-  h.set({ whitelist: { ...wl, ids: ['napcat:GroupMessage:555'] }, uniqueSession: true })
+  h.set({ whitelist: { ...wl, ids: ['snowluma:GroupMessage:555'] }, uniqueSession: true })
   await h.groupMsg(9, 555, [at(BOT), text('按完整标识放行')])
   assert.equal(h.followups.length, 1)
-  h.set({ whitelist: { ...wl, ids: ['napcat:FriendMessage:77'] } })
+  h.set({ whitelist: { ...wl, ids: ['snowluma:FriendMessage:77'] } })
   await h.privateMsg(77, [text('完整私聊标识放行')])
   assert.equal(h.followups.length, 2)
 })
@@ -188,8 +188,8 @@ test('移出白名单后：主动唤醒、插件代发和已经生成的回复�
   await h.groupMsg(9, 555, [at(BOT), text('先聊一次')])
   const id = String(h.created[0].sessionId)
   h.set({ whitelist: { ...wl, ids: [] } })
-  await assert.rejects(h.bridge.wake('napcat:GroupMessage:555', '看看群里'), /白名单/)
-  await assert.rejects(h.bridge.sendBySession({ platform_name: 'napcat', message_type: 'GroupMessage', session_id: '555' }, { chain: [{ type: 'Plain', text: '代发' }] }), /白名单/)
+  await assert.rejects(h.bridge.wake('snowluma:GroupMessage:555', '看看群里'), /白名单/)
+  await assert.rejects(h.bridge.sendBySession({ platform_name: 'snowluma', message_type: 'GroupMessage', session_id: '555' }, { chain: [{ type: 'Plain', text: '代发' }] }), /白名单/)
   h.turn(id, '已经生成但不该发的回复')
   await new Promise(r => setTimeout(r, 20))
   assert.equal(h.sent.length, 0)
@@ -229,7 +229,7 @@ test('指令：/help /sid 回复，不交给模型；/new 换新会话', async (
   await h.privateMsg(8, [text('/sid')])
   assert.equal(h.followups.length, 1)
   assert.match(h.sent[0].text, /可用指令/)
-  assert.match(h.sent[1].text, /会话标识：napcat:FriendMessage:8/)
+  assert.match(h.sent[1].text, /会话标识：snowluma:FriendMessage:8/)
   await h.privateMsg(8, [text('/new')])
   assert.match(h.sent[2].text, /新的对话/)
   await h.privateMsg(8, [text('再说一句')])
@@ -372,7 +372,7 @@ test('语音：关闭时写 [语音]；本机命令方式转成文字', async ()
   assert.equal(h.followups[1].text, '[语音] 今天吃什么')
 })
 
-test('napcat/prompt：其他插件能往内容里加东西，能拿到会话信息，第一轮标成新会话', async () => {
+test('snowluma/prompt：其他插件能往内容里加东西，能拿到会话信息，第一轮标成新会话', async () => {
   const h = harness({}, memberInfo, {
     prompt: payload => { payload.content.unshift({ type: 'text', text: '<记忆>主人爱吃红烧肉</记忆>' }) },
   })
@@ -385,11 +385,11 @@ test('napcat/prompt：其他插件能往内容里加东西，能拿到会话信�
   assert.equal(first.message.message_str, '今天吃什么')
   assert.deepEqual(
     { type: first.info.type, userId: first.info.userId, adminPrivate: first.info.adminPrivate, umo: first.info.umo, selfId: first.info.selfId },
-    { type: 'private', userId: ADMIN, adminPrivate: true, umo: 'napcat:FriendMessage:' + ADMIN, selfId: String(BOT) },
+    { type: 'private', userId: ADMIN, adminPrivate: true, umo: 'snowluma:FriendMessage:' + ADMIN, selfId: String(BOT) },
   )
 })
 
-test('napcat/prompt 监听器出错时照常交给模型', async () => {
+test('snowluma/prompt 监听器出错时照常交给模型', async () => {
   const h = harness({}, memberInfo, { prompt: () => { throw new Error('坏了') } })
   await h.privateMsg(8, [text('你好')])
   assert.equal(h.followups[0].text, '你好')
@@ -404,7 +404,7 @@ test('会话信息：建会话前登记，群聊有群号，群里每人单独�
   assert.equal(info.groupId, '555')
   assert.equal(info.userId, undefined)
   assert.equal(info.adminPrivate, false)
-  assert.equal(h.bridge.sessionInfoByUmo('napcat:GroupMessage:555').sessionId, id)
+  assert.equal(h.bridge.sessionInfoByUmo('snowluma:GroupMessage:555').sessionId, id)
   assert.equal(h.bridge.sessionInfo('不存在'), undefined)
   h.set({ uniqueSession: true })
   await h.groupMsg(10, 555, [at(BOT), text('b')])
@@ -413,14 +413,14 @@ test('会话信息：建会话前登记，群聊有群号，群里每人单独�
   assert.equal(unique.groupId, '555')
 })
 
-test('rotateSession：换新的 dsh 会话，发 napcat/session-changed，下一条进新会话并标成新会话', async () => {
+test('rotateSession：换新的 dsh 会话，发 snowluma/session-changed，下一条进新会话并标成新会话', async () => {
   const h = harness({}, memberInfo)
   await h.privateMsg(8, [text('第一句')])
   const oldId = String(h.created[0].sessionId)
-  const r = await h.bridge.rotateSession('napcat:FriendMessage:8')
+  const r = await h.bridge.rotateSession('snowluma:FriendMessage:8')
   assert.equal(r.oldSessionId, oldId)
   assert.notEqual(r.newSessionId, oldId)
-  assert.deepEqual(h.events.changed, [{ umo: 'napcat:FriendMessage:8', oldSessionId: oldId, newSessionId: r.newSessionId, reason: 'rotate' }])
+  assert.deepEqual(h.events.changed, [{ umo: 'snowluma:FriendMessage:8', oldSessionId: oldId, newSessionId: r.newSessionId, reason: 'rotate' }])
   await h.privateMsg(8, [text('第二句')])
   assert.equal(String(h.created[1].sessionId), r.newSessionId)
   assert.equal(h.events.prompt[1].newSession, true)
@@ -443,7 +443,7 @@ test('分段发送：主人私聊按行拆成几条、按顺序发，每条都�
 
 test('会话已经在 dsh 里开着（比如网页先接上了）：直接用它，不新建也不恢复', async () => {
   const live = []
-  const sessionId = 'napcat-napcat-FriendMessage-' + ADMIN
+  const sessionId = 'snowluma-snowluma-FriendMessage-' + ADMIN
   const agent = { session: { id: sessionId }, followup: m => live.push(m.content.map(c => c.text ?? '').join('')), cancel: () => {} }
   const h = harness({}, memberInfo, { live: { [sessionId]: agent } })
   await h.privateMsg(Number(ADMIN), [text('在吗')])
@@ -455,7 +455,7 @@ test('会话已经在 dsh 里开着（比如网页先接上了）：直接用它
   assert.equal(h.sent.at(-1).text, '在的', '她的回复照常发回 QQ')
 })
 
-test('napcat/sent：她一轮说完、回复发出去以后通知其他插件', async () => {
+test('snowluma/sent：她一轮说完、回复发出去以后通知其他插件', async () => {
   const h = harness({}, memberInfo)
   await h.privateMsg(8, [text('你好')])
   h.turn(String(h.created[0].sessionId), '你好呀')
@@ -463,7 +463,7 @@ test('napcat/sent：她一轮说完、回复发出去以后通知其他插件', 
   assert.equal(h.sent.at(-1).text, '你好呀')
   assert.equal(h.events.sent.length, 1)
   assert.equal(h.events.sent[0].text, '你好呀')
-  assert.equal(h.events.sent[0].umo, 'napcat:FriendMessage:8')
+  assert.equal(h.events.sent[0].umo, 'snowluma:FriendMessage:8')
   assert.equal(h.events.sent[0].source, 'reply')
 })
 
@@ -508,8 +508,8 @@ test('视频：关掉「图片交给模型」时不截图', async () => {
 
 test('wake：主动唤醒一个还没建过的 QQ 会话，回复照常发出去；以「不发」开头时不发', async () => {
   const h = harness({}, memberInfo)
-  const r = await h.bridge.wake('napcat:FriendMessage:' + ADMIN, '现在是晚上八点，要不要找主人聊天？')
-  assert.equal(r.sessionId, 'napcat-napcat-FriendMessage-' + ADMIN)
+  const r = await h.bridge.wake('snowluma:FriendMessage:' + ADMIN, '现在是晚上八点，要不要找主人聊天？')
+  assert.equal(r.sessionId, 'snowluma-snowluma-FriendMessage-' + ADMIN)
   assert.equal(h.followups[0].text, '现在是晚上八点，要不要找主人聊天？')
   assert.equal(h.bridge.sessionInfo(r.sessionId).adminPrivate, true, '按管理员 QQ 号认出主人私聊')
   h.turn(r.sessionId, '主人，晚饭吃了吗？')
@@ -521,11 +521,11 @@ test('wake：主动唤醒一个还没建过的 QQ 会话，回复照常发出去
   h.turn(r.sessionId, '  [不发] 这次先不打扰了')
   await new Promise(r => setTimeout(r, 20))
   assert.equal(h.sent.length, before, '以「不发」开头的回复不发出去')
-  await h.bridge.wake('napcat:GroupMessage:555', [{ type: 'text', text: '看看群里' }])
-  h.turn('napcat-napcat-GroupMessage-555', '大家好')
+  await h.bridge.wake('snowluma:GroupMessage:555', [{ type: 'text', text: '看看群里' }])
+  h.turn('snowluma-snowluma-GroupMessage-555', '大家好')
   await new Promise(r => setTimeout(r, 20))
   assert.equal(h.sent.at(-1).action, 'send_group_msg')
-  await assert.rejects(h.bridge.wake('napcat:GroupMessage:9_555', 'x'), /不支持/)
+  await assert.rejects(h.bridge.wake('snowluma:GroupMessage:9_555', 'x'), /不支持/)
   await assert.rejects(h.bridge.wake('bad', 'x'), /会话标识不对/)
 })
 
@@ -570,8 +570,8 @@ test('普通私聊移出白名单：消息、指令、主动唤醒、代发和�
   h.set({ whitelist: { ...wl, ids: ['555'] } })
   await h.privateMsg(77, [text('不在名单里')])
   await h.privateMsg(77, [text('/help')])
-  await assert.rejects(h.bridge.wake('napcat:FriendMessage:77', '主动找主人'), /白名单/)
-  await assert.rejects(h.bridge.sendBySession({ platform_name: 'napcat', message_type: 'FriendMessage', session_id: '77' }, { chain: [{ type: 'Plain', text: '代发' }] }), /白名单/)
+  await assert.rejects(h.bridge.wake('snowluma:FriendMessage:77', '主动找主人'), /白名单/)
+  await assert.rejects(h.bridge.sendBySession({ platform_name: 'snowluma', message_type: 'FriendMessage', session_id: '77' }, { chain: [{ type: 'Plain', text: '代发' }] }), /白名单/)
   release()
   await new Promise(r => setTimeout(r, 20))
   assert.equal(h.followups.length, 1)
@@ -602,9 +602,9 @@ test('管理员豁免不依赖旧开关；空名单也可私聊、群聊和主�
   h.turn(String(h.created[1].sessionId), '回复管理员')
   await new Promise(r => setTimeout(r, 20))
   assert.deepEqual(h.sent.map(x => x.text), ['回复管理员'])
-  await h.bridge.wake('napcat:FriendMessage:' + ADMIN, '找管理员')
-  await assert.rejects(h.bridge.wake('napcat:GroupMessage:666', '不能继承上轮管理员权限'), /白名单/)
-  await assert.rejects(h.bridge.sendBySession({ platform_name: 'napcat', message_type: 'GroupMessage', session_id: '666' }, { chain: [{ type: 'Plain', text: '代发' }] }), /白名单/)
+  await h.bridge.wake('snowluma:FriendMessage:' + ADMIN, '找管理员')
+  await assert.rejects(h.bridge.wake('snowluma:GroupMessage:666', '不能继承上轮管理员权限'), /白名单/)
+  await assert.rejects(h.bridge.sendBySession({ platform_name: 'snowluma', message_type: 'GroupMessage', session_id: '666' }, { chain: [{ type: 'Plain', text: '代发' }] }), /白名单/)
   await h.groupMsg(9, 666, [at(BOT), text('其他人不继承管理员权限')])
   assert.equal(h.followups.length, 3)
 })
@@ -642,9 +642,9 @@ test('队列权限按每轮真实来信快照：管理员不能给前一条普�
 })
 
 test('旧名单迁移：完整标识按类型分，裸号码保留旧匹配含义', () => {
-  const old = ['555', 'napcat:GroupMessage:666', 'napcat:FriendMessage:77', '  ']
-  assert.deepEqual(legacyWhitelistFor(old, 'GroupMessage'), ['555', 'napcat:GroupMessage:666'])
-  assert.deepEqual(legacyWhitelistFor(old, 'FriendMessage'), ['555', 'napcat:FriendMessage:77'])
+  const old = ['555', 'snowluma:GroupMessage:666', 'snowluma:FriendMessage:77', '  ']
+  assert.deepEqual(legacyWhitelistFor(old, 'GroupMessage'), ['555', 'snowluma:GroupMessage:666'])
+  assert.deepEqual(legacyWhitelistFor(old, 'FriendMessage'), ['555', 'snowluma:FriendMessage:77'])
 })
 
 // 本插件新增：检查真正交给 OneBot 的消息段，而不只检查正文。
@@ -723,7 +723,7 @@ test('群主动聊天不继承上一轮 @ 和引用', async () => {
   const id = String(h.created[0].sessionId)
   h.turn(id, '在的')
   await flush()
-  await h.bridge.wake('napcat:GroupMessage:555', '主动聊聊')
+  await h.bridge.wake('snowluma:GroupMessage:555', '主动聊聊')
   h.turn(id, '晚上好')
   await flush()
   assert.deepEqual(h.sent[1].message.map(m => m.type), ['text'])
@@ -759,8 +759,8 @@ test('空回复提醒保留原消息的 @ 和引用对象', async () => {
 
 test('存档白名单：群不继承管理员豁免，普通私聊受限，管理员私聊自动允许', async () => {
   const h = harness({ whitelist: { enabled: true, groupIds: ['555'], privateIds: ['77'] } }, memberInfo)
-  const group = id => ({ platform_name: 'napcat', message_type: 'GroupMessage', session_id: id })
-  const friend = id => ({ platform_name: 'napcat', message_type: 'FriendMessage', session_id: id })
+  const group = id => ({ platform_name: 'snowluma', message_type: 'GroupMessage', session_id: id })
+  const friend = id => ({ platform_name: 'snowluma', message_type: 'FriendMessage', session_id: id })
   assert.equal(h.bridge.canArchive(group('555')), true)
   assert.equal(h.bridge.canArchive(group('666')), false)
   assert.equal(h.bridge.canSend(group('666'), ADMIN), true)
@@ -806,10 +806,10 @@ test('关键词不会跨 @ 等非正文消息段拼接，也不会匹配@全体�
 
 test('主人原始会话备份接口：管理员列表生成私聊绑定，群聊和普通用户不能恢复接管', async () => {
   const h = harness()
-  assert.deepEqual(h.bridge.masterPrivateBindings('napcat'), [{ ownerId: ADMIN, prefix: 'napcat-napcat-FriendMessage-42', sessionId: 'napcat-napcat-FriendMessage-42', cwd: '/tmp' }])
-  await assert.rejects(h.bridge.restoreMasterPrivateBinding('napcat', '77', 'napcat-napcat-FriendMessage-77-import-test'), /主人的私聊/)
-  await assert.rejects(h.bridge.restoreMasterPrivateBinding('napcat', ADMIN, 'napcat-napcat-GroupMessage-42-import-test'), /主人的私聊/)
-  await assert.rejects(h.bridge.restoreMasterPrivateBinding('napcat', ADMIN, 'napcat-napcat-FriendMessage-42-import-test'), /不存在/)
+  assert.deepEqual(h.bridge.masterPrivateBindings('snowluma'), [{ ownerId: ADMIN, prefix: 'snowluma-snowluma-FriendMessage-42', sessionId: 'snowluma-snowluma-FriendMessage-42', cwd: '/tmp' }])
+  await assert.rejects(h.bridge.restoreMasterPrivateBinding('snowluma', '77', 'snowluma-snowluma-FriendMessage-77-import-test'), /主人的私聊/)
+  await assert.rejects(h.bridge.restoreMasterPrivateBinding('snowluma', ADMIN, 'snowluma-snowluma-GroupMessage-42-import-test'), /主人的私聊/)
+  await assert.rejects(h.bridge.restoreMasterPrivateBinding('snowluma', ADMIN, 'snowluma-snowluma-FriendMessage-42-import-test'), /不存在/)
   assert.equal(h.events.changed.length, 0)
   await h.bridge.dispose()
 })

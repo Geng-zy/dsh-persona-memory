@@ -44,12 +44,12 @@ test('排队：同一个群按顺序发，守频率；等太久就不发；私�
   const p = new Pacer({ settings: () => ({ ...S, typingGroup: false, typingPrivate: false, maxWaitSeconds: 30 }), log: (l, m) => logs.push(m), now: c.now, sleep: c.sleep })
   const out = []
   const send = text => async () => { out.push([text, c.now()]) }
-  const results = await Promise.all(['一', '二', '三', '四'].map(x => p.run('napcat:GroupMessage:1', true, x, send(x))))
+  const results = await Promise.all(['一', '二', '三', '四'].map(x => p.run('snowluma:GroupMessage:1', true, x, send(x))))
   assert.deepEqual(out.map(o => o[0]), ['一', '二', '三'])
   assert.deepEqual(results, ['sent', 'sent', 'sent', 'dropped'], '第四条要等将近一分钟，超过 30 秒就不发')
   assert.equal(out[1][1] - out[0][1], 5_000, '两条之间隔 5 秒')
   assert.ok(logs.some(m => m.includes('太频繁')))
-  for (const x of ['a', 'b', 'c', 'd']) assert.equal(await p.run('napcat:FriendMessage:2', false, x, send(x)), 'sent')
+  for (const x of ['a', 'b', 'c', 'd']) assert.equal(await p.run('snowluma:FriendMessage:2', false, x, send(x)), 'sent')
 })
 
 test('打字等待和发送顺序：长的先排就先发', async () => {

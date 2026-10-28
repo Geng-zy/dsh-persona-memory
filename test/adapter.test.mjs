@@ -8,9 +8,9 @@ import { AiocqhttpAdapter, AiocqhttpMessageEvent, MessageType, Plain, At, make, 
 const BOT = 10001
 const quiet = () => {}
 
-/** 不启动服务器，替换 callAction 来模拟 NapCat。 */
+/** 不启动服务器，替换 callAction 来模拟 SnowLuma。 */
 function adapterWith(api) {
-  const a = new AiocqhttpAdapter({ id: 'napcat', ws_reverse_host: '127.0.0.1', ws_reverse_port: 0, log: quiet, onMessage: () => {} })
+  const a = new AiocqhttpAdapter({ id: 'snowluma', ws_reverse_host: '127.0.0.1', ws_reverse_port: 0, log: quiet, onMessage: () => {} })
   a.bot.callAction = async (action, params) => {
     if (!(action in api)) throw new Error('unexpected ' + action)
     return api[action](params)
@@ -80,7 +80,7 @@ test('引用失败时退回 Reply(**data)', async () => {
   assert.deepEqual(abm.message[0].chain, [])
 })
 
-test('NapCat 文件：get_group_file_url 换下载地址', async () => {
+test('SnowLuma 文件：get_group_file_url 换下载地址', async () => {
   const a = adapterWith({ get_group_file_url: () => ({ url: 'https://f/x' }) })
   const abm = await a.convertMessage(groupEvent([{ type: 'file', data: { file: 'a.txt', file_id: 'id1' } }]))
   assert.deepEqual(abm.message, [{ type: 'File', name: 'a.txt', file_: '', url: 'https://f/x' }])
@@ -169,7 +169,7 @@ test('群名：事件没带时查 get_group_info 并缓存', async () => {
   assert.equal(calls, 1)
 })
 
-test('小黄脸写成 [表情:名字]；NapCat 商城表情（image 段带 emoji_id）当普通图片，不写名字', async () => {
+test('小黄脸写成 [表情:名字]；SnowLuma 商城表情（image 段带 emoji_id）当普通图片，不写名字', async () => {
   const a = adapterWith({})
   const abm = await a.convertMessage(groupEvent([
     { type: 'face', data: { id: '14' } },
@@ -268,11 +268,11 @@ test('直接发来的聊天记录也展开成 <Forward Message>', async () => {
   assert.equal(f.text, '<Forward Message>\n甲: 你好\n</Forward Message>')
 })
 
-test('NapCat 的聊天记录（node 节点、里面套着的记录写成 node 段）：每一层都展开、按层缩进', async () => {
+test('SnowLuma 的聊天记录（node 节点、里面套着的记录写成 node 段）：每一层都展开、按层缩进', async () => {
   const { extractForwards } = await import('../lib/quoted.js')
   const node = (nickname, message) => ({ type: 'node', data: { user_id: 1, nickname, message, content: [] } })
   const t = text => ({ type: 'text', data: { text } })
-  // NapCat 0.x/4.x 的 get_forward_msg：{ messages: [node…] }，套着的记录变成一个 node，它的 message 是一串 node
+  // SnowLuma 0.x/4.x 的 get_forward_msg：{ messages: [node…] }，套着的记录变成一个 node，它的 message 是一串 node
   const reply = { messages: [
     node('甲', [t('第一层')]),
     node('乙', [node('丙', [t('第二层')]), node('丁', [node('戊', [t('第三层\n还有一行')]), node('己', [{ type: 'image', data: { url: 'https://img/deep' } }])])]),

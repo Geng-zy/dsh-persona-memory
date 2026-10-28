@@ -1,4 +1,4 @@
-// dsh 插件入口：照 AstrBot 的 aiocqhttp（OneBot v11）适配器，把 NapCat 接到 dsh。
+// dsh 插件入口：照 AstrBot 的 aiocqhttp（OneBot v11）适配器，把 SnowLuma 接到 dsh。
 
 import z from '@deepseek-ai/schemastery'
 import type { Context as CordisContext } from '@deepseek-ai/cordis'
@@ -137,10 +137,10 @@ export type LiveConfig = { [K in keyof Config]: { get(): Config[K] } }
 
 // 每项都标 .volatile()：dsh 的设置服务只对这种字段提供在线编辑，保存后插件不重启、直接读到新值。
 export const Config: z<LiveConfig> = z.object({
-  id: z.string().default('napcat').volatile().description('平台 ID，会话标识 unified_msg_origin 的第一段（AstrBot 的机器人 ID）'),
+  id: z.string().default('snowluma').volatile().description('平台 ID，会话标识的第一段；从 SnowLuma 迁移到 SnowLuma 时保留原值，以沿用会话、规则和记忆'),
   ws_reverse_host: z.string().default('0.0.0.0').volatile().description('反向 WebSocket 监听地址（AstrBot 默认 0.0.0.0）'),
   ws_reverse_port: z.natural().max(65535).default(6199).volatile().description('反向 WebSocket 端口（AstrBot 默认 6199）'),
-  ws_reverse_token: z.string().role('secret').volatile().description('反向 WebSocket Token，与 NapCat 里填的一致；留空则不校验'),
+  ws_reverse_token: z.string().role('secret').volatile().description('反向 WebSocket Token，与 QQ 协议端 里填的一致；留空则不校验'),
   wake_prefix: z.array(z.string()).default(['/']).volatile().description('唤醒前缀（AstrBot 默认 ["/"]）'),
   wakeKeywords: z.array(z.string()).default(['大肥鱼', '肥鱼']).volatile().description('唤醒词：群消息正文里出现这些词（不用 @）也唤醒她；不匹配 @对象昵称'),
   friend_message_needs_wake_prefix: z.boolean().default(false).volatile().description('私聊是否也需要唤醒前缀'),
@@ -220,9 +220,9 @@ export const Config: z<LiveConfig> = z.object({
   segmentMax: z.natural().min(1).default(10).volatile().description('分段发送：一次回复最多拆成几条（多出来的并进最后一条）'),
   segmentMaxSeconds: z.natural().min(1).default(3).volatile().description('分段发送：每一条最多等几秒打字'),
   // 掉线检测和提醒（本插件新增）
-  watchEnabled: z.boolean().default(true).volatile().description('小号掉线检测：NapCat 报下线、心跳不在线、定时问不到时提醒'),
+  watchEnabled: z.boolean().default(true).volatile().description('小号掉线检测：QQ 协议端 报下线、心跳不在线、定时问不到时提醒'),
   watchIntervalMinutes: z.natural().min(1).default(2).volatile().description('每几分钟主动问一次小号在不在线'),
-  watchGraceMinutes: z.natural().default(3).volatile().description('问题持续几分钟才提醒（重启、网络抖一下不吵你；NapCat 明确报下线时不等）'),
+  watchGraceMinutes: z.natural().default(3).volatile().description('问题持续几分钟才提醒（重启、网络抖一下不吵你；QQ 协议端 明确报下线时不等）'),
   alertRepeatHours: z.natural().default(6).volatile().description('还没恢复时每隔几小时再提醒一次（0 = 只提醒一次）'),
   alertOnRecover: z.boolean().default(true).volatile().description('恢复后再发一条「恢复了」'),
   mailEnabled: z.boolean().default(false).volatile().description('用邮件提醒'),
@@ -254,18 +254,18 @@ export const Config: z<LiveConfig> = z.object({
   logLevel: z.union(['debug', 'info', 'warn', 'error']).default('info').volatile().description('日志级别'),
 }) as never
 
-export const name = 'dsh-napcat-bridge'
+export const name = 'dsh-snowluma-bridge'
 // agentDefaultModel / agentPresets / sessionPersistence 是可选的，用到时再 ctx.get
 export const inject = ['agents']
 
-/** 给其他插件（如记忆插件）用的服务：ctx.napcat */
-export interface NapcatService {
+/** 给其他插件（如记忆插件）用的服务：ctx.snowluma */
+export interface SnowlumaService {
   /** 是否允许消息存档；群必须在群名单内，管理员仅私聊豁免；关闭白名单时都允许。 */
   canArchive(session: MessageSession): boolean
   adapter: AiocqhttpAdapter
   /** 调用任意 OneBot API */
   callAction(action: string, params?: Record<string, unknown>): Promise<any>
-  /** 按会话主动发送（AstrBot send_by_session）；发出后也会发 'napcat/sent' */
+  /** 按会话主动发送（AstrBot send_by_session）；发出后也会发 'snowluma/sent' */
   sendBySession(session: MessageSession, chain: MessageChain): Promise<void>
   /** 已建立的会话 */
   sessions(): Array<{ umo: string; sessionId: string }>
@@ -285,17 +285,17 @@ export interface NapcatService {
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
-    napcat: NapcatService
+    snowluma: SnowlumaService
   }
   interface Events {
     /** 每条转换好的 OneBot 消息/通知/请求；isWake 表示是否会交给模型 */
-    'napcat/message'(abm: AstrBotMessage, event: AiocqhttpMessageEvent, isWake: boolean): void
+    'snowluma/message'(abm: AstrBotMessage, event: AiocqhttpMessageEvent, isWake: boolean): void
     /** 交给模型之前（serial）：监听者可以直接改 payload.content，往前后加文字或图片 */
-    'napcat/prompt'(payload: PromptPayload): void | Promise<void>
+    'snowluma/prompt'(payload: PromptPayload): void | Promise<void>
     /** 她发出了一条 QQ 消息 */
-    'napcat/sent'(payload: SentPayload): void
+    'snowluma/sent'(payload: SentPayload): void
     /** QQ 会话换了新的 dsh 会话（/new、/reset 或 rotateSession） */
-    'napcat/session-changed'(change: SessionChange): void
+    'snowluma/session-changed'(change: SessionChange): void
   }
 }
 
@@ -316,7 +316,7 @@ export function apply(ctx: Context, live: LiveConfig): void {
   const get = <K extends keyof Config>(key: K): Config[K] => (live[key]?.get() ?? (key === 'ws_reverse_token' || key === 'sttApiKey' ? '' : undefined)) as Config[K]
   const log: Logger = (level, message) => {
     if (RANK[level] < RANK[get('logLevel')]) return
-    const line = '[napcat-bridge] ' + message
+    const line = '[snowluma-bridge] ' + message
     if (level === 'error') console.error(line)
     else if (level === 'warn') console.warn(line)
     else console.log(line)
@@ -358,10 +358,10 @@ export function apply(ctx: Context, live: LiveConfig): void {
     media,
     callAction,
     onSessionEvent: listener => ctx.on('session/event' as never, ((session: Session, event: SessionEvent) => listener(session, event)) as never),
-    emit: (abm, event, isWake) => ctx.emit('napcat/message', abm, event, isWake),
-    prompt: payload => ctx.serial('napcat/prompt', payload),
-    sent: payload => ctx.emit('napcat/sent', payload),
-    sessionChanged: change => ctx.emit('napcat/session-changed', change),
+    emit: (abm, event, isWake) => ctx.emit('snowluma/message', abm, event, isWake),
+    prompt: payload => ctx.serial('snowluma/prompt', payload),
+    sent: payload => ctx.emit('snowluma/sent', payload),
+    sessionChanged: change => ctx.emit('snowluma/session-changed', change),
     sendBySession: (session, chain) => adapter.sendBySession(session, chain),
     selfId: () => adapter.bot.connections()[0]?.selfId as string | undefined,
     store: new SessionStore(join(defaultDataDir(), 'sessions.json')),
@@ -418,7 +418,7 @@ export function apply(ctx: Context, live: LiveConfig): void {
     onMessage: (abm, event): Promise<void> => bridge.handle(abm, event),
   })
 
-  const service: NapcatService = {
+  const service: SnowlumaService = {
     canArchive: session => bridge.canArchive(session),
     adapter,
     callAction,
@@ -436,7 +436,7 @@ export function apply(ctx: Context, live: LiveConfig): void {
     media,
     wake: (umo, content) => bridge.wake(umo, content),
   }
-  ctx.provide('napcat', service)
+  ctx.provide('snowluma', service)
 
   // 视频抽帧用的 ffmpeg：设置页查状态、一键安装
   let install: InstallState = { state: 'idle' }
@@ -462,7 +462,7 @@ export function apply(ctx: Context, live: LiveConfig): void {
     })
   }
 
-  // 设置页「测试连接」：GET <dsh>/api/napcat-bridge/status。
+  // 设置页「测试连接」：GET <dsh>/api/snowluma-bridge/status。
   // 挂在 dsh 的 /api 钩子上，请求先通过 dsh 网页的登录校验才会到这里；返回里不含 Token。
   const status = async (): Promise<Record<string, unknown>> => {
     const bot = adapter.bot
@@ -491,19 +491,19 @@ export function apply(ctx: Context, live: LiveConfig): void {
       lastRejected: rejected,
     }
   }
-  // 视频：GET <dsh>/api/napcat-bridge/ffmpeg 查状态；POST <dsh>/api/napcat-bridge/ffmpeg/install 开始安装
+  // 视频：GET <dsh>/api/snowluma-bridge/ffmpeg 查状态；POST <dsh>/api/snowluma-bridge/ffmpeg/install 开始安装
   ctx.on('connection/request' as never, (async (req: import('node:http').IncomingMessage, res: import('node:http').ServerResponse, next: () => Promise<void>) => {
     const path = new URL(req.url ?? '/', 'http://localhost').pathname
     const json = (code: number, value: unknown): void => {
       res.writeHead(code, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
       res.end(JSON.stringify(value))
     }
-    if (path.endsWith('/napcat-bridge/status')) return json(200, await status())
+    if (path.endsWith('/snowluma-bridge/status')) return json(200, await status())
     // 掉线检测：GET …/watch 看状态（?fresh=1 先问一次）；POST …/alert/test { channel: 'mail' | 'push' } 用保存过的设置发一条测试提醒
-    // 设置页文字转语音：GET <dsh>/api/napcat-bridge/tts/status（今天用了多少、Breeze 是不是在跳过）；
+    // 设置页文字转语音：GET <dsh>/api/snowluma-bridge/tts/status（今天用了多少、Breeze 是不是在跳过）；
     // POST …/tts/test { provider, text?, form? }（只用这一家念一句，返回 base64 的 mp3 给页面播放；form 是页面上现在填的值，没填的用保存过的）
-    if (path.endsWith('/napcat-bridge/tts/status') && req.method === 'GET') return json(200, tts.status())
-    if (path.endsWith('/napcat-bridge/tts/test')) {
+    if (path.endsWith('/snowluma-bridge/tts/status') && req.method === 'GET') return json(200, tts.status())
+    if (path.endsWith('/snowluma-bridge/tts/test')) {
       if (req.method !== 'POST') return json(405, { error: 'POST only' })
       let body: { provider?: unknown; text?: unknown; form?: unknown } = {}
       try {
@@ -525,11 +525,11 @@ export function apply(ctx: Context, live: LiveConfig): void {
       const text = typeof body.text === 'string' ? body.text.slice(0, 500) : ''
       return json(200, await testSpeak(s, body.provider === 'inworld' ? 'inworld' : 'breeze', text))
     }
-    if (path.endsWith('/napcat-bridge/watch') && req.method === 'GET') {
+    if (path.endsWith('/snowluma-bridge/watch') && req.method === 'GET') {
       const fresh = new URL(req.url ?? '/', 'http://localhost').searchParams.get('fresh') === '1'
       return json(200, { ...(fresh ? await watchdog.check() : watchdog.status()), enabled: get('watchEnabled') })
     }
-    if (path.endsWith('/napcat-bridge/alert/test')) {
+    if (path.endsWith('/snowluma-bridge/alert/test')) {
       if (req.method !== 'POST') return json(405, { error: 'POST only' })
       let body: { channel?: unknown } = {}
       try {
@@ -542,11 +542,11 @@ export function apply(ctx: Context, live: LiveConfig): void {
       const results = await sendAlerts(alertMessage('test', watchdog.status()), channel, form !== null && typeof form === 'object' ? form as Record<string, unknown> : undefined)
       return json(200, { ok: results.every(r => r.endsWith('已发送')), results })
     }
-    if (path.endsWith('/napcat-bridge/ffmpeg') && req.method === 'GET') return json(200, await ffmpegStatus(true))
-    // 设置页「测试」语音转文字：POST <dsh>/api/napcat-bridge/stt/test（用保存过的设置，拿一段静音试）
-    // 设置页「获取模型列表」：POST <dsh>/api/napcat-bridge/stt/models { apiUrl?, apiKey?, query? }（没给的用保存过的；Key 只在这次请求里用）
-    // 设置页选模型：GET <dsh>/api/napcat-bridge/llm/dsh-models（dsh 里配置的模型）；POST …/llm/efforts { provider, model }（这个模型能选哪些思考等级）
-    if (path.endsWith('/napcat-bridge/llm/dsh-models') && req.method === 'GET') {
+    if (path.endsWith('/snowluma-bridge/ffmpeg') && req.method === 'GET') return json(200, await ffmpegStatus(true))
+    // 设置页「测试」语音转文字：POST <dsh>/api/snowluma-bridge/stt/test（用保存过的设置，拿一段静音试）
+    // 设置页「获取模型列表」：POST <dsh>/api/snowluma-bridge/stt/models { apiUrl?, apiKey?, query? }（没给的用保存过的；Key 只在这次请求里用）
+    // 设置页选模型：GET <dsh>/api/snowluma-bridge/llm/dsh-models（dsh 里配置的模型）；POST …/llm/efforts { provider, model }（这个模型能选哪些思考等级）
+    if (path.endsWith('/snowluma-bridge/llm/dsh-models') && req.method === 'GET') {
       const l = ctx.get('llm' as never) as any
       if (l === undefined) return json(200, { providers: [], default: null })
       const providers = []
@@ -558,7 +558,7 @@ export function apply(ctx: Context, live: LiveConfig): void {
       const sel = (ctx.get('agentDefaultModel' as never) as any)?.currentSelection?.()
       return json(200, { providers, default: sel ? { provider: sel.provider, model: sel.model } : null })
     }
-    if (path.endsWith('/napcat-bridge/llm/efforts')) {
+    if (path.endsWith('/snowluma-bridge/llm/efforts')) {
       if (req.method !== 'POST') return json(405, { error: 'POST only' })
       let body: { provider?: unknown; model?: unknown } = {}
       try {
@@ -576,7 +576,7 @@ export function apply(ctx: Context, live: LiveConfig): void {
         return json(200, { efforts: (info?.reasoning?.efforts ?? []).map((e: any) => ({ id: String(e.id), name: String(e.name ?? e.id) })), model: { provider, model } })
       } catch (e) { return json(200, { efforts: [], error: e instanceof Error ? e.message : String(e), model: { provider, model } }) }
     }
-    if (path.endsWith('/napcat-bridge/stt/models')) {
+    if (path.endsWith('/snowluma-bridge/stt/models')) {
       if (req.method !== 'POST') return json(405, { error: 'POST only' })
       if (!String(req.headers['content-type'] ?? '').includes('application/json')) return json(415, { error: 'application/json only' })
       let body: { apiUrl?: unknown; apiKey?: unknown; query?: unknown } = {}
@@ -591,11 +591,11 @@ export function apply(ctx: Context, live: LiveConfig): void {
       const key = typeof body.apiKey === 'string' && body.apiKey.trim() ? body.apiKey : s.apiKey
       return json(200, await listModels(url, key, 'stt', typeof body.query === 'string' ? body.query : ''))
     }
-    if (path.endsWith('/napcat-bridge/stt/test')) {
+    if (path.endsWith('/snowluma-bridge/stt/test')) {
       if (req.method !== 'POST') return json(405, { error: 'POST only' })
       return json(200, await testStt(sttSettings()))
     }
-    if (path.endsWith('/napcat-bridge/ffmpeg/install')) {
+    if (path.endsWith('/snowluma-bridge/ffmpeg/install')) {
       if (req.method !== 'POST') return json(405, { error: 'POST only' })
       startInstall()
       return json(200, await ffmpegStatus(false))
@@ -605,7 +605,7 @@ export function apply(ctx: Context, live: LiveConfig): void {
 
   // 本插件自带设置页（client.js），告诉 dsh 不用按 schema 自动生成表单
   ctx.inject(['settings'], child => {
-    child.effect(() => (child as any).settings.configure({ auto: false }, ctx.fiber), 'napcat-bridge: settings policy')
+    child.effect(() => (child as any).settings.configure({ auto: false }, ctx.fiber), 'snowluma-bridge: settings policy')
   })
 
   const errText = (error: unknown): string => (error instanceof Error ? error.message : String(error))
@@ -613,11 +613,11 @@ export function apply(ctx: Context, live: LiveConfig): void {
   //#region 掉线检测和提醒
   const mailSettings = () => ({ enabled: get('mailEnabled'), host: get('smtpHost'), port: get('smtpPort'), user: get('smtpUser'), pass: get('smtpPass') ?? '', to: get('mailTo') })
   const pushSettings = () => ({ service: get('pushService'), key: get('pushKey') ?? '' })
-  const STATE_TEXT: Record<string, string> = { offline: '掉线了', disconnected: 'NapCat 没连上', unknown: '问不到在不在线', ok: '在线' }
+  const STATE_TEXT: Record<string, string> = { offline: '掉线了', disconnected: 'QQ 协议端 没连上', unknown: '问不到在不在线', ok: '在线' }
   const fmtTime = (t: number): string => new Date(t).toLocaleString('zh-CN', { timeZone: get('timezone') || 'Asia/Shanghai', hour12: false })
   const alertMessage = (kind: 'problem' | 'recovered' | 'test', st: WatchStatus): AlertMessage => {
     const who = st.account ? (st.account.nickname ? st.account.nickname + '（' + st.account.userId + '）' : st.account.userId) : 'QQ 小号'
-    if (kind === 'test') return { title: '【测试】' + who + ' 的掉线提醒', text: '这是 dsh-napcat-bridge 的测试提醒，收到说明这个渠道能用。\n\n现在的状态：' + STATE_TEXT[st.state] + '（' + fmtTime(st.since) + ' 起）' }
+    if (kind === 'test') return { title: '【测试】' + who + ' 的掉线提醒', text: '这是 dsh-snowluma-bridge 的测试提醒，收到说明这个渠道能用。\n\n现在的状态：' + STATE_TEXT[st.state] + '（' + fmtTime(st.since) + ' 起）' }
     if (kind === 'recovered') return { title: who + ' 恢复在线了', text: who + ' 在 ' + fmtTime(Date.now()) + ' 恢复在线。' }
     return {
       title: who + ' ' + STATE_TEXT[st.state],
@@ -626,10 +626,10 @@ export function apply(ctx: Context, live: LiveConfig): void {
         st.reason ? '原因：' + st.reason : '',
         '',
         st.state === 'disconnected'
-          ? '可能 NapCat 没在运行，或者连接 Token / 端口不对。先看服务器上 NapCat 的状态和日志。'
-          : '多半要重新登录：打开 NapCat 网页扫码，或者看 NapCat 日志里的二维码。登录好以后会自动恢复，恢复时会再通知你。',
+          ? '可能 QQ 协议端 没在运行，或者连接 Token / 端口不对。先看服务器上 QQ 协议端 的状态和日志。'
+          : '多半要重新登录：打开 QQ 协议端 网页扫码，或者看 QQ 协议端 日志里的二维码。登录好以后会自动恢复，恢复时会再通知你。',
         '',
-        '这条提醒来自 dsh-napcat-bridge 的掉线检测（可以在它的设置页「连接和权限」里调整）。',
+        '这条提醒来自 dsh-snowluma-bridge 的掉线检测（可以在它的设置页「连接和权限」里调整）。',
       ].filter((x, i, a) => x !== '' || a[i - 1] !== '').join('\n'),
     }
   }
@@ -668,7 +668,7 @@ export function apply(ctx: Context, live: LiveConfig): void {
       void watchdog.check().catch(e => log('warn', '掉线检测出错：' + errText(e)))
     }, 20_000)
     return () => clearInterval(timer)
-  }, 'napcat-bridge: watchdog')
+  }, 'snowluma-bridge: watchdog')
   //#endregion
 
   const migrateWhitelists = async (): Promise<void> => {
@@ -695,7 +695,7 @@ export function apply(ctx: Context, live: LiveConfig): void {
       () => log('info', '反向 WebSocket 已监听 ' + address),
       (error: unknown) => log('error', '启动反向 WebSocket 失败: ' + errText(error)),
     )
-    // 设置页改了监听地址或端口：关掉旧的服务，用新地址重新监听（NapCat 会自动重连）
+    // 设置页改了监听地址或端口：关掉旧的服务，用新地址重新监听（SnowLuma 会自动重连）
     const timer = setInterval(() => {
       const host = get('ws_reverse_host')
       const port = get('ws_reverse_port')
@@ -713,7 +713,7 @@ export function apply(ctx: Context, live: LiveConfig): void {
       await adapter.terminate()
       await bridge.dispose()
     }
-  }, 'napcat-bridge')
+  }, 'snowluma-bridge')
 }
 
 export { MessageType }

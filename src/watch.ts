@@ -1,9 +1,9 @@
 // 本插件新增：QQ 小号掉线检测。三路一起看：
-//   1. NapCat 主动报的下线通知（notice.bot_offline，被踢、登录失效时会发）——马上算掉线；
-//   2. NapCat 每 30 秒的心跳（meta_event.heartbeat）里的 status.online；
-//   3. 定时自己问一次（get_status，问不到再 get_login_info）；NapCat 根本没连上来也算一种问题。
+//   1. SnowLuma 主动报的下线通知（notice.bot_offline，被踢、登录失效时会发）——马上算掉线；
+//   2. SnowLuma 每 30 秒的心跳（meta_event.heartbeat）里的 status.online；
+//   3. 定时自己问一次（get_status，问不到再 get_login_info）；SnowLuma 根本没连上来也算一种问题。
 // 问题持续超过「宽限」才提醒（重启、网络抖一下不吵你）；还没好时每隔几小时再提醒一次；恢复后发一条「恢复了」。
-// 刚启动的头几分钟不提醒（NapCat 还在连）。
+// 刚启动的头几分钟不提醒（SnowLuma 还在连）。
 
 export type WatchState = 'ok' | 'offline' | 'disconnected' | 'unknown'
 
@@ -19,7 +19,7 @@ export interface WatchStatus {
   state: WatchState
   /** 现在这个状态从什么时候开始 */
   since: number
-  /** 原因（NapCat 给的下线说明、接口报错等） */
+  /** 原因（SnowLuma 给的下线说明、接口报错等） */
   reason?: string
   /** 小号（最近一次看到的） */
   account?: { userId: string; nickname?: string }
@@ -56,15 +56,15 @@ export class Watchdog {
 
   status(): WatchStatus { return { ...this.st } }
 
-  /** NapCat 的下线通知 */
+  /** SnowLuma 的下线通知 */
   onOffline(event: Record<string, unknown>): void {
-    const reason = [event.tag, event.message].filter(x => typeof x === 'string' && x.trim()).join('：') || 'NapCat 报告小号下线'
+    const reason = [event.tag, event.message].filter(x => typeof x === 'string' && x.trim()).join('：') || 'QQ 协议端 报告小号下线'
     this.deps.log('warn', 'QQ 小号下线：' + reason)
     this.set('offline', reason, event.self_id !== undefined ? { userId: String(event.self_id) } : undefined)
     void this.evaluate()
   }
 
-  /** NapCat 的心跳 */
+  /** SnowLuma 的心跳 */
   onHeartbeat(event: Record<string, unknown>): void {
     const online = (event.status as { online?: unknown } | undefined)?.online
     if (online === false) this.set('offline', '心跳里报告不在线', event.self_id !== undefined ? { userId: String(event.self_id) } : undefined)
@@ -79,12 +79,12 @@ export class Watchdog {
       this.st.lastCheck = this.now()
       const conns = this.deps.connections()
       if (conns.length === 0) {
-        this.set('disconnected', 'NapCat 没有连上本插件')
+        this.set('disconnected', 'QQ 协议端 没有连上本插件')
       } else {
         const selfId = conns[0].selfId
         try {
           const st = await withTimeout(this.deps.callAction('get_status', { self_id: selfId }))
-          if (st && typeof st === 'object' && (st as { online?: unknown }).online === false) this.set('offline', 'NapCat 报告小号不在线', { userId: selfId })
+          if (st && typeof st === 'object' && (st as { online?: unknown }).online === false) this.set('offline', 'QQ 协议端 报告小号不在线', { userId: selfId })
           else {
             let nickname: string | undefined
             try { nickname = String((await withTimeout(this.deps.callAction('get_login_info', { self_id: selfId })))?.nickname ?? '') || undefined } catch { /* 拿不到昵称不要紧 */ }
@@ -92,7 +92,7 @@ export class Watchdog {
             this.set('ok', undefined, { userId: selfId, ...(nickname ? { nickname } : {}) })
           }
         } catch (e) {
-          this.set('unknown', '问 NapCat 没有回应：' + (e instanceof Error ? e.message : String(e)), { userId: selfId })
+          this.set('unknown', '问 QQ 协议端 没有回应：' + (e instanceof Error ? e.message : String(e)), { userId: selfId })
         }
       }
       await this.evaluate()

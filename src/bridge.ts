@@ -3,9 +3,9 @@
 //   唤醒（WakingCheckStage）→ 白名单（WhitelistCheckStage）→ 指令（builtin_commands）
 //   → 只 @ 不说话时等下一条（handle_empty_mention）→ 频率限制（RateLimitStage）
 //   → 语音转文字（PreProcessStage）→ 交给 unified_msg_origin 对应的 dsh 会话。
-// 每条转换好的消息都通过 ctx 事件 'napcat/message' 广播（给记忆等其他插件用）。
-// 交给模型前先发 'napcat/prompt'，其他插件可以往内容里加东西（本插件新增）。
-// 会话一轮结束时，把模型最后一条回复的文字原样发回，并发 'napcat/sent'（本插件新增）。
+// 每条转换好的消息都通过 ctx 事件 'snowluma/message' 广播（给记忆等其他插件用）。
+// 交给模型前先发 'snowluma/prompt'，其他插件可以往内容里加东西（本插件新增）。
+// 会话一轮结束时，把模型最后一条回复的文字原样发回，并发 'snowluma/sent'（本插件新增）。
 
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { SessionId } from '@deepseek-ai/dsh-session'
@@ -31,12 +31,12 @@ interface GroupReplyTarget { userId: string; messageId: string }
 
 declare module '@deepseek-ai/dsh-llm' {
   interface MessageSourceMap {
-    /** 从 QQ（NapCat）来的用户消息 */
-    'plugin:napcat-bridge': { kind: 'plugin:napcat-bridge'; replyTo?: GroupReplyTarget }
-    /** 其他插件主动唤醒她（ctx.napcat.wake，比如定时主动聊天）；不算"人说的话" */
-    'plugin:napcat-bridge-wake': { kind: 'plugin:napcat-bridge-wake' }
+    /** 从 QQ（SnowLuma）来的用户消息 */
+    'plugin:snowluma-bridge': { kind: 'plugin:snowluma-bridge'; replyTo?: GroupReplyTarget }
+    /** 其他插件主动唤醒她（ctx.snowluma.wake，比如定时主动聊天）；不算"人说的话" */
+    'plugin:snowluma-bridge-wake': { kind: 'plugin:snowluma-bridge-wake' }
     /** 她一轮什么都没说出来时，提醒她把话说出来；不算"人说的话" */
-    'plugin:napcat-bridge-nudge': { kind: 'plugin:napcat-bridge-nudge'; replyTo?: GroupReplyTarget }
+    'plugin:snowluma-bridge-nudge': { kind: 'plugin:snowluma-bridge-nudge'; replyTo?: GroupReplyTarget }
   }
 }
 
@@ -67,15 +67,15 @@ export interface BridgeDeps {
   callAction(action: string, params: Record<string, unknown>): Promise<any>
   /** 广播给其他插件 */
   emit(abm: AstrBotMessage, event: AiocqhttpMessageEvent, isWake: boolean): void
-  /** 交给模型前让其他插件加内容（ctx.serial('napcat/prompt')） */
+  /** 交给模型前让其他插件加内容（ctx.serial('snowluma/prompt')） */
   prompt(payload: PromptPayload): Promise<unknown>
-  /** 她发出了一条消息（ctx.emit('napcat/sent')） */
+  /** 她发出了一条消息（ctx.emit('snowluma/sent')） */
   sent(payload: SentPayload): void
-  /** QQ 会话换了 dsh 会话（ctx.emit('napcat/session-changed')） */
+  /** QQ 会话换了 dsh 会话（ctx.emit('snowluma/session-changed')） */
   sessionChanged(change: SessionChange): void
   /** 按会话主动发送（没有收到的消息可回复时用，比如主动唤醒以后） */
   sendBySession(session: MessageSession, chain: MessageChain): Promise<void>
-  /** 她自己的 QQ 号（NapCat 连上以后才有） */
+  /** 她自己的 QQ 号（SnowLuma 连上以后才有） */
   selfId(): string | undefined
   /** 当前设置（每次用到时读取，设置页改了立即生效） */
   settings(): BridgeSettings
@@ -152,7 +152,7 @@ export interface SessionInfo {
   adminPrivate: boolean
 }
 
-/** 'napcat/prompt' 的参数：监听者直接改 content（在前后插入文字或图片）。 */
+/** 'snowluma/prompt' 的参数：监听者直接改 content（在前后插入文字或图片）。 */
 export interface PromptPayload {
   info: SessionInfo
   /** 这是这个 dsh 会话的第一轮（刚新建的会话） */
@@ -166,7 +166,7 @@ export interface PromptPayload {
   content: ModelPart[]
 }
 
-/** 'napcat/sent' 的参数。 */
+/** 'snowluma/sent' 的参数。 */
 export interface SentPayload {
   /** unified_msg_origin */
   umo: string
@@ -174,22 +174,22 @@ export interface SentPayload {
   /** 发出去的文字（只取文字部分） */
   text: string
   chain: MessageChain
-  /** reply：她一轮说完的回复；service：其他插件通过 ctx.napcat.sendBySession 发的 */
+  /** reply：她一轮说完的回复；service：其他插件通过 ctx.snowluma.sendBySession 发的 */
   source: 'reply' | 'service'
   /** 发出的时间（毫秒） */
   time: number
 }
 
-/** 'napcat/session-changed' 的参数。 */
+/** 'snowluma/session-changed' 的参数。 */
 export interface SessionChange {
   umo: string
   oldSessionId: string
   newSessionId: string
-  /** command：QQ 里发了 /new 或 /reset；rotate：其他插件调用了 ctx.napcat.rotateSession */
+  /** command：QQ 里发了 /new 或 /reset；rotate：其他插件调用了 ctx.snowluma.rotateSession */
   reason: 'command' | 'rotate'
 }
 
-/** 'napcat/prompt' 监听者最多等多久，超时就按当时的内容发出去。 */
+/** 'snowluma/prompt' 监听者最多等多久，超时就按当时的内容发出去。 */
 const PROMPT_HOOK_MS = 30_000
 
 /** AstrBot handle_empty_mention 让模型主动问一句时用的提示词（原文）。 */
@@ -266,9 +266,9 @@ interface Target {
   send(chain: MessageChain): Promise<void>
 }
 
-/** dsh 会话 id：napcat-<平台>-<类型>-<会话> 去掉不安全字符。 */
+/** dsh 会话 id：snowluma-<平台>-<类型>-<会话> 去掉不安全字符。 */
 export function dshSessionId(umo: string): string {
-  return 'napcat-' + umo.replace(/[^A-Za-z0-9-]/g, '-')
+  return 'snowluma-' + umo.replace(/[^A-Za-z0-9-]/g, '-')
 }
 
 /**
@@ -438,7 +438,7 @@ export class Bridge {
     try {
       this.deps.emit(abm, event, isWake && !stop)
     } catch (e) {
-      this.deps.log('warn', 'napcat/message 监听器出错: ' + errText(e))
+      this.deps.log('warn', 'snowluma/message 监听器出错: ' + errText(e))
     }
     if (stop || !isWake) return
     // 只有消息事件交给模型；通知/请求只广播
@@ -507,12 +507,12 @@ export class Bridge {
       await Promise.race([
         this.deps.prompt(payload),
         new Promise(resolve => { timer = setTimeout(() => {
-          this.deps.log('warn', 'napcat/prompt 监听器 ' + PROMPT_HOOK_MS / 1000 + ' 秒没有完成，先按现有内容发给模型')
+          this.deps.log('warn', 'snowluma/prompt 监听器 ' + PROMPT_HOOK_MS / 1000 + ' 秒没有完成，先按现有内容发给模型')
           resolve(undefined)
         }, PROMPT_HOOK_MS) }),
       ])
     } catch (e) {
-      this.deps.log('warn', 'napcat/prompt 监听器出错: ' + errText(e))
+      this.deps.log('warn', 'snowluma/prompt 监听器出错: ' + errText(e))
     } finally {
       if (timer !== undefined) clearTimeout(timer)
     }
@@ -523,7 +523,7 @@ export class Bridge {
     chat.replySenders.add(target.senderId)
     chat.handle.agent.followup(createUserMessage({
       content: admitted as never,
-      source: { kind: 'plugin:napcat-bridge', ...(target.isGroup ? { replyTo: { userId: target.senderId, messageId: abm.message_id } } : {}) },
+      source: { kind: 'plugin:snowluma-bridge', ...(target.isGroup ? { replyTo: { userId: target.senderId, messageId: abm.message_id } } : {}) },
     }))
   }
 
@@ -581,7 +581,7 @@ export class Bridge {
     try {
       this.deps.sessionChanged(change)
     } catch (e) {
-      this.deps.log('warn', 'napcat/session-changed 监听器出错: ' + errText(e))
+      this.deps.log('warn', 'snowluma/session-changed 监听器出错: ' + errText(e))
     }
     return { oldSessionId, newSessionId: next }
   }
@@ -775,7 +775,7 @@ export class Bridge {
   }
 
   /**
-   * 本插件新增：其他插件主动唤醒她（比如定时主动聊天）。给这个 QQ 会话的 dsh 会话发一条内容（来源 plugin:napcat-bridge-wake），
+   * 本插件新增：其他插件主动唤醒她（比如定时主动聊天）。给这个 QQ 会话的 dsh 会话发一条内容（来源 plugin:snowluma-bridge-wake），
    * 她一轮说完的回复照常发到 QQ；回复以「不发」暗号开头时不发。会话还没建过时先建。群里每人单独一个会话的 umo 不支持。
    */
   async wake(umo: string, content: ModelPart[] | string): Promise<{ sessionId: string }> {
@@ -785,7 +785,7 @@ export class Bridge {
     if (type !== MessageType.GROUP_MESSAGE && type !== MessageType.FRIEND_MESSAGE) throw new Error('只能唤醒私聊或群聊：' + umo)
     if (id.includes('_')) throw new Error('不支持群里每人单独会话的唤醒：' + umo)
     const selfId = this.deps.selfId()
-    if (selfId === undefined) throw new Error('NapCat 还没连上')
+    if (selfId === undefined) throw new Error('SnowLuma 还没连上')
     const isGroup = type === MessageType.GROUP_MESSAGE
     const session: MessageSession = { platform_name: platform, message_type: type as MessageType, session_id: id }
     if (!this.canSend(session)) throw new Error('会话 ' + umo + ' 不在白名单里，禁止主动唤醒')
@@ -794,7 +794,7 @@ export class Bridge {
     const admitted = await this.deps.media.admit(typeof content === 'string' ? [{ type: 'text', text: content }] : content)
     if (!this.canSend(session)) throw new Error('会话 ' + umo + ' 不在白名单里，禁止主动唤醒')
     chat.nudged = false
-    chat.handle.agent.followup(createUserMessage({ content: admitted as never, source: { kind: 'plugin:napcat-bridge-wake' } }))
+    chat.handle.agent.followup(createUserMessage({ content: admitted as never, source: { kind: 'plugin:snowluma-bridge-wake' } }))
     return { sessionId: String((chat.handle.agent as Agent).session.id) }
   }
 
@@ -888,8 +888,8 @@ export class Bridge {
     } else if (event.type === 'user/message') {
       const source = event.data.source
       // 本插件新增：只关联实际进入这一轮的 QQ 来信；主动唤醒不沿用上一轮的对象。
-      if (source?.kind === 'plugin:napcat-bridge' || source?.kind === 'plugin:napcat-bridge-nudge') chat.replyTarget = source.replyTo
-      else if (source?.kind === 'plugin:napcat-bridge-wake') chat.replyTarget = undefined
+      if (source?.kind === 'plugin:snowluma-bridge' || source?.kind === 'plugin:snowluma-bridge-nudge') chat.replyTarget = source.replyTo
+      else if (source?.kind === 'plugin:snowluma-bridge-wake') chat.replyTarget = undefined
       // dsh 会追加 runtime-context 用户消息，不可因此擦掉真实来信对象。
     } else if (event.type === 'assistant/message') {
       const text = (event.data.message.content as ReadonlyArray<{ type: string; text?: string }>)
@@ -920,7 +920,7 @@ export class Bridge {
           setTimeout(() => {
             if (this.chats.get(umo) !== chat || !canReply()) return
             for (const id of senders) chat.replySenders.add(id)
-            chat.handle.agent.followup(createUserMessage({ content: [{ type: 'text', text: nudgeText(this.deps.settings().silenceToken.trim()) }] as never, source: { kind: 'plugin:napcat-bridge-nudge', ...(replyTarget ? { replyTo: replyTarget } : {}) } }))
+            chat.handle.agent.followup(createUserMessage({ content: [{ type: 'text', text: nudgeText(this.deps.settings().silenceToken.trim()) }] as never, source: { kind: 'plugin:snowluma-bridge-nudge', ...(replyTarget ? { replyTo: replyTarget } : {}) } }))
           }, NUDGE_DELAY_MS)
         }
         return
@@ -983,12 +983,12 @@ export class Bridge {
     return { chain }
   }
 
-  /** 发 'napcat/sent'；监听器出错不影响发送。 */
+  /** 发 'snowluma/sent'；监听器出错不影响发送。 */
   notifySent(payload: SentPayload): void {
     try {
       this.deps.sent(payload)
     } catch (e) {
-      this.deps.log('warn', 'napcat/sent 监听器出错: ' + errText(e))
+      this.deps.log('warn', 'snowluma/sent 监听器出错: ' + errText(e))
     }
   }
 

@@ -10,7 +10,7 @@ export interface CQHttpOptions {
     log: Logger;
 }
 /**
- * aiocqhttp.CQHttp（反向 WS）。NapCat 作为客户端连进来，
+ * aiocqhttp.CQHttp（反向 WS）。SnowLuma 作为客户端连进来，
  * X-Client-Role 为 Universal / Event / API，X-Self-ID 为机器人 QQ 号。
  */
 export declare class CQHttp {

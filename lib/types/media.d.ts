@@ -48,7 +48,7 @@ export declare class Media {
     canAttach(): boolean;
     /** 一段语音写成什么文字：[语音] 转出的文字 / [语音]（没配转文字）/ [语音，没听清]。 */
     voiceText(comp: Component): Promise<string>;
-    /** 读一张图片（url / base64 / NapCat get_image）。 */
+    /** 读一张图片（url / base64 / SnowLuma get_image）。 */
     loadImage(comp: Component): Promise<LoadedImage>;
     /** 视频在哪：本地路径或 http(s) 地址，以及大小（知道的话）。 */
     private videoSource;

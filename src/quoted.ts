@@ -160,8 +160,8 @@ function textFromMultimsgJson(raw: string): string | null {
 
 /**
  * 把一串 OneBot 消息段写成文字。depth 是聊天记录套了几层（缩进用）。
- * 本插件改动：聊天记录段（forward）自带 content 时直接展开，不再只留 id 等着再去取（NapCat 里面那层的 id
- * 往往取不到：「消息已过期或者为内层消息」）；NapCat get_forward_msg 把里面套着的记录写成 node 段，也展开。
+ * 本插件改动：聊天记录段（forward）自带 content 时直接展开，不再只留 id 等着再去取（SnowLuma 里面那层的 id
+ * 往往取不到：「消息已过期或者为内层消息」）；SnowLuma get_forward_msg 把里面套着的记录写成 node 段，也展开。
  */
 function parseSegments(segments: unknown[], s: QuotedSettings, depth = 0): ParsedPayload {
   const textParts: string[] = []
@@ -179,7 +179,7 @@ function parseSegments(segments: unknown[], s: QuotedSettings, depth = 0): Parse
     if (seg === null || typeof seg !== 'object') continue
     const type = (seg as any).type
     const data = (seg as any).data !== null && typeof (seg as any).data === 'object' ? (seg as any).data : {}
-    // 连在一起的 node 段是一份聊天记录（NapCat 把套着的记录写成这样）
+    // 连在一起的 node 段是一份聊天记录（SnowLuma 把套着的记录写成这样）
     if (type === 'node') { nodeRun.push(seg); continue }
     flushNodes()
     if (type === 'text' || type === 'plain') {
@@ -219,7 +219,7 @@ function parseSegments(segments: unknown[], s: QuotedSettings, depth = 0): Parse
 /**
  * 聊天记录里的一条条消息 → 「名字: 内容」，按层数缩进。认两种写法：
  *   - OneBot 消息：{ sender: { nickname, card, user_id }, message | content }
- *   - NapCat get_forward_msg 的节点：{ type: 'node', data: { user_id, nickname, message | content } }
+ *   - SnowLuma get_forward_msg 的节点：{ type: 'node', data: { user_id, nickname, message | content } }
  */
 function textForwardImagesFromNodes(nodes: unknown[], depth: number, s: QuotedSettings): ParsedPayload {
   if (!Array.isArray(nodes)) return { text: null, forwardIds: [], imageRefs: [] }
@@ -381,8 +381,8 @@ export async function extractQuoted(message: Component[], callAction: CallAction
 /**
  * 本插件新增（AstrBot 不展开直接发来的聊天记录）：
  * 消息本身带的聊天记录（forward 段）同样展开，写成 <Forward Message>…</Forward Message>。
- * 先用 get_msg 取这条消息本身（NapCat 在 get_msg 里会把聊天记录的内容一起带上），
- * 没带内容再用 get_forward_msg 按 id 取。都取不到时把 NapCat 的原始返回写进 errors，方便查。
+ * 先用 get_msg 取这条消息本身（SnowLuma 在 get_msg 里会把聊天记录的内容一起带上），
+ * 没带内容再用 get_forward_msg 按 id 取。都取不到时把 SnowLuma 的原始返回写进 errors，方便查。
  */
 export async function extractForwards(message: Component[], callAction: CallAction, s: QuotedSettings = QUOTED_DEFAULTS, messageId?: string | number): Promise<QuotedContent | null> {
   const ids = message.filter(c => c.type === 'Forward' && c.id !== undefined && c.id !== null).map(c => String(c.id))

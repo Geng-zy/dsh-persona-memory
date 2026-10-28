@@ -10,7 +10,7 @@ export interface WatchStatus {
     state: WatchState;
     /** 现在这个状态从什么时候开始 */
     since: number;
-    /** 原因（NapCat 给的下线说明、接口报错等） */
+    /** 原因（SnowLuma 给的下线说明、接口报错等） */
     reason?: string;
     /** 小号（最近一次看到的） */
     account?: {
@@ -45,9 +45,9 @@ export declare class Watchdog {
     constructor(deps: WatchDeps);
     private now;
     status(): WatchStatus;
-    /** NapCat 的下线通知 */
+    /** SnowLuma 的下线通知 */
     onOffline(event: Record<string, unknown>): void;
-    /** NapCat 的心跳 */
+    /** SnowLuma 的心跳 */
     onHeartbeat(event: Record<string, unknown>): void;
     /** 定时检查：自己问一次，再看要不要提醒。 */
     check(): Promise<WatchStatus>;

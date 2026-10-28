@@ -16,18 +16,18 @@ interface GroupReplyTarget {
 }
 declare module '@deepseek-ai/dsh-llm' {
     interface MessageSourceMap {
-        /** 从 QQ（NapCat）来的用户消息 */
-        'plugin:napcat-bridge': {
-            kind: 'plugin:napcat-bridge';
+        /** 从 QQ（SnowLuma）来的用户消息 */
+        'plugin:snowluma-bridge': {
+            kind: 'plugin:snowluma-bridge';
             replyTo?: GroupReplyTarget;
         };
-        /** 其他插件主动唤醒她（ctx.napcat.wake，比如定时主动聊天）；不算"人说的话" */
-        'plugin:napcat-bridge-wake': {
-            kind: 'plugin:napcat-bridge-wake';
+        /** 其他插件主动唤醒她（ctx.snowluma.wake，比如定时主动聊天）；不算"人说的话" */
+        'plugin:snowluma-bridge-wake': {
+            kind: 'plugin:snowluma-bridge-wake';
         };
         /** 她一轮什么都没说出来时，提醒她把话说出来；不算"人说的话" */
-        'plugin:napcat-bridge-nudge': {
-            kind: 'plugin:napcat-bridge-nudge';
+        'plugin:snowluma-bridge-nudge': {
+            kind: 'plugin:snowluma-bridge-nudge';
             replyTo?: GroupReplyTarget;
         };
     }
@@ -71,15 +71,15 @@ export interface BridgeDeps {
     callAction(action: string, params: Record<string, unknown>): Promise<any>;
     /** 广播给其他插件 */
     emit(abm: AstrBotMessage, event: AiocqhttpMessageEvent, isWake: boolean): void;
-    /** 交给模型前让其他插件加内容（ctx.serial('napcat/prompt')） */
+    /** 交给模型前让其他插件加内容（ctx.serial('snowluma/prompt')） */
     prompt(payload: PromptPayload): Promise<unknown>;
-    /** 她发出了一条消息（ctx.emit('napcat/sent')） */
+    /** 她发出了一条消息（ctx.emit('snowluma/sent')） */
     sent(payload: SentPayload): void;
-    /** QQ 会话换了 dsh 会话（ctx.emit('napcat/session-changed')） */
+    /** QQ 会话换了 dsh 会话（ctx.emit('snowluma/session-changed')） */
     sessionChanged(change: SessionChange): void;
     /** 按会话主动发送（没有收到的消息可回复时用，比如主动唤醒以后） */
     sendBySession(session: MessageSession, chain: MessageChain): Promise<void>;
-    /** 她自己的 QQ 号（NapCat 连上以后才有） */
+    /** 她自己的 QQ 号（SnowLuma 连上以后才有） */
     selfId(): string | undefined;
     /** 当前设置（每次用到时读取，设置页改了立即生效） */
     settings(): BridgeSettings;
@@ -192,7 +192,7 @@ export interface SessionInfo {
     /** 管理员（主人）的私聊 */
     adminPrivate: boolean;
 }
-/** 'napcat/prompt' 的参数：监听者直接改 content（在前后插入文字或图片）。 */
+/** 'snowluma/prompt' 的参数：监听者直接改 content（在前后插入文字或图片）。 */
 export interface PromptPayload {
     info: SessionInfo;
     /** 这是这个 dsh 会话的第一轮（刚新建的会话） */
@@ -205,7 +205,7 @@ export interface PromptPayload {
      */
     content: ModelPart[];
 }
-/** 'napcat/sent' 的参数。 */
+/** 'snowluma/sent' 的参数。 */
 export interface SentPayload {
     /** unified_msg_origin */
     umo: string;
@@ -213,22 +213,22 @@ export interface SentPayload {
     /** 发出去的文字（只取文字部分） */
     text: string;
     chain: MessageChain;
-    /** reply：她一轮说完的回复；service：其他插件通过 ctx.napcat.sendBySession 发的 */
+    /** reply：她一轮说完的回复；service：其他插件通过 ctx.snowluma.sendBySession 发的 */
     source: 'reply' | 'service';
     /** 发出的时间（毫秒） */
     time: number;
 }
-/** 'napcat/session-changed' 的参数。 */
+/** 'snowluma/session-changed' 的参数。 */
 export interface SessionChange {
     umo: string;
     oldSessionId: string;
     newSessionId: string;
-    /** command：QQ 里发了 /new 或 /reset；rotate：其他插件调用了 ctx.napcat.rotateSession */
+    /** command：QQ 里发了 /new 或 /reset；rotate：其他插件调用了 ctx.snowluma.rotateSession */
     reason: 'command' | 'rotate';
 }
 /** 当前时间，格式同 AstrBot：2026-10-23 21:40 (GMT+8), Weekday: Friday */
 export declare function formatNow(timezone: string, now?: Date): string;
-/** dsh 会话 id：napcat-<平台>-<类型>-<会话> 去掉不安全字符。 */
+/** dsh 会话 id：snowluma-<平台>-<类型>-<会话> 去掉不安全字符。 */
 export declare function dshSessionId(umo: string): string;
 /**
  * WakingCheckStage.process 中与唤醒有关的部分（AstrBot 默认配置）。
@@ -316,7 +316,7 @@ export declare class Bridge {
     private buildContent;
     private ensureChat;
     /**
-     * 本插件新增：其他插件主动唤醒她（比如定时主动聊天）。给这个 QQ 会话的 dsh 会话发一条内容（来源 plugin:napcat-bridge-wake），
+     * 本插件新增：其他插件主动唤醒她（比如定时主动聊天）。给这个 QQ 会话的 dsh 会话发一条内容（来源 plugin:snowluma-bridge-wake），
      * 她一轮说完的回复照常发到 QQ；回复以「不发」暗号开头时不发。会话还没建过时先建。群里每人单独一个会话的 umo 不支持。
      */
     wake(umo: string, content: ModelPart[] | string): Promise<{
@@ -328,7 +328,7 @@ export declare class Bridge {
     private onSessionEvent;
     /** 本插件新增：OneBot 引用在最前；对象来自来信元数据，不让模型猜 QQ 或消息 ID。 */
     private groupReplyChain;
-    /** 发 'napcat/sent'；监听器出错不影响发送。 */
+    /** 发 'snowluma/sent'；监听器出错不影响发送。 */
     notifySent(payload: SentPayload): void;
     /** 已建立的会话（unified_msg_origin → dsh 会话 id）。 */
     sessions(): Array<{

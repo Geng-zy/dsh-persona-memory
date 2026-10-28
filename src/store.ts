@@ -1,5 +1,5 @@
 // 本插件新增：记住每个 QQ 会话当前用的 dsh 会话 id（/new、/reset 之后会换成新的）。
-// 存在 <DSH_HOME>/napcat-bridge/sessions.json，原子写（先写临时文件再改名）。
+// 存在 <DSH_HOME>/snowluma-bridge/sessions.json，原子写（先写临时文件再改名）。
 
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
@@ -7,7 +7,7 @@ import { dirname, join } from 'node:path'
 
 export function defaultDataDir(): string {
   const home = process.env.DSH_HOME && process.env.DSH_HOME !== '' ? process.env.DSH_HOME : join(homedir(), '.dsh')
-  return join(home, 'napcat-bridge')
+  return join(home, 'snowluma-bridge')
 }
 
 export class SessionStore {

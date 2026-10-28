@@ -6,7 +6,7 @@
 //
 // v0.2.0 起在 AstrBot 的基础上做了这些改动（代码里标「改动」）：
 // 时间用 QQ 的发送时间；消息按 message_id 去重；@ 名片、陌生人昵称、群名缓存；
-// 补群名；小黄脸写成 [表情:名字]；商城表情和 NapCat 一样当普通图片（mface 段有地址时也转成图片）；
+// 补群名；小黄脸写成 [表情:名字]；商城表情和 SnowLuma 一样当普通图片（mface 段有地址时也转成图片）；
 // 通知和请求补上名字并写成一句话（event_text）。
 
 import { randomUUID } from 'node:crypto'
@@ -17,7 +17,7 @@ import { TtlCache } from './cache.js'
 import { describeNotice, describeRequest } from './notice.js'
 import { QFACE } from './qface.js'
 import {
-  At, ComponentTypes, File, Plain, Poke, convertToBase64, make, toDict, toDictAsync, toFileUri,
+  At, ComponentTypes, File, Plain, Poke, convertToBase64, make, toDict, toDictAsync,
   type Component, type MessageChain,
 } from './components.js'
 
@@ -152,7 +152,7 @@ export class AiocqhttpAdapter {
     this.log('debug', '[aiocqhttp] RawMessage ' + JSON.stringify(event))
     let abm: AstrBotMessage | null = null
     if (event.post_type === 'message') {
-      // 改动：同一条消息只处理一次（NapCat 配了两个连接、重启重报时会重复）
+      // 改动：同一条消息只处理一次（SnowLuma 配了两个连接、重启重报时会重复）
       const key = String(event.self_id) + ':' + String(event.message_id)
       if (event.message_id !== undefined && this.seen.has(key)) {
         this.log('debug', '重复消息已忽略: ' + key)
@@ -246,7 +246,7 @@ export class AiocqhttpAdapter {
     }
     if (event.message_type === 'group') {
       abm.type = MessageType.GROUP_MESSAGE
-      // 改动：NapCat 常常不带 group_name，查一次缓存起来
+      // 改动：SnowLuma 常常不带 group_name，查一次缓存起来
       abm.group = { group_id: String(event.group_id), group_name: getReply ? await this.groupName(event) : event.group_name }
     } else if (event.message_type === 'private') {
       abm.type = MessageType.FRIEND_MESSAGE
@@ -283,7 +283,7 @@ export class AiocqhttpAdapter {
             abm.message.push(File({ name: fileName, url: m.data.url }))
           } else {
             try {
-              // Napcat
+              // Snowluma
               let ret: any = null
               if (abm.type === MessageType.GROUP_MESSAGE) {
                 ret = await this.bot.callAction('get_group_file_url', { file_id: m.data.file_id, group_id: event.group_id, ...routingParams })
@@ -369,8 +369,8 @@ export class AiocqhttpAdapter {
         }
         messageStr += atParts.join('')
       } else if (t === 'mface') {
-        // 改动：AstrBot 直接丢掉。NapCat 把商城表情当普通 image 段发；其他实现发来的 mface 段有图片地址时，
-        // 也和 NapCat 一样当成普通图片
+        // 改动：AstrBot 直接丢掉。SnowLuma 把商城表情当普通 image 段发；其他实现发来的 mface 段有图片地址时，
+        // 也和 SnowLuma 一样当成普通图片
         for (const m of mGroup) {
           if (m.data.url) abm.message.push(make('Image', { file: m.data.url, url: m.data.url }))
         }
@@ -565,18 +565,7 @@ export class AiocqhttpMessageEvent {
       const bs64 = await convertToBase64(segment)
       return { type: segment.type.toLowerCase(), data: { file: 'base64://' + bs64 } }
     }
-    if (segment.type === 'File') {
-      const d = await toDictAsync(segment)
-      const fileVal = d.data?.file ?? ''
-      if (fileVal) {
-        try {
-          d.data.file = toFileUri(fileVal)
-        } catch {
-          // 如果不是合法路径，则跳过转换
-        }
-      }
-      return d
-    }
+    if (segment.type === 'File') return toDictAsync(segment)
     if (segment.type === 'Video') return toDictAsync(segment)
     return toDict(segment)
   }

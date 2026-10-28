@@ -1,10 +1,10 @@
-// dsh-napcat-bridge 设置页（浏览器一侧）。
+// dsh-snowluma-bridge 设置页（浏览器一侧）。
 // 注册到 dsh「插件」页的 plugins.bundle.config 扩展点：在插件页打开本插件即可看到。
-// 表单读写 dsh 设置服务里本插件的配置行（id: napcat-bridge），保存后插件立即读到新值。
+// 表单读写 dsh 设置服务里本插件的配置行（id: snowluma-bridge），保存后插件立即读到新值。
 // 只用 dsh 自带的表单组件和 --dsw-* 颜色变量，外观随 dsh 的主题（深色/浅色）变化。
 // 这个文件不经过打包，构建时原样复制到 lib/client.js。
 window.__ModuleLoader__.load({
-	id: "dsh-napcat-bridge",
+	id: "dsh-snowluma-bridge",
 	factory: (require) => {
 		var exports = {};
 		var reactModule = require("react");
@@ -13,11 +13,11 @@ window.__ModuleLoader__.load({
 		var h = React.createElement;
 
 		/** 词条命名空间 */
-		var NS = "napcatBridge";
+		var NS = "snowlumaBridge";
 		/** 插件包名（plugins.bundle.config 的 key） */
-		var PACKAGE = "dsh-napcat-bridge";
+		var PACKAGE = "dsh-snowluma-bridge";
 		/** 设置服务里的配置行 id（cordis.patch.yml 里的 id） */
-		var SECTION = "napcat-bridge";
+		var SECTION = "snowluma-bridge";
 
 		var zh = {
 			nudgeOnEmpty: "她只想没说时提醒她说出来",
@@ -26,12 +26,12 @@ window.__ModuleLoader__.load({
 			unsavedBar: "有改动还没保存：点「保存」才生效，离开这个页面会丢掉",
 			discardChanges: "放弃改动",
 			watchSec: "掉线提醒",
-			watchSecHint: "监测 QQ 账号在线状态及 NapCat 连接状态，并通过已配置的邮件或微信推送渠道发送异常通知。通知依赖 dsh 进程正常运行；dsh 自身停止运行时，本插件无法发送通知。",
+			watchSecHint: "监测 QQ 账号在线状态及 QQ 协议端 连接状态，并通过已配置的邮件或微信推送渠道发送异常通知。通知依赖 dsh 进程正常运行；dsh 自身停止运行时，本插件无法发送通知。",
 			watchLoading: "正在读取…",
 			watchBot: "QQ 小号",
 			watchState_ok: "{who} 在线",
 			watchState_offline: "{who} 掉线了（{since} 起）",
-			watchState_disconnected: "NapCat 没连上本插件（{since} 起）",
+			watchState_disconnected: "QQ 协议端 没连上本插件（{since} 起）",
 			watchState_unknown: "还不知道 {who} 在不在线（{since} 起）",
 			watchReason: "。原因：{reason}",
 			watchLastAlert: "上次提醒：{time} · {kind} · {results}",
@@ -39,7 +39,7 @@ window.__ModuleLoader__.load({
 			watchKindRecovered: "恢复提醒",
 			watchNoChannel: "没有设置提醒渠道",
 			watchCheckNow: "现在检查一次",
-			watchBannerHint: "账号可能需要重新登录。请在 NapCat 管理页面确认登录状态；连接与通知配置见“连接和权限 → 掉线提醒”。",
+			watchBannerHint: "账号可能需要重新登录。请在 QQ 协议端 管理页面确认登录状态；连接与通知配置见“连接和权限 → 掉线提醒”。",
 			watchEnabled: "检测掉线",
 			watchEnabledHint: "启用后综合下线通知、心跳状态及定期接口查询检测异常。关闭后不发送掉线或恢复通知。",
 			watchInterval: "每几分钟问一次",
@@ -96,20 +96,20 @@ window.__ModuleLoader__.load({
 			modelManual: "手动填写…",
 			modelManualLabel: "模型名（手动填写）",
 			modelPickList: "从列表选",
-			summary: "把 NapCat（OneBot v11）接到 dsh，照搬 AstrBot 的 aiocqhttp 适配器。",
+			summary: "通过 OneBot v11 将 SnowLuma 或 SnowLuma 接入 dsh，沿用现有会话、权限与记忆。",
 			connection: "连接",
-			connectionHint: "本插件作为反向 WebSocket 服务端。请在 NapCat 中创建 WebSocket 客户端，连接 ws://<地址>:<端口>/ws，并使用一致的 Token。保存监听地址或端口后会重新监听，现有连接需重新建立。",
+			connectionHint: "本插件作为反向 WebSocket 服务端。请在 QQ 协议端 中创建 WebSocket 客户端，连接 ws://<地址>:<端口>/ws，并使用一致的 Token。保存监听地址或端口后会重新监听，现有连接需重新建立。",
 			host: "监听地址",
 			hostHint: "反向 WebSocket 的绑定地址，默认 0.0.0.0，表示监听所有本机网络接口。仅允许同机连接时可使用 127.0.0.1；实际可访问范围还取决于防火墙和安全组。",
 			port: "端口",
-			portHint: "反向 WebSocket 的监听端口，默认 6199，可填写 1～65535 的整数。该端口必须未被其他服务占用，并与 NapCat 客户端地址一致。",
+			portHint: "反向 WebSocket 的监听端口，默认 6199，可填写 1～65535 的整数。该端口必须未被其他服务占用，并与 QQ 协议端 客户端地址一致。",
 			token: "Token",
-			tokenHint: "反向 WebSocket 连接的身份验证凭据，须与 NapCat 配置一致。输入框留空会保留已保存的 Token；尚未设置 Token 时不进行此项验证。",
-			napcatSetupHint: "在 NapCat“网络配置”中新建 WebSocket 客户端，URL 填写 {url}，消息格式选择 Array，并配置与本插件一致的 Token。使用部署脚本安装时，请核实已有配置。",
+			tokenHint: "反向 WebSocket 连接的身份验证凭据，须与 QQ 协议端 配置一致。输入框留空会保留已保存的 Token；尚未设置 Token 时不进行此项验证。",
+			snowlumaSetupHint: "在 SnowLuma 或 SnowLuma 中配置反向 WebSocket 客户端，URL 为 {url}，角色为 Universal，消息格式为 Array，Token 须一致。容器内连接宿主时，请使用容器能访问的宿主地址。迁移时保留原平台 ID，以继续使用既有会话和记忆。",
 			tokenGenerate: "随机生成 Token",
 			tokenCopy: "复制",
 			tokenCopied: "已复制",
-			tokenGenerated: "已经填进上面的框：先点「保存」，再把它填进 NapCat 的 WebSocket 客户端。离开页面后不会再显示。",
+			tokenGenerated: "已经填进上面的框：先点「保存」，再把它填进 QQ 协议端 的 WebSocket 客户端。离开页面后不会再显示。",
 			tokenSet: "已设置 Token。",
 			tokenUnset: "没有设置 Token，连接不校验。",
 			platformId: "平台 ID",
@@ -138,16 +138,16 @@ window.__ModuleLoader__.load({
 			logLevel: "日志级别",
 			logLevelHint: "控制插件运行日志的详细程度，默认 info。debug 包含原始消息及处理细节，可能包含聊天内容和账号标识，适用于临时排查问题。",
 			friendNeedsPrefixHint: "启用后，私聊不再默认逐条触发模型，需满足唤醒前缀或其他已有唤醒条件。默认关闭。启用前请确保已配置可用前缀。",
-			ignoreSelfHint: "忽略由机器人自身 QQ 账号发送并经 NapCat 回传的消息，例如同一账号在其他设备上的发言。启用后此类消息不触发回复。",
+			ignoreSelfHint: "忽略由机器人自身 QQ 账号发送并经 QQ 协议端 回传的消息，例如同一账号在其他设备上的发言。启用后此类消息不触发回复。",
 			test: "测试连接",
 			testing: "测试中…",
 			testUsesSaved: "测试用的是已保存的设置。",
 			testOk: "已连接：{who}，Token 校验通过。",
 			testOkNoToken: "已连接：{who}。没有设置 Token，任何人都能连。",
-			testConnectedApiFailed: "NapCat 已连上，但调用接口没有成功：{error}",
-			testRejectedMissing: "{minutes} 分钟内有 NapCat 来连接，但没带 Token。请在 NapCat 里填上和这里一致的 Token。",
-			testRejectedWrong: "{minutes} 分钟内有 NapCat 来连接，但 Token 不对。请检查 NapCat 里填的 Token。",
-			testNoClient: "插件正在监听 {address}，但还没有 NapCat 连上来。请在 NapCat 里新建 WebSocket 客户端并填对地址和 Token。",
+			testConnectedApiFailed: "QQ 协议端 已连上，但调用接口没有成功：{error}",
+			testRejectedMissing: "{minutes} 分钟内有 QQ 协议端 来连接，但没带 Token。请在 QQ 协议端 里填上和这里一致的 Token。",
+			testRejectedWrong: "{minutes} 分钟内有 QQ 协议端 来连接，但 Token 不对。请检查 QQ 协议端 里填的 Token。",
+			testNoClient: "插件正在监听 {address}，但还没有 QQ 协议端 连上来。请在 QQ 协议端 里新建 WebSocket 客户端并填对地址和 Token。",
 			testNotListening: "插件没有在监听 {address}，可能端口被占用，请换一个端口。",
 			testFailed: "测试失败：{error}",
 			access: "访问控制",
@@ -361,7 +361,7 @@ window.__ModuleLoader__.load({
 			save: "保存",
 			saving: "保存中…",
 			saveFailed: "没有保存成功，修改已保留，请检查后重试。",
-			watchIntervalMinutesHint: "主动查询 NapCat 在线状态的间隔，单位为分钟，默认 2。下线通知和心跳事件仍会在收到时更新状态。",
+			watchIntervalMinutesHint: "主动查询 QQ 协议端 在线状态的间隔，单位为分钟，默认 2。下线通知和心跳事件仍会在收到时更新状态。",
 			alertOnRecoverHint: "已报告的异常恢复后，通过已配置的通知渠道发送恢复通知。仅影响通知，不负责重新登录或修复连接。",
 			mailEnabledHint: "启用邮件通知渠道。需配置可用的 SMTP 服务器、账号和授权凭据；仅启用本开关不会自动完成邮箱身份验证。",
 			smtpHostHint: "发送通知邮件的 SMTP 服务器域名，不包含协议前缀或端口。例如 smtp.example.com；应与邮箱服务商配置一致。",
@@ -389,12 +389,12 @@ window.__ModuleLoader__.load({
 			unsavedBar: "Unsaved changes: click Save to apply; leaving the page discards them",
 			discardChanges: "Discard",
 			watchSec: "Offline alerts",
-			watchSecHint: "Monitor QQ availability and the NapCat connection, and notify configured email or push channels. Notifications require the dsh process to remain running.",
+			watchSecHint: "Monitor QQ availability and the QQ gateway connection, and notify configured email or push channels. Notifications require the dsh process to remain running.",
 			watchLoading: "Loading…",
 			watchBot: "QQ account",
 			watchState_ok: "{who} is online",
 			watchState_offline: "{who} is offline (since {since})",
-			watchState_disconnected: "NapCat is not connected (since {since})",
+			watchState_disconnected: "QQ gateway is not connected (since {since})",
 			watchState_unknown: "Unknown whether {who} is online (since {since})",
 			watchReason: ". Reason: {reason}",
 			watchLastAlert: "Last alert: {time} · {kind} · {results}",
@@ -402,7 +402,7 @@ window.__ModuleLoader__.load({
 			watchKindRecovered: "recovered",
 			watchNoChannel: "no alert channel set",
 			watchCheckNow: "Check now",
-			watchBannerHint: "Check the account login in the NapCat management page. Connection and notification settings are under Connection and permissions → Offline alerts.",
+			watchBannerHint: "Check the account login in the QQ gateway management page. Connection and notification settings are under Connection and permissions → Offline alerts.",
 			watchEnabled: "Detect offline",
 			watchEnabledHint: "Combine offline notices, heartbeats, and scheduled API queries to detect problems. Disabling this setting stops outage and recovery alerts.",
 			watchInterval: "Check every (minutes)",
@@ -459,20 +459,20 @@ window.__ModuleLoader__.load({
 			modelManual: "Type a model…",
 			modelManualLabel: "Model name",
 			modelPickList: "Pick from list",
-			summary: "Connect NapCat (OneBot v11) to dsh, a port of AstrBot's aiocqhttp adapter.",
+			summary: "Connect SnowLuma or SnowLuma to dsh over OneBot v11, preserving sessions, permissions and memory.",
 			connection: "Connection",
-			connectionHint: "This plugin hosts the reverse WebSocket server. Configure a NapCat WebSocket client for ws://<host>:<port>/ws with a matching token. Changing the host or port restarts the listener and requires reconnection.",
+			connectionHint: "This plugin hosts the reverse WebSocket server. Configure a QQ gateway WebSocket client for ws://<host>:<port>/ws with a matching token. Changing the host or port restarts the listener and requires reconnection.",
 			host: "Listen address",
 			hostHint: "Reverse WebSocket bind address. The default 0.0.0.0 listens on all local interfaces; 127.0.0.1 limits access to this machine. Firewall and security-group rules also apply.",
 			port: "Port",
-			portHint: "Reverse WebSocket port, default 6199. Enter an unused integer from 1 to 65535 and use the same port in NapCat.",
+			portHint: "Reverse WebSocket port, default 6199. Enter an unused integer from 1 to 65535 and use the same port in QQ gateway.",
 			token: "Token",
-			tokenHint: "Authentication token for the reverse WebSocket connection; it must match NapCat. A blank input retains the saved token. No token authentication is performed if none is configured.",
-			napcatSetupHint: "Create a WebSocket client in NapCat Network settings with URL {url}, Array message format, and a matching token. Verify existing settings if installed by a deployment script.",
+			tokenHint: "Authentication token for the reverse WebSocket connection; it must match QQ gateway. A blank input retains the saved token. No token authentication is performed if none is configured.",
+			snowlumaSetupHint: "In SnowLuma or SnowLuma, configure a reverse WebSocket client with URL {url}, Universal role, Array messages, and a matching token. Containers need a reachable host address. Keep the existing platform ID when migrating to retain sessions and memory.",
 			tokenGenerate: "Generate token",
 			tokenCopy: "Copy",
 			tokenCopied: "Copied",
-			tokenGenerated: "Put into the field above: click Save, then paste it into NapCat's WebSocket client. It is not shown again after you leave.",
+			tokenGenerated: "Put into the field above: click Save, then paste it into QQ gateway's WebSocket client. It is not shown again after you leave.",
 			tokenSet: "A token is set.",
 			tokenUnset: "No token: connections are not checked.",
 			platformId: "Platform ID",
@@ -501,16 +501,16 @@ window.__ModuleLoader__.load({
 			logLevel: "Log level",
 			logLevelHint: "Set runtime log verbosity; the default is info. Debug includes raw messages and processing details, potentially including chat content and account IDs, and is intended for troubleshooting.",
 			friendNeedsPrefixHint: "When enabled, private messages no longer wake the model automatically and must satisfy a prefix or another existing wake condition. Disabled by default; configure a usable prefix first.",
-			ignoreSelfHint: "Ignore messages sent by the bot's own QQ account and relayed by NapCat, including messages from another device using that account. They will not trigger replies.",
+			ignoreSelfHint: "Ignore messages sent by the bot's own QQ account and relayed by QQ gateway, including messages from another device using that account. They will not trigger replies.",
 			test: "Test connection",
 			testing: "Testing…",
 			testUsesSaved: "The test uses the saved settings.",
 			testOk: "Connected: {who}; token accepted.",
 			testOkNoToken: "Connected: {who}. No token is set, so anyone can connect.",
-			testConnectedApiFailed: "NapCat is connected but the API call failed: {error}",
-			testRejectedMissing: "Within {minutes} min a NapCat tried to connect without a token. Set the same token in NapCat.",
-			testRejectedWrong: "Within {minutes} min a NapCat tried to connect with a wrong token. Check the token in NapCat.",
-			testNoClient: "Listening on {address}, but no NapCat has connected. Add a WebSocket client in NapCat with this address and token.",
+			testConnectedApiFailed: "QQ gateway is connected but the API call failed: {error}",
+			testRejectedMissing: "Within {minutes} min a QQ gateway tried to connect without a token. Set the same token in QQ gateway.",
+			testRejectedWrong: "Within {minutes} min a QQ gateway tried to connect with a wrong token. Check the token in QQ gateway.",
+			testNoClient: "Listening on {address}, but no QQ gateway has connected. Add a WebSocket client in QQ gateway with this address and token.",
 			testNotListening: "Not listening on {address}; the port may be in use. Try another port.",
 			testFailed: "Test failed: {error}",
 			access: "Access control",
@@ -724,7 +724,7 @@ window.__ModuleLoader__.load({
 			save: "Save",
 			saving: "Saving…",
 			saveFailed: "Not saved; your edits are kept for you to correct.",
-			watchIntervalMinutesHint: "Scheduled NapCat status-query interval in minutes, default 2. Offline notices and heartbeat events still update state as they arrive.",
+			watchIntervalMinutesHint: "Scheduled QQ gateway status-query interval in minutes, default 2. Offline notices and heartbeat events still update state as they arrive.",
 			alertOnRecoverHint: "Send a recovery notice through configured channels after an alerted outage ends. This setting does not repair the connection or log the account in.",
 			mailEnabledHint: "Enable email notifications. Requires a valid SMTP server, account, and credentials; this switch does not configure authentication.",
 			smtpHostHint: "SMTP host for alert emails, without a protocol prefix or port, such as smtp.example.com. Use the host specified by the mail provider.",
@@ -747,86 +747,86 @@ window.__ModuleLoader__.load({
 		};
 
 		var CSS = [
-			".napcatb-section{display:grid;gap:12px;padding:4px 0 8px}",
-			".napcatb-section,.napcatb-details+.napcatb-section{border-top:.5px solid var(--dsw-alias-border-l3);padding-top:16px}",
-			".napcatb-title{color:var(--dsw-alias-label-primary);font-size:14px;font-weight:600;margin:0}",
-			".napcatb-hint{color:var(--dsw-alias-label-tertiary);margin:0;font-size:12px;line-height:1.5}",
-			".napcatb-tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;border-bottom:.5px solid var(--dsw-alias-border-l3);margin:0 0 4px;position:sticky;top:0;z-index:2;background:var(--dsw-alias-bg-layer-1,var(--dsw-alias-bg-base,inherit))}",
-			".napcatb-tabs::-webkit-scrollbar{display:none}",
-			".napcatb-tab{flex:none;padding:9px 12px 8px;border:none;border-bottom:2px solid transparent;background:none;color:var(--dsw-alias-label-tertiary);font:inherit;font-size:13px;white-space:nowrap;cursor:pointer;border-radius:0}",
-			".napcatb-tab:hover{color:var(--dsw-alias-label-primary)}",
-			".napcatb-tab[aria-selected=true]{color:var(--dsw-alias-label-primary);font-weight:600;border-bottom-color:var(--dsw-alias-label-primary)}",
-			".napcatb-tab:focus-visible{outline:2px solid var(--dsw-alias-border-focus,var(--dsw-alias-label-tertiary));outline-offset:-2px}",
-			".napcatb-tabs + .napcatb-section,.napcatb-tabs + .napcatb-details{border-top:none;margin-top:8px}",
-			".napcatb-subtitle{color:var(--dsw-alias-label-secondary,var(--dsw-alias-label-primary));font-size:12px;font-weight:600;margin:6px 0 0}",
-			".napcatb-banner{display:grid;gap:4px;margin:0 0 12px;padding:10px 12px;border-radius:12px;border:.5px solid var(--dsw-alias-state-error-primary,#e03131);background:color-mix(in srgb,var(--dsw-alias-state-error-primary,#e03131) 12%,transparent);color:var(--dsw-alias-label-primary);font-size:13px;font-weight:600;line-height:1.5}",
-			".napcatb-banner .napcatb-hint{font-weight:400}",
-			".napcatb-modelRow{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:12px 16px;align-items:end}",
-			"@media (max-width:520px){.napcatb-modelRow{grid-template-columns:1fr}}",
-			".napcatb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px 16px;align-items:end}",
-			".napcatb-grid>*{padding-top:0!important;padding-bottom:0!important;border-top:none!important;margin:0!important;min-width:0}",
-			".napcatb-grid>*>:first-child{flex-wrap:wrap;row-gap:2px}",
-			".napcatb-grid .napcatb-select{width:100%;min-width:0}",
-			".napcatb-labelText{display:inline-flex;align-items:center;gap:3px;line-height:20px}",
-			".napcatb-tip{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;margin-top:0;border-radius:50%;border:.5px solid var(--dsw-alias-border-l4);color:var(--dsw-alias-label-tertiary);font-size:9px;font-weight:600;line-height:1;cursor:help;user-select:none}",
-			".napcatb-tip:hover,.napcatb-tip:focus-visible{color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-tertiary);outline:none}",
-			".napcatb-toggleRow{color:var(--dsw-alias-label-primary);justify-content:space-between;align-items:center;gap:16px;font-size:13px;line-height:1.5;display:flex}",
-			".napcatb-field{display:grid;gap:6px}",
-			".napcatb-label{color:var(--dsw-alias-label-primary);font-size:13px;line-height:20px;min-height:20px}",
-			".napcatb-select{justify-self:start;min-width:160px;height:35px;box-sizing:border-box;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2,transparent);border:.5px solid var(--dsw-alias-border-l4);border-radius:12px;padding:0 12px;font:inherit;font-size:13px}",
-			".napcatb-details{border:.5px solid var(--dsw-alias-border-l4);border-radius:var(--dsw-radius-lg,10px);padding:0 14px}",
-			".napcatb-summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;padding:12px 0;color:var(--dsw-alias-label-primary);font-size:14px;font-weight:600}",
-			".napcatb-summary::-webkit-details-marker{display:none}",
-			".napcatb-chevron{display:inline-block;color:var(--dsw-alias-label-tertiary);transition:transform .15s ease;font-size:16px;line-height:1}",
-			".napcatb-details[open] .napcatb-chevron{transform:rotate(90deg)}",
-			".napcatb-detailsBody{display:grid;gap:12px;padding:4px 0 16px}",
-			".napcatb-test{display:grid;gap:6px;margin-top:-4px}",
-			".napcatb-testRow{display:flex;align-items:center;flex-wrap:wrap;gap:10px}",
-			".napcatb-testBtn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 14px;border-radius:10px;border:1px solid var(--dsw-alias-label-primary);background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;font-weight:600;cursor:pointer}",
-			".napcatb-testBtn:hover:not(:disabled){background:var(--dsw-alias-label-primary);color:var(--dsw-alias-bg-layer-1,var(--dsw-alias-bg-base,#fff))}",
-			".napcatb-testBtn:disabled{opacity:.55;cursor:default}",
-			".napcatb-testBtn:focus-visible{outline:2px solid var(--dsw-alias-border-focus,var(--dsw-alias-label-tertiary));outline-offset:2px}",
-			".napcatb-testIcon{font-size:14px;line-height:1}",
-			".napcatb-row{display:flex;align-items:center;flex-wrap:wrap;gap:10px}",
-			".napcatb-audio{height:36px;max-width:100%}",
-			".napcatb-input{height:35px;padding:0 12px;border:.5px solid var(--dsw-alias-border-l4);border-radius:12px;background:var(--dsw-alias-bg-layer-2,transparent);color:var(--dsw-alias-label-primary);font:inherit;font-size:13px}",
-			".napcatb-input:focus-visible{outline:2px solid var(--dsw-alias-border-focus,var(--dsw-alias-label-tertiary));outline-offset:1px}",
-			".napcatb-pCurrent{display:inline-flex;align-items:center;gap:10px;min-width:220px;max-width:100%;height:38px;padding:0 12px;border:.5px solid var(--dsw-alias-border-l4);border-radius:12px;background:var(--dsw-alias-bg-layer-2,transparent);color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;cursor:pointer}",
-			".napcatb-pCurrent:hover:not(:disabled){border-color:var(--dsw-alias-label-tertiary)}",
-			".napcatb-pCurrent .napcatb-pName{flex:1;text-align:left}",
-			".napcatb-pCaret{color:var(--dsw-alias-label-tertiary);font-size:11px}",
-			".napcatb-pIcon{display:inline-flex;align-items:center;justify-content:center;flex:none;width:22px;height:22px;border-radius:6px;object-fit:contain}",
-			".napcatb-pIconMono{background-color:var(--dsw-alias-label-primary);-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;-webkit-mask-size:contain;mask-size:contain}",
-			".napcatb-pIconText{background:var(--dsw-alias-bg-layer-3,rgba(127,127,127,.18));color:var(--dsw-alias-label-secondary,var(--dsw-alias-label-primary));font-size:12px;font-weight:600}",
-			".napcatb-pPanel{display:grid;gap:10px;margin-top:4px;padding:12px;border:.5px solid var(--dsw-alias-border-l4);border-radius:var(--dsw-radius-lg,12px);background:var(--dsw-alias-bg-layer-1,transparent)}",
-			".napcatb-pSearch{width:100%;box-sizing:border-box}",
-			".napcatb-pGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px}",
-			".napcatb-pCard{display:flex;align-items:center;gap:10px;min-width:0;height:46px;padding:0 12px;border:.5px solid var(--dsw-alias-border-l4);border-radius:12px;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;text-align:left;cursor:pointer}",
-			".napcatb-pCard:hover{background:var(--dsw-alias-bg-layer-2,rgba(127,127,127,.08));border-color:var(--dsw-alias-label-tertiary)}",
-			".napcatb-pCard.napcatb-pOn{border-color:var(--dsw-alias-label-primary);font-weight:600}",
-			".napcatb-pCard .napcatb-pName{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
-			".napcatb-pCard:focus-visible,.napcatb-pCurrent:focus-visible,.napcatb-pBtn:focus-visible{outline:2px solid var(--dsw-alias-border-focus,var(--dsw-alias-label-tertiary));outline-offset:1px}",
-			".napcatb-pModel{min-width:240px;max-width:100%;flex:1 1 240px}",
-			".napcatb-pBtn{height:35px;padding:0 14px;border:.5px solid var(--dsw-alias-border-l4);border-radius:12px;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;cursor:pointer;white-space:nowrap}",
-			".napcatb-pBtn:hover:not(:disabled){border-color:var(--dsw-alias-label-tertiary)}",
-			".napcatb-pBtn:disabled{opacity:.55;cursor:default}",
-			".napcatb-link{text-decoration:underline;text-underline-offset:2px}",
-			"@media (max-width:520px){.napcatb-pCurrent{width:100%}.napcatb-pGrid{grid-template-columns:1fr 1fr}}",
-			".napcatb-saveBar{position:sticky;bottom:12px;z-index:5;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-top:16px;padding:10px 14px;border:.5px solid var(--dsw-alias-border-l4);border-radius:12px;background:var(--dsw-alias-bg-layer-1,var(--dsw-alias-bg-base,#1e1e1e));box-shadow:0 4px 18px rgba(0,0,0,.25);color:var(--dsw-alias-label-primary);font-size:13px;font-weight:600}",
-			".napcatb-saveBtns{display:flex;gap:8px}",
-			".napcatb-pill{display:inline-block;margin:0;padding:6px 10px;border-radius:8px;font-size:12px;line-height:1.5;overflow-wrap:anywhere}",
-			".napcatb-pill.napcatb-ok{background:color-mix(in srgb,var(--dsw-alias-state-success-primary,#2f9e44) 14%,transparent)}",
-			".napcatb-pill.napcatb-error{background:color-mix(in srgb,var(--dsw-alias-state-error-primary,#e03131) 14%,transparent)}",
-			".napcatb-confirm{display:grid;gap:8px;padding:10px 12px;border:.5px solid var(--dsw-alias-border-l4);border-radius:var(--dsw-radius-md,6px)}",
-			".napcatb-result,.napcatb-hint{overflow-wrap:anywhere}",
-			".napcatb-code{display:block;padding:8px 10px;border:.5px solid var(--dsw-alias-border-l4);border-radius:8px;font-size:12px;overflow-wrap:anywhere;user-select:all;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}",
-			".napcatb-result{margin:0;font-size:12px;line-height:1.5}",
-			".napcatb-ok{color:var(--dsw-alias-state-success-primary,#2f9e44)}",
-			".napcatb-warn{color:var(--dsw-alias-state-warning-primary,#d97706)}",
-			".napcatb-error{color:var(--dsw-alias-state-error-primary)}",
-			"@media (prefers-reduced-motion:reduce){.napcatb-chevron{transition:none}}"
+			".snowlumab-section{display:grid;gap:12px;padding:4px 0 8px}",
+			".snowlumab-section,.snowlumab-details+.snowlumab-section{border-top:.5px solid var(--dsw-alias-border-l3);padding-top:16px}",
+			".snowlumab-title{color:var(--dsw-alias-label-primary);font-size:14px;font-weight:600;margin:0}",
+			".snowlumab-hint{color:var(--dsw-alias-label-tertiary);margin:0;font-size:12px;line-height:1.5}",
+			".snowlumab-tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;border-bottom:.5px solid var(--dsw-alias-border-l3);margin:0 0 4px;position:sticky;top:0;z-index:2;background:var(--dsw-alias-bg-layer-1,var(--dsw-alias-bg-base,inherit))}",
+			".snowlumab-tabs::-webkit-scrollbar{display:none}",
+			".snowlumab-tab{flex:none;padding:9px 12px 8px;border:none;border-bottom:2px solid transparent;background:none;color:var(--dsw-alias-label-tertiary);font:inherit;font-size:13px;white-space:nowrap;cursor:pointer;border-radius:0}",
+			".snowlumab-tab:hover{color:var(--dsw-alias-label-primary)}",
+			".snowlumab-tab[aria-selected=true]{color:var(--dsw-alias-label-primary);font-weight:600;border-bottom-color:var(--dsw-alias-label-primary)}",
+			".snowlumab-tab:focus-visible{outline:2px solid var(--dsw-alias-border-focus,var(--dsw-alias-label-tertiary));outline-offset:-2px}",
+			".snowlumab-tabs + .snowlumab-section,.snowlumab-tabs + .snowlumab-details{border-top:none;margin-top:8px}",
+			".snowlumab-subtitle{color:var(--dsw-alias-label-secondary,var(--dsw-alias-label-primary));font-size:12px;font-weight:600;margin:6px 0 0}",
+			".snowlumab-banner{display:grid;gap:4px;margin:0 0 12px;padding:10px 12px;border-radius:12px;border:.5px solid var(--dsw-alias-state-error-primary,#e03131);background:color-mix(in srgb,var(--dsw-alias-state-error-primary,#e03131) 12%,transparent);color:var(--dsw-alias-label-primary);font-size:13px;font-weight:600;line-height:1.5}",
+			".snowlumab-banner .snowlumab-hint{font-weight:400}",
+			".snowlumab-modelRow{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:12px 16px;align-items:end}",
+			"@media (max-width:520px){.snowlumab-modelRow{grid-template-columns:1fr}}",
+			".snowlumab-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px 16px;align-items:end}",
+			".snowlumab-grid>*{padding-top:0!important;padding-bottom:0!important;border-top:none!important;margin:0!important;min-width:0}",
+			".snowlumab-grid>*>:first-child{flex-wrap:wrap;row-gap:2px}",
+			".snowlumab-grid .snowlumab-select{width:100%;min-width:0}",
+			".snowlumab-labelText{display:inline-flex;align-items:center;gap:3px;line-height:20px}",
+			".snowlumab-tip{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;margin-top:0;border-radius:50%;border:.5px solid var(--dsw-alias-border-l4);color:var(--dsw-alias-label-tertiary);font-size:9px;font-weight:600;line-height:1;cursor:help;user-select:none}",
+			".snowlumab-tip:hover,.snowlumab-tip:focus-visible{color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-tertiary);outline:none}",
+			".snowlumab-toggleRow{color:var(--dsw-alias-label-primary);justify-content:space-between;align-items:center;gap:16px;font-size:13px;line-height:1.5;display:flex}",
+			".snowlumab-field{display:grid;gap:6px}",
+			".snowlumab-label{color:var(--dsw-alias-label-primary);font-size:13px;line-height:20px;min-height:20px}",
+			".snowlumab-select{justify-self:start;min-width:160px;height:35px;box-sizing:border-box;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2,transparent);border:.5px solid var(--dsw-alias-border-l4);border-radius:12px;padding:0 12px;font:inherit;font-size:13px}",
+			".snowlumab-details{border:.5px solid var(--dsw-alias-border-l4);border-radius:var(--dsw-radius-lg,10px);padding:0 14px}",
+			".snowlumab-summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;padding:12px 0;color:var(--dsw-alias-label-primary);font-size:14px;font-weight:600}",
+			".snowlumab-summary::-webkit-details-marker{display:none}",
+			".snowlumab-chevron{display:inline-block;color:var(--dsw-alias-label-tertiary);transition:transform .15s ease;font-size:16px;line-height:1}",
+			".snowlumab-details[open] .snowlumab-chevron{transform:rotate(90deg)}",
+			".snowlumab-detailsBody{display:grid;gap:12px;padding:4px 0 16px}",
+			".snowlumab-test{display:grid;gap:6px;margin-top:-4px}",
+			".snowlumab-testRow{display:flex;align-items:center;flex-wrap:wrap;gap:10px}",
+			".snowlumab-testBtn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 14px;border-radius:10px;border:1px solid var(--dsw-alias-label-primary);background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;font-weight:600;cursor:pointer}",
+			".snowlumab-testBtn:hover:not(:disabled){background:var(--dsw-alias-label-primary);color:var(--dsw-alias-bg-layer-1,var(--dsw-alias-bg-base,#fff))}",
+			".snowlumab-testBtn:disabled{opacity:.55;cursor:default}",
+			".snowlumab-testBtn:focus-visible{outline:2px solid var(--dsw-alias-border-focus,var(--dsw-alias-label-tertiary));outline-offset:2px}",
+			".snowlumab-testIcon{font-size:14px;line-height:1}",
+			".snowlumab-row{display:flex;align-items:center;flex-wrap:wrap;gap:10px}",
+			".snowlumab-audio{height:36px;max-width:100%}",
+			".snowlumab-input{height:35px;padding:0 12px;border:.5px solid var(--dsw-alias-border-l4);border-radius:12px;background:var(--dsw-alias-bg-layer-2,transparent);color:var(--dsw-alias-label-primary);font:inherit;font-size:13px}",
+			".snowlumab-input:focus-visible{outline:2px solid var(--dsw-alias-border-focus,var(--dsw-alias-label-tertiary));outline-offset:1px}",
+			".snowlumab-pCurrent{display:inline-flex;align-items:center;gap:10px;min-width:220px;max-width:100%;height:38px;padding:0 12px;border:.5px solid var(--dsw-alias-border-l4);border-radius:12px;background:var(--dsw-alias-bg-layer-2,transparent);color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;cursor:pointer}",
+			".snowlumab-pCurrent:hover:not(:disabled){border-color:var(--dsw-alias-label-tertiary)}",
+			".snowlumab-pCurrent .snowlumab-pName{flex:1;text-align:left}",
+			".snowlumab-pCaret{color:var(--dsw-alias-label-tertiary);font-size:11px}",
+			".snowlumab-pIcon{display:inline-flex;align-items:center;justify-content:center;flex:none;width:22px;height:22px;border-radius:6px;object-fit:contain}",
+			".snowlumab-pIconMono{background-color:var(--dsw-alias-label-primary);-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;-webkit-mask-size:contain;mask-size:contain}",
+			".snowlumab-pIconText{background:var(--dsw-alias-bg-layer-3,rgba(127,127,127,.18));color:var(--dsw-alias-label-secondary,var(--dsw-alias-label-primary));font-size:12px;font-weight:600}",
+			".snowlumab-pPanel{display:grid;gap:10px;margin-top:4px;padding:12px;border:.5px solid var(--dsw-alias-border-l4);border-radius:var(--dsw-radius-lg,12px);background:var(--dsw-alias-bg-layer-1,transparent)}",
+			".snowlumab-pSearch{width:100%;box-sizing:border-box}",
+			".snowlumab-pGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px}",
+			".snowlumab-pCard{display:flex;align-items:center;gap:10px;min-width:0;height:46px;padding:0 12px;border:.5px solid var(--dsw-alias-border-l4);border-radius:12px;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;text-align:left;cursor:pointer}",
+			".snowlumab-pCard:hover{background:var(--dsw-alias-bg-layer-2,rgba(127,127,127,.08));border-color:var(--dsw-alias-label-tertiary)}",
+			".snowlumab-pCard.snowlumab-pOn{border-color:var(--dsw-alias-label-primary);font-weight:600}",
+			".snowlumab-pCard .snowlumab-pName{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
+			".snowlumab-pCard:focus-visible,.snowlumab-pCurrent:focus-visible,.snowlumab-pBtn:focus-visible{outline:2px solid var(--dsw-alias-border-focus,var(--dsw-alias-label-tertiary));outline-offset:1px}",
+			".snowlumab-pModel{min-width:240px;max-width:100%;flex:1 1 240px}",
+			".snowlumab-pBtn{height:35px;padding:0 14px;border:.5px solid var(--dsw-alias-border-l4);border-radius:12px;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;cursor:pointer;white-space:nowrap}",
+			".snowlumab-pBtn:hover:not(:disabled){border-color:var(--dsw-alias-label-tertiary)}",
+			".snowlumab-pBtn:disabled{opacity:.55;cursor:default}",
+			".snowlumab-link{text-decoration:underline;text-underline-offset:2px}",
+			"@media (max-width:520px){.snowlumab-pCurrent{width:100%}.snowlumab-pGrid{grid-template-columns:1fr 1fr}}",
+			".snowlumab-saveBar{position:sticky;bottom:12px;z-index:5;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-top:16px;padding:10px 14px;border:.5px solid var(--dsw-alias-border-l4);border-radius:12px;background:var(--dsw-alias-bg-layer-1,var(--dsw-alias-bg-base,#1e1e1e));box-shadow:0 4px 18px rgba(0,0,0,.25);color:var(--dsw-alias-label-primary);font-size:13px;font-weight:600}",
+			".snowlumab-saveBtns{display:flex;gap:8px}",
+			".snowlumab-pill{display:inline-block;margin:0;padding:6px 10px;border-radius:8px;font-size:12px;line-height:1.5;overflow-wrap:anywhere}",
+			".snowlumab-pill.snowlumab-ok{background:color-mix(in srgb,var(--dsw-alias-state-success-primary,#2f9e44) 14%,transparent)}",
+			".snowlumab-pill.snowlumab-error{background:color-mix(in srgb,var(--dsw-alias-state-error-primary,#e03131) 14%,transparent)}",
+			".snowlumab-confirm{display:grid;gap:8px;padding:10px 12px;border:.5px solid var(--dsw-alias-border-l4);border-radius:var(--dsw-radius-md,6px)}",
+			".snowlumab-result,.snowlumab-hint{overflow-wrap:anywhere}",
+			".snowlumab-code{display:block;padding:8px 10px;border:.5px solid var(--dsw-alias-border-l4);border-radius:8px;font-size:12px;overflow-wrap:anywhere;user-select:all;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}",
+			".snowlumab-result{margin:0;font-size:12px;line-height:1.5}",
+			".snowlumab-ok{color:var(--dsw-alias-state-success-primary,#2f9e44)}",
+			".snowlumab-warn{color:var(--dsw-alias-state-warning-primary,#d97706)}",
+			".snowlumab-error{color:var(--dsw-alias-state-error-primary)}",
+			"@media (prefers-reduced-motion:reduce){.snowlumab-chevron{transition:none}}"
 		].join("\n");
-		var CSS_ID = "dsh-napcat-bridge/settings.css";
+		var CSS_ID = "dsh-snowluma-bridge/settings.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(CSS_ID) + "]") === null) {
 			var tag = document.createElement("style");
 			tag.dataset.plugin = PACKAGE;
@@ -946,39 +946,39 @@ window.__ModuleLoader__.load({
 		/** 名称 + 右上角的小角标；鼠标移上去（或键盘聚焦）显示说明。 */
 		function Label(props) {
 			if (!props.hint) return props.text;
-			return h("span", { className: "napcatb-labelText" },
+			return h("span", { className: "snowlumab-labelText" },
 				props.text,
 				h(P.Tooltip, { label: props.hint, side: "top", delayMs: 150, maxWidth: 320 },
-					h("span", { className: "napcatb-tip", tabIndex: 0, role: "img", "aria-label": props.hint }, "?")));
+					h("span", { className: "snowlumab-tip", tabIndex: 0, role: "img", "aria-label": props.hint }, "?")));
 		}
 
 		var TAB_IDS = ["conn", "session", "content", "send", "voice", "log"];
 		function readTab() {
-			try { var v = window.localStorage.getItem("napcat-bridge:tab"); return TAB_IDS.indexOf(v) >= 0 ? v : "conn"; } catch (e) { return "conn"; }
+			try { var v = window.localStorage.getItem("snowluma-bridge:tab"); return TAB_IDS.indexOf(v) >= 0 ? v : "conn"; } catch (e) { return "conn"; }
 		}
 		function Tabs(props) {
 			var t = props.t;
-			return h("div", { className: "napcatb-tabs", role: "tablist", "aria-label": t("tabsLabel") },
+			return h("div", { className: "snowlumab-tabs", role: "tablist", "aria-label": t("tabsLabel") },
 				TAB_IDS.map(function (id) {
 					return h("button", {
-						key: id, type: "button", role: "tab", className: "napcatb-tab",
+						key: id, type: "button", role: "tab", className: "snowlumab-tab",
 						"aria-selected": props.cur === id,
-						onClick: function () { props.onChange(id); try { window.localStorage.setItem("napcat-bridge:tab", id); } catch (e) { /* 存不了就算了 */ } }
+						onClick: function () { props.onChange(id); try { window.localStorage.setItem("snowluma-bridge:tab", id); } catch (e) { /* 存不了就算了 */ } }
 					}, t("tab_" + id));
 				}));
 		}
 		/** 几个相关的输入框排成一行（窄窗口自动换行） */
-		function G() { return h("div", { className: "napcatb-grid" }, Array.prototype.slice.call(arguments)); }
-		function Sub(text) { return h("h4", { className: "napcatb-subtitle" }, text); }
+		function G() { return h("div", { className: "snowlumab-grid" }, Array.prototype.slice.call(arguments)); }
+		function Sub(text) { return h("h4", { className: "snowlumab-subtitle" }, text); }
 		function Section(props) {
-			return h("section", { className: "napcatb-section" },
-				h("h3", { className: "napcatb-title" }, h(Label, { text: props.title, hint: props.hint })),
+			return h("section", { className: "snowlumab-section" },
+				h("h3", { className: "snowlumab-title" }, h(Label, { text: props.title, hint: props.hint })),
 				props.children);
 		}
 
 		function Toggle(props) {
 			var field = props.state[props.field];
-			return h("div", { className: "napcatb-toggleRow" },
+			return h("div", { className: "snowlumab-toggleRow" },
 				h(Label, { text: props.label, hint: props.hint }),
 				h(P.Switch, {
 					checked: field.text === "true",
@@ -991,7 +991,7 @@ window.__ModuleLoader__.load({
 		function Value(props) {
 			var t = props.t;
 			return h(P.SettingsValueField, Object.assign({
-				id: "napcat-bridge-" + props.field,
+				id: "snowluma-bridge-" + props.field,
 				label: h(Label, { text: props.label, hint: props.hint }),
 				overriddenLabel: t("overridden"),
 				resetLabel: t("reset"),
@@ -1026,8 +1026,8 @@ window.__ModuleLoader__.load({
 
 		/** 测试按钮：比普通小按钮显眼（描边、加粗、带图标） */
 		function TestButton(props) {
-			return h("button", { type: "button", className: "napcatb-testBtn", disabled: props.busy, onClick: props.onClick },
-				h("span", { className: "napcatb-testIcon", "aria-hidden": true }, props.busy ? "…" : "⇄"), props.label);
+			return h("button", { type: "button", className: "snowlumab-testBtn", disabled: props.busy, onClick: props.onClick },
+				h("span", { className: "snowlumab-testIcon", "aria-hidden": true }, props.busy ? "…" : "⇄"), props.label);
 		}
 		function ConnectionTest(props) {
 			var t = props.t;
@@ -1035,7 +1035,7 @@ window.__ModuleLoader__.load({
 			var [busy, setBusy] = React.useState(false);
 			function run() {
 				setBusy(true);
-				var url = new URL("api/napcat-bridge/status", document.baseURI).href;
+				var url = new URL("api/snowluma-bridge/status", document.baseURI).href;
 				fetch(url, { credentials: "same-origin", cache: "no-store" })
 					.then(function (res) {
 						if (!res.ok) throw new Error("HTTP " + res.status);
@@ -1045,40 +1045,40 @@ window.__ModuleLoader__.load({
 						function (error) { setResult({ tone: "error", text: t("testFailed", { error: error && error.message || String(error) }) }); })
 					.finally(function () { setBusy(false); });
 			}
-			return h("div", { className: "napcatb-test" },
-				h("div", { className: "napcatb-testRow" },
+			return h("div", { className: "snowlumab-test" },
+				h("div", { className: "snowlumab-testRow" },
 					h(TestButton, { busy: busy, onClick: run, label: busy ? t("testing") : t("test") }),
-					props.dirty ? h("span", { className: "napcatb-hint" }, t("testUsesSaved")) : null),
-				result ? h("div", null, h("p", { className: "napcatb-pill napcatb-result napcatb-" + result.tone, role: "status" }, result.text)) : null);
+					props.dirty ? h("span", { className: "snowlumab-hint" }, t("testUsesSaved")) : null),
+				result ? h("div", null, h("p", { className: "snowlumab-pill snowlumab-result snowlumab-" + result.tone, role: "status" }, result.text)) : null);
 		}
 
-		/** 语音转文字的「测试」（POST <dsh>/api/napcat-bridge/stt/test，用保存过的设置拿一段静音试）。 */
+		/** 语音转文字的「测试」（POST <dsh>/api/snowluma-bridge/stt/test，用保存过的设置拿一段静音试）。 */
 		function SttTest(props) {
 			var t = props.t;
 			var [result, setResult] = React.useState(null);
 			var [busy, setBusy] = React.useState(false);
 			function run() {
 				setBusy(true);
-				fetch(new URL("api/napcat-bridge/stt/test", document.baseURI).href, { method: "POST", credentials: "same-origin", cache: "no-store" })
+				fetch(new URL("api/snowluma-bridge/stt/test", document.baseURI).href, { method: "POST", credentials: "same-origin", cache: "no-store" })
 					.then(function (res) { if (!res.ok) throw new Error("HTTP " + res.status); return res.json(); })
 					.then(function (r) {
 						setResult(r.ok ? { tone: "ok", text: t("sttTestOk", { ms: r.ms, text: r.text || t("sttTestEmpty") }) } : { tone: "error", text: t("testFailed", { error: r.error }) });
 					}, function (error) { setResult({ tone: "error", text: t("testFailed", { error: error && error.message || String(error) }) }); })
 					.finally(function () { setBusy(false); });
 			}
-			return h("div", { className: "napcatb-test" },
-				h("div", { className: "napcatb-testRow" },
+			return h("div", { className: "snowlumab-test" },
+				h("div", { className: "snowlumab-testRow" },
 					h(TestButton, { busy: busy, onClick: run, label: busy ? t("testing") : t("sttTest") }),
-					props.dirty ? h("span", { className: "napcatb-hint" }, t("testUsesSaved")) : null),
-				result ? h("div", null, h("p", { className: "napcatb-pill napcatb-result napcatb-" + result.tone, role: "status" }, result.text)) : null);
+					props.dirty ? h("span", { className: "snowlumab-hint" }, t("testUsesSaved")) : null),
+				result ? h("div", null, h("p", { className: "snowlumab-pill snowlumab-result snowlumab-" + result.tone, role: "status" }, result.text)) : null);
 		}
 
-		/** ffmpeg 状态和一键安装（GET/POST <dsh>/api/napcat-bridge/ffmpeg[/install]）。 */
+		/** ffmpeg 状态和一键安装（GET/POST <dsh>/api/snowluma-bridge/ffmpeg[/install]）。 */
 		function FfmpegStatus(props) {
 			var t = props.t;
 			var [st, setSt] = React.useState(null);
 			var [err, setErr] = React.useState(null);
-			var url = function (path) { return new URL("api/napcat-bridge/" + path, document.baseURI).href; };
+			var url = function (path) { return new URL("api/snowluma-bridge/" + path, document.baseURI).href; };
 			function load(method, path) {
 				return fetch(url(path), { method: method, credentials: "same-origin", cache: "no-store" })
 					.then(function (res) { if (!res.ok) throw new Error("HTTP " + res.status); return res.json(); })
@@ -1120,27 +1120,27 @@ window.__ModuleLoader__.load({
 				else if (ins.state === "failed") lines.push({ tone: "error", text: t("ffmpegFailed", { error: ins.error || "?" }) });
 			}
 			var canInstall = st && !st.found && st.installSupported && !busy;
-			return h("div", { className: "napcatb-test" },
-				canInstall && asking ? h("div", { className: "napcatb-confirm", role: "group", "aria-label": t("ffmpegInstall") },
-					h("p", { className: "napcatb-hint" }, t("ffmpegInstallConfirm")),
-					h("div", { className: "napcatb-testRow" },
+			return h("div", { className: "snowlumab-test" },
+				canInstall && asking ? h("div", { className: "snowlumab-confirm", role: "group", "aria-label": t("ffmpegInstall") },
+					h("p", { className: "snowlumab-hint" }, t("ffmpegInstallConfirm")),
+					h("div", { className: "snowlumab-testRow" },
 						h(P.Button, { size: "sm", onClick: install }, t("ffmpegInstallYes")),
 						h(P.Button, { size: "sm", onClick: function () { setAsking(false); } }, t("ffmpegInstallNo")))) : null,
-				h("div", { className: "napcatb-testRow" },
+				h("div", { className: "snowlumab-testRow" },
 					canInstall && !asking ? h(P.Button, { size: "sm", onClick: function () { setAsking(true); } }, t("ffmpegInstall")) : null,
 					h(P.Button, { size: "sm", disabled: busy, onClick: function () { load("GET", "ffmpeg"); } }, t("ffmpegRecheck"))),
 				lines.map(function (line, i) {
-					return h("p", { key: i, className: line.tone === "hint" ? "napcatb-hint" : "napcatb-result napcatb-" + line.tone, role: i === 0 ? "status" : void 0 }, line.text);
+					return h("p", { key: i, className: line.tone === "hint" ? "snowlumab-hint" : "snowlumab-result snowlumab-" + line.tone, role: i === 0 ? "status" : void 0 }, line.text);
 				}));
 		}
 
 		function Select(props) {
 			var field = props.state[props.field];
-			return h("div", { className: "napcatb-field" },
-				h("label", { className: "napcatb-label", htmlFor: "napcat-bridge-" + props.field }, h(Label, { text: props.label, hint: props.hint })),
+			return h("div", { className: "snowlumab-field" },
+				h("label", { className: "snowlumab-label", htmlFor: "snowluma-bridge-" + props.field }, h(Label, { text: props.label, hint: props.hint })),
 				h("select", {
-					id: "napcat-bridge-" + props.field,
-					className: "napcatb-select",
+					id: "snowluma-bridge-" + props.field,
+					className: "snowlumab-select",
 					value: field.text || props.fallback,
 					disabled: props.disabled,
 					onChange: function (event) { props.edit(props.field, event.target.value); }
@@ -1150,7 +1150,7 @@ window.__ModuleLoader__.load({
 		function Secret(props) {
 			var set = props.state.secretSet[props.field] === true;
 			return h(P.SettingsSecretField, {
-				id: "napcat-bridge-" + props.field,
+				id: "snowluma-bridge-" + props.field,
 				label: h(Label, { text: props.label, hint: props.hint }),
 				disabled: props.disabled,
 				text: props.state[props.field].text,
@@ -1160,8 +1160,8 @@ window.__ModuleLoader__.load({
 			});
 		}
 
-		/** 手动部署时用：随机生成一个 Token（填进上面的框，保存后生效），并告诉你 NapCat 里该填什么 */
-		function NapcatSetup(props) {
+		/** 手动部署时用：随机生成一个 Token（填进上面的框，保存后生效），并告诉你 SnowLuma 里该填什么 */
+		function SnowlumaSetup(props) {
 			var t = props.t;
 			var [made, setMade] = React.useState("");
 			var [copied, setCopied] = React.useState(false);
@@ -1185,13 +1185,13 @@ window.__ModuleLoader__.load({
 					ta.remove();
 				}
 			}
-			return h("div", { className: "napcatb-test" },
-				h("p", { className: "napcatb-hint" }, t("napcatSetupHint", { url: wsUrl })),
-				h("div", { className: "napcatb-testRow" },
+			return h("div", { className: "snowlumab-test" },
+				h("p", { className: "snowlumab-hint" }, t("snowlumaSetupHint", { url: wsUrl })),
+				h("div", { className: "snowlumab-testRow" },
 					h(P.Button, { size: "sm", disabled: props.disabled, onClick: generate }, t("tokenGenerate")),
 					made ? h(P.Button, { size: "sm", onClick: copy }, copied ? t("tokenCopied") : t("tokenCopy")) : null),
-				made ? h("code", { className: "napcatb-code" }, made) : null,
-				made ? h("p", { className: "napcatb-result napcatb-warn" }, t("tokenGenerated")) : null);
+				made ? h("code", { className: "snowlumab-code" }, made) : null,
+				made ? h("p", { className: "snowlumab-result snowlumab-warn" }, t("tokenGenerated")) : null);
 		}
 
 		//#region 服务商预设（地址、常用模型、logo）和模型列表
@@ -1219,9 +1219,9 @@ window.__ModuleLoader__.load({
 		}
 		function ProviderIcon(props) {
 			var ic = props.icon ? PROVIDER_ICONS[props.icon] : null;
-			if (!ic) return h("span", { className: "napcatb-pIcon napcatb-pIconText", "aria-hidden": true }, (props.name || "?").slice(0, 1));
-			if (ic.mono) return h("span", { className: "napcatb-pIcon napcatb-pIconMono", "aria-hidden": true, style: { WebkitMaskImage: "url(" + ic.src + ")", maskImage: "url(" + ic.src + ")" } });
-			return h("img", { className: "napcatb-pIcon", src: ic.src, alt: "", "aria-hidden": true });
+			if (!ic) return h("span", { className: "snowlumab-pIcon snowlumab-pIconText", "aria-hidden": true }, (props.name || "?").slice(0, 1));
+			if (ic.mono) return h("span", { className: "snowlumab-pIcon snowlumab-pIconMono", "aria-hidden": true, style: { WebkitMaskImage: "url(" + ic.src + ")", maskImage: "url(" + ic.src + ")" } });
+			return h("img", { className: "snowlumab-pIcon", src: ic.src, alt: "", "aria-hidden": true });
 		}
 		function providerName(t, p) { return p ? (t("langIsEn") === "1" ? p.en : p.name) : t("providerCustom"); }
 		/** 选服务商：点开后是带搜索的格子，选一家就填好接口地址（模型不在这家的常用列表里时换成第一个） */
@@ -1240,23 +1240,23 @@ window.__ModuleLoader__.load({
 				if (props.onPick) props.onPick(p);
 			}
 			var list = PROVIDERS.filter(function (p) { var s = q.trim().toLowerCase(); return !s || (p.name + " " + p.en + " " + p.id).toLowerCase().indexOf(s) >= 0; });
-			return h("div", { className: "napcatb-field" },
-				h("span", { className: "napcatb-label" }, h(Label, { text: t("provider"), hint: t("providerHint") })),
-				h("div", { className: "napcatb-row" },
-					h("button", { type: "button", className: "napcatb-pCurrent", disabled: props.disabled, "aria-expanded": open, onClick: function () { setOpen(!open); } },
+			return h("div", { className: "snowlumab-field" },
+				h("span", { className: "snowlumab-label" }, h(Label, { text: t("provider"), hint: t("providerHint") })),
+				h("div", { className: "snowlumab-row" },
+					h("button", { type: "button", className: "snowlumab-pCurrent", disabled: props.disabled, "aria-expanded": open, onClick: function () { setOpen(!open); } },
 						h(ProviderIcon, { icon: cur && cur.icon, name: cur ? providerName(t, cur) : "+" }),
-						h("span", { className: "napcatb-pName" }, providerName(t, cur)),
-						h("span", { className: "napcatb-pCaret", "aria-hidden": true }, open ? "▴" : "▾")),
-					cur && cur.keyUrl ? h("a", { className: "napcatb-hint napcatb-link", href: cur.keyUrl, target: "_blank", rel: "noreferrer noopener" }, t("providerGetKey")) : null),
-				open ? h("div", { className: "napcatb-pPanel", role: "dialog", "aria-label": t("provider") },
-					h("input", { className: "napcatb-input napcatb-pSearch", type: "search", placeholder: t("providerSearch"), value: q, autoFocus: true, onChange: function (e) { setQ(e.target.value); } }),
-					h("div", { className: "napcatb-pGrid", role: "listbox" },
+						h("span", { className: "snowlumab-pName" }, providerName(t, cur)),
+						h("span", { className: "snowlumab-pCaret", "aria-hidden": true }, open ? "▴" : "▾")),
+					cur && cur.keyUrl ? h("a", { className: "snowlumab-hint snowlumab-link", href: cur.keyUrl, target: "_blank", rel: "noreferrer noopener" }, t("providerGetKey")) : null),
+				open ? h("div", { className: "snowlumab-pPanel", role: "dialog", "aria-label": t("provider") },
+					h("input", { className: "snowlumab-input snowlumab-pSearch", type: "search", placeholder: t("providerSearch"), value: q, autoFocus: true, onChange: function (e) { setQ(e.target.value); } }),
+					h("div", { className: "snowlumab-pGrid", role: "listbox" },
 						list.map(function (p) {
-							return h("button", { key: p.id, type: "button", role: "option", "aria-selected": cur === p, className: "napcatb-pCard" + (cur === p ? " napcatb-pOn" : ""), onClick: function () { choose(p); } },
-								h(ProviderIcon, { icon: p.icon, name: p.name }), h("span", { className: "napcatb-pName" }, providerName(t, p)));
+							return h("button", { key: p.id, type: "button", role: "option", "aria-selected": cur === p, className: "snowlumab-pCard" + (cur === p ? " snowlumab-pOn" : ""), onClick: function () { choose(p); } },
+								h(ProviderIcon, { icon: p.icon, name: p.name }), h("span", { className: "snowlumab-pName" }, providerName(t, p)));
 						}),
-						h("button", { type: "button", role: "option", "aria-selected": !cur, className: "napcatb-pCard" + (!cur ? " napcatb-pOn" : ""), onClick: function () { choose(null); } },
-							h(ProviderIcon, { name: "+" }), h("span", { className: "napcatb-pName" }, t("providerCustom"))))) : null);
+						h("button", { type: "button", role: "option", "aria-selected": !cur, className: "snowlumab-pCard" + (!cur ? " snowlumab-pOn" : ""), onClick: function () { choose(null); } },
+							h(ProviderIcon, { name: "+" }), h("span", { className: "snowlumab-pName" }, t("providerCustom"))))) : null);
 		}
 		/** 模型：下拉里是拉到的模型（拉不到就用这家的常用模型），也能手动填 */
 		function ModelField(props) {
@@ -1293,29 +1293,29 @@ window.__ModuleLoader__.load({
 			if (model && options.indexOf(model) < 0) options.unshift(model);
 			var MANUAL = "\u0000manual";
 			var showSelect = !manual && options.length > 0;
-			return h("div", { className: "napcatb-field" },
-				h("span", { className: "napcatb-label" }, h(Label, { text: props.label, hint: t("pModelHint") })),
-				h("div", { className: "napcatb-row" },
-					showSelect ? h("select", { className: "napcatb-select napcatb-pModel", disabled: props.disabled, value: model, "aria-label": props.label, onChange: function (e) { if (e.target.value === MANUAL) setManual(true); else props.edit(props.modelField, e.target.value); } },
+			return h("div", { className: "snowlumab-field" },
+				h("span", { className: "snowlumab-label" }, h(Label, { text: props.label, hint: t("pModelHint") })),
+				h("div", { className: "snowlumab-row" },
+					showSelect ? h("select", { className: "snowlumab-select snowlumab-pModel", disabled: props.disabled, value: model, "aria-label": props.label, onChange: function (e) { if (e.target.value === MANUAL) setManual(true); else props.edit(props.modelField, e.target.value); } },
 						options.map(function (m) { return h("option", { key: m, value: m }, m); }),
 						h("option", { value: MANUAL }, t("modelManual"))) : null,
-					h("button", { type: "button", className: "napcatb-pBtn", disabled: busy || props.disabled || !url, onClick: fetchModels }, busy ? t("modelFetching") : t("modelFetch")),
-					showSelect ? null : (options.length > 0 ? h("button", { type: "button", className: "napcatb-pBtn", onClick: function () { setManual(false); } }, t("modelPickList")) : null)),
+					h("button", { type: "button", className: "snowlumab-pBtn", disabled: busy || props.disabled || !url, onClick: fetchModels }, busy ? t("modelFetching") : t("modelFetch")),
+					showSelect ? null : (options.length > 0 ? h("button", { type: "button", className: "snowlumab-pBtn", onClick: function () { setManual(false); } }, t("modelPickList")) : null)),
 				showSelect ? null : h(Value, Object.assign({}, props.common, { field: props.modelField, label: t("modelManualLabel"), hint: t("pModelHint") })),
-				msg ? h("p", { className: "napcatb-pill napcatb-result napcatb-" + msg.tone, role: "status" }, msg.text) : null);
+				msg ? h("p", { className: "snowlumab-pill snowlumab-result snowlumab-" + msg.tone, role: "status" }, msg.text) : null);
 		}
 		//#endregion
 
 
 		//#region 聊天用的模型：从 dsh 里配置的模型里选，思考等级按这个模型支持的列
 		var dshModelsCache = null;
-		function napcatApi(method, path, body) {
+		function snowlumaApi(method, path, body) {
 			var init = { method: method, credentials: "same-origin", cache: "no-store" };
 			if (body !== void 0) { init.headers = { "content-type": "application/json" }; init.body = JSON.stringify(body); }
-			return fetch(new URL("api/napcat-bridge/" + path, document.baseURI).href, init).then(function (res) { if (!res.ok) throw new Error("HTTP " + res.status); return res.json(); });
+			return fetch(new URL("api/snowluma-bridge/" + path, document.baseURI).href, init).then(function (res) { if (!res.ok) throw new Error("HTTP " + res.status); return res.json(); });
 		}
 		function loadDshModels() {
-			if (!dshModelsCache) dshModelsCache = napcatApi("GET", "llm/dsh-models").catch(function (e) { dshModelsCache = null; throw e; });
+			if (!dshModelsCache) dshModelsCache = snowlumaApi("GET", "llm/dsh-models").catch(function (e) { dshModelsCache = null; throw e; });
 			return dshModelsCache;
 		}
 		function effortName(t, id, name) {
@@ -1336,26 +1336,26 @@ window.__ModuleLoader__.load({
 			React.useEffect(function () {
 				setEff(null);
 				var slash = shown.indexOf("/");
-				napcatApi("POST", "llm/efforts", slash > 0 ? { provider: shown.slice(0, slash), model: shown.slice(slash + 1) } : {}).then(setEff, function () { setEff({ efforts: [] }); });
+				snowlumaApi("POST", "llm/efforts", slash > 0 ? { provider: shown.slice(0, slash), model: shown.slice(slash + 1) } : {}).then(setEff, function () { setEff({ efforts: [] }); });
 			}, [shown]);
 			var groups = ((list && list.providers) || []).filter(function (g) { return g.models.length > 0; });
 			var known = groups.some(function (g) { return g.models.some(function (m) { return g.id + "/" + m.id === value; }); });
 			var opts = eff ? eff.efforts.slice() : [];
 			if (opts.length > 0 && opts.every(function (o) { return o.id !== effort; })) opts.unshift({ id: effort, name: effort, missing: true });
-			return h("div", { className: "napcatb-modelRow" },
-				h("div", { className: "napcatb-field" },
-					h("label", { className: "napcatb-label", htmlFor: "napcat-bridge-" + props.modelField }, h(Label, { text: props.label, hint: t("modelPickHint") })),
-					err ? h("p", { className: "napcatb-result napcatb-error" }, t("dshModelsFailed", { error: err })) : null,
-					h("select", { id: "napcat-bridge-" + props.modelField, className: "napcatb-select", disabled: props.disabled || !list, value: value, onChange: function (e) { props.edit(props.modelField, e.target.value); } },
+			return h("div", { className: "snowlumab-modelRow" },
+				h("div", { className: "snowlumab-field" },
+					h("label", { className: "snowlumab-label", htmlFor: "snowluma-bridge-" + props.modelField }, h(Label, { text: props.label, hint: t("modelPickHint") })),
+					err ? h("p", { className: "snowlumab-result snowlumab-error" }, t("dshModelsFailed", { error: err })) : null,
+					h("select", { id: "snowluma-bridge-" + props.modelField, className: "snowlumab-select", disabled: props.disabled || !list, value: value, onChange: function (e) { props.edit(props.modelField, e.target.value); } },
 						h("option", { value: "" }, list ? props.blankLabel : t("loadingModels")),
 						value && !known ? h("option", { value: value }, value) : null,
 						groups.map(function (g) {
 							return h("optgroup", { key: g.id, label: g.name }, g.models.map(function (m) { return h("option", { key: m.id, value: g.id + "/" + m.id }, m.name + (m.name !== m.id ? "（" + m.id + "）" : "")); }));
 						}))),
-				h("div", { className: "napcatb-field" },
-					h("label", { className: "napcatb-label", htmlFor: "napcat-bridge-" + props.effortField }, h(Label, { text: props.effortLabel, hint: t("reasoningHint") })),
-					opts.length === 0 ? h("p", { className: "napcatb-hint" }, eff ? t("reasoningNone") : t("loadingModels")) :
-					h("select", { id: "napcat-bridge-" + props.effortField, className: "napcatb-select", disabled: props.disabled, value: effort, onChange: function (e) { props.edit(props.effortField, e.target.value); } },
+				h("div", { className: "snowlumab-field" },
+					h("label", { className: "snowlumab-label", htmlFor: "snowluma-bridge-" + props.effortField }, h(Label, { text: props.effortLabel, hint: t("reasoningHint") })),
+					opts.length === 0 ? h("p", { className: "snowlumab-hint" }, eff ? t("reasoningNone") : t("loadingModels")) :
+					h("select", { id: "snowluma-bridge-" + props.effortField, className: "snowlumab-select", disabled: props.disabled, value: effort, onChange: function (e) { props.edit(props.effortField, e.target.value); } },
 						opts.map(function (o) { return h("option", { key: o.id, value: o.id }, effortName(t, o.id, o.name) + (o.missing ? t("reasoningUnsupported") : "")); }))));
 		}
 		//#endregion
@@ -1381,13 +1381,13 @@ window.__ModuleLoader__.load({
 			var [st, setSt] = React.useState(null);
 			React.useEffect(function () {
 				var alive = true;
-				function load() { napcatApi("GET", "watch").then(function (r) { if (alive) setSt(r); }, function () {}); }
+				function load() { snowlumaApi("GET", "watch").then(function (r) { if (alive) setSt(r); }, function () {}); }
 				load();
 				var timer = setInterval(load, 30000);
 				return function () { alive = false; clearInterval(timer); };
 			}, []);
 			if (!st || !st.enabled || st.state === "ok" || (st.state === "unknown" && !st.lastCheck)) return null;
-			return h("div", { className: "napcatb-banner", role: "alert" }, "⚠ " + watchStateText(t, st), h("span", { className: "napcatb-hint" }, t("watchBannerHint")));
+			return h("div", { className: "snowlumab-banner", role: "alert" }, "⚠ " + watchStateText(t, st), h("span", { className: "snowlumab-hint" }, t("watchBannerHint")));
 		}
 		/** 测试提醒时带上页面上现在填的值（没保存的也算；密钥框没填就用保存过的） */
 		function formValues(state) {
@@ -1400,31 +1400,31 @@ window.__ModuleLoader__.load({
 			var [busy, setBusy] = React.useState(false);
 			function run() {
 				setBusy(true); setR(null);
-				napcatApi("POST", "alert/test", { channel: props.channel, form: formValues(props.state) })
+				snowlumaApi("POST", "alert/test", { channel: props.channel, form: formValues(props.state) })
 					.then(function (x) { setR({ tone: x.ok ? "ok" : "error", text: (x.results || []).join("；") }); }, function (e) { setR({ tone: "error", text: t("testFailed", { error: e && e.message || String(e) }) }); })
 					.finally(function () { setBusy(false); });
 			}
-			return h("div", { className: "napcatb-test" },
-				h("div", { className: "napcatb-testRow" },
+			return h("div", { className: "snowlumab-test" },
+				h("div", { className: "snowlumab-testRow" },
 					h(TestButton, { busy: busy, onClick: run, label: busy ? t("testing") : props.label }),
-					h("span", { className: "napcatb-hint" }, t("alertTestUsesForm"))),
-				r ? h("div", null, h("p", { className: "napcatb-pill napcatb-result napcatb-" + r.tone, role: "status" }, r.text)) : null);
+					h("span", { className: "snowlumab-hint" }, t("alertTestUsesForm"))),
+				r ? h("div", null, h("p", { className: "snowlumab-pill snowlumab-result snowlumab-" + r.tone, role: "status" }, r.text)) : null);
 		}
 		/** 掉线提醒这一块 */
 		function WatchSection(props) {
 			var t = props.t, common = props.common, state = props.state;
 			var [st, setSt] = React.useState(null);
 			var [busy, setBusy] = React.useState(false);
-			function load(fresh) { setBusy(true); return napcatApi("GET", "watch" + (fresh ? "?fresh=1" : "")).then(setSt, function () {}).finally(function () { setBusy(false); }); }
+			function load(fresh) { setBusy(true); return snowlumaApi("GET", "watch" + (fresh ? "?fresh=1" : "")).then(setSt, function () {}).finally(function () { setBusy(false); }); }
 			React.useEffect(function () { load(false); }, []);
 			var host = state.smtpHost.text, preset = MAIL_PRESETS.filter(function (m) { return m.host === host; })[0];
 			var push = state.pushService.text || "off";
 			var tone = !st ? "hint" : st.state === "ok" ? "ok" : st.state === "unknown" ? "warn" : "error";
 			return h(Section, { title: t("watchSec"), hint: t("watchSecHint") },
-				h("div", { className: "napcatb-test" },
-					h("p", { className: "napcatb-pill napcatb-result napcatb-" + tone, role: "status" }, watchStateText(t, st)),
-					st && st.lastAlert ? h("p", { className: "napcatb-hint" }, t("watchLastAlert", { time: new Date(st.lastAlert.at).toLocaleString(), kind: t(st.lastAlert.kind === "problem" ? "watchKindProblem" : "watchKindRecovered"), results: (st.lastAlert.results || []).join("；") || t("watchNoChannel") })) : null,
-					h("div", { className: "napcatb-testRow" }, h(P.Button, { size: "sm", disabled: busy, onClick: function () { load(true); } }, busy ? t("testing") : t("watchCheckNow")))),
+				h("div", { className: "snowlumab-test" },
+					h("p", { className: "snowlumab-pill snowlumab-result snowlumab-" + tone, role: "status" }, watchStateText(t, st)),
+					st && st.lastAlert ? h("p", { className: "snowlumab-hint" }, t("watchLastAlert", { time: new Date(st.lastAlert.at).toLocaleString(), kind: t(st.lastAlert.kind === "problem" ? "watchKindProblem" : "watchKindRecovered"), results: (st.lastAlert.results || []).join("；") || t("watchNoChannel") })) : null,
+					h("div", { className: "snowlumab-testRow" }, h(P.Button, { size: "sm", disabled: busy, onClick: function () { load(true); } }, busy ? t("testing") : t("watchCheckNow")))),
 				h(Toggle, Object.assign({ field: "watchEnabled", label: t("watchEnabled"), hint: t("watchEnabledHint") }, common)),
 				G(h(Value, Object.assign({ field: "watchIntervalMinutes", label: t("watchInterval"), hint: t("watchIntervalMinutesHint"), numeric: true, invalidLabel: t("invalidPositive") }, common)),
 					h(Value, Object.assign({ field: "watchGraceMinutes", label: t("watchGrace"), hint: t("watchGraceHint"), numeric: true, invalidLabel: t("invalidCount") }, common)),
@@ -1432,16 +1432,16 @@ window.__ModuleLoader__.load({
 				h(Toggle, Object.assign({ field: "alertOnRecover", label: t("alertOnRecover"), hint: t("alertOnRecoverHint") }, common)),
 				Sub(t("mailSub")),
 				h(Toggle, Object.assign({ field: "mailEnabled", label: t("mailEnabled"), hint: t("mailEnabledHint") }, common)),
-				h("div", { className: "napcatb-field" },
-					h("label", { className: "napcatb-label", htmlFor: "napcat-bridge-mailPreset" }, h(Label, { text: t("mailPreset"), hint: t("mailPresetHint") })),
-					h("div", { className: "napcatb-row" },
-						h("select", { id: "napcat-bridge-mailPreset", className: "napcatb-select", disabled: props.disabled, value: preset ? preset.id : "", onChange: function (e) {
+				h("div", { className: "snowlumab-field" },
+					h("label", { className: "snowlumab-label", htmlFor: "snowluma-bridge-mailPreset" }, h(Label, { text: t("mailPreset"), hint: t("mailPresetHint") })),
+					h("div", { className: "snowlumab-row" },
+						h("select", { id: "snowluma-bridge-mailPreset", className: "snowlumab-select", disabled: props.disabled, value: preset ? preset.id : "", onChange: function (e) {
 							var m = MAIL_PRESETS.filter(function (x) { return x.id === e.target.value; })[0];
 							if (m) { props.edit("smtpHost", m.host); props.edit("smtpPort", String(m.port)); }
 						} },
 							h("option", { value: "" }, t("mailPresetCustom")),
 							MAIL_PRESETS.map(function (m) { return h("option", { key: m.id, value: m.id }, m.name + "（" + m.host + "）"); })),
-						preset ? h("a", { className: "napcatb-hint napcatb-link", href: preset.keyUrl, target: "_blank", rel: "noreferrer noopener" }, t("mailGetCode")) : null)),
+						preset ? h("a", { className: "snowlumab-hint snowlumab-link", href: preset.keyUrl, target: "_blank", rel: "noreferrer noopener" }, t("mailGetCode")) : null)),
 				G(h(Value, Object.assign({ field: "smtpHost", label: t("smtpHost"), hint: t("smtpHostHint") }, common)),
 					h(Value, Object.assign({ field: "smtpPort", label: t("smtpPort"), hint: t("smtpPortHint"), numeric: true, invalidLabel: t("invalidPort") }, common)),
 					h(Value, Object.assign({ field: "smtpUser", label: t("smtpUser"), hint: t("smtpUserHint") }, common)),
@@ -1449,15 +1449,15 @@ window.__ModuleLoader__.load({
 				h(Secret, Object.assign({ field: "smtpPass", label: t("smtpPass"), hint: t("smtpPassHint"), setLabel: t("secretSet"), unsetLabel: t("secretUnset") }, common)),
 				h(AlertTest, { t: t, channel: "mail", label: t("mailTest"), state: state }),
 				Sub(t("pushSub")),
-				h("div", { className: "napcatb-row" },
+				h("div", { className: "snowlumab-row" },
 					h(Select, Object.assign({ field: "pushService", label: t("pushService"), hint: t("pushServiceHint"), fallback: "off", options: [{ value: "off", label: t("pushOff") }, { value: "serverchan", label: "Server酱" }, { value: "pushplus", label: "PushPlus" }] }, common)),
-					PUSH_KEY_URLS[push] ? h("a", { className: "napcatb-hint napcatb-link", href: PUSH_KEY_URLS[push], target: "_blank", rel: "noreferrer noopener" }, t("pushGetKey")) : null),
+					PUSH_KEY_URLS[push] ? h("a", { className: "snowlumab-hint snowlumab-link", href: PUSH_KEY_URLS[push], target: "_blank", rel: "noreferrer noopener" }, t("pushGetKey")) : null),
 				push !== "off" ? h(Secret, Object.assign({ field: "pushKey", label: push === "serverchan" ? "SendKey" : "Token", hint: t("pushKeyHint"), setLabel: t("secretSet"), unsetLabel: t("secretUnset") }, common)) : null,
 				push !== "off" ? h(AlertTest, { t: t, channel: "push", label: t("pushTest"), state: state }) : null);
 		}
 		//#endregion
 		//#region 文字转语音
-		/** 试听：只用一家念一句，页面上直接播放（POST <dsh>/api/napcat-bridge/tts/test） */
+		/** 试听：只用一家念一句，页面上直接播放（POST <dsh>/api/snowluma-bridge/tts/test） */
 		function TtsTest(props) {
 			var t = props.t;
 			var [r, setR] = React.useState(null);
@@ -1467,22 +1467,22 @@ window.__ModuleLoader__.load({
 				var form = {};
 				["breezeApiKey", "breezeVoiceId", "breezeModel", "breezeLanguage", "inworldApiKey", "inworldVoiceId", "inworldModel", "ttsSpeed", "ttsStripParens"].forEach(function (f) { form[f] = v(f); });
 				setBusy(true); setR(null);
-				napcatApi("POST", "tts/test", { provider: props.provider, text: props.text, form: form })
+				snowlumaApi("POST", "tts/test", { provider: props.provider, text: props.text, form: form })
 					.then(function (x) { setR(x.ok ? { tone: "ok", text: t("ttsTestOk", { ms: x.ms }), audio: "data:audio/mpeg;base64," + x.audio } : { tone: "error", text: t("testFailed", { error: x.error }) }); },
 						function (e) { setR({ tone: "error", text: t("testFailed", { error: e && e.message || String(e) }) }); })
 					.finally(function () { setBusy(false); props.onDone(); });
 			}
-			return h("div", { className: "napcatb-test" },
-				h("div", { className: "napcatb-testRow" }, h(TestButton, { busy: busy, onClick: run, label: busy ? t("testing") : props.label })),
-				r ? h("div", { className: "napcatb-row" },
-					h("p", { className: "napcatb-pill napcatb-result napcatb-" + r.tone, role: "status" }, r.text),
-					r.audio ? h("audio", { className: "napcatb-audio", controls: true, autoPlay: true, src: r.audio }) : null) : null);
+			return h("div", { className: "snowlumab-test" },
+				h("div", { className: "snowlumab-testRow" }, h(TestButton, { busy: busy, onClick: run, label: busy ? t("testing") : props.label })),
+				r ? h("div", { className: "snowlumab-row" },
+					h("p", { className: "snowlumab-pill snowlumab-result snowlumab-" + r.tone, role: "status" }, r.text),
+					r.audio ? h("audio", { className: "snowlumab-audio", controls: true, autoPlay: true, src: r.audio }) : null) : null);
 		}
 		function TtsSection(props) {
 			var t = props.t, common = props.common, state = props.state;
 			var [st, setSt] = React.useState(null);
 			var [text, setText] = React.useState("");
-			function load() { napcatApi("GET", "tts/status").then(setSt, function () {}); }
+			function load() { snowlumaApi("GET", "tts/status").then(setSt, function () {}); }
 			React.useEffect(load, []);
 			var mode = state.ttsMode.text || "tag";
 			var has = function (key, voice) { return (state.secretSet[key] === true || state[key].text !== "") && state[voice].text !== ""; };
@@ -1491,12 +1491,12 @@ window.__ModuleLoader__.load({
 			var sample = text.trim() || t("ttsTestDefault");
 			return h(Section, { title: t("ttsSec"), hint: t("ttsSecHint") },
 				h(Toggle, Object.assign({ field: "ttsEnabled", label: t("ttsEnabled"), hint: t("ttsEnabledHint") }, common)),
-				state.ttsEnabled.text === "true" && !ready ? h("p", { className: "napcatb-pill napcatb-result napcatb-warn", role: "status" }, t("ttsNeedKey")) : null,
-				st ? h("div", { className: "napcatb-test" },
-					h("p", { className: "napcatb-hint" }, t("ttsTodaySub") + "：" + t("ttsToday", st.today)),
-					st.lastFallback ? h("p", { className: "napcatb-hint" }, t("ttsFallback", { time: time(st.lastFallback.at), text: st.lastFallback.text })) : null,
-					st.lastError ? h("p", { className: "napcatb-hint" }, t("ttsLastError", { time: time(st.lastError.at), text: st.lastError.text })) : null,
-					h("div", { className: "napcatb-testRow" }, h(P.Button, { size: "sm", onClick: load }, t("ttsRefresh")))) : null,
+				state.ttsEnabled.text === "true" && !ready ? h("p", { className: "snowlumab-pill snowlumab-result snowlumab-warn", role: "status" }, t("ttsNeedKey")) : null,
+				st ? h("div", { className: "snowlumab-test" },
+					h("p", { className: "snowlumab-hint" }, t("ttsTodaySub") + "：" + t("ttsToday", st.today)),
+					st.lastFallback ? h("p", { className: "snowlumab-hint" }, t("ttsFallback", { time: time(st.lastFallback.at), text: st.lastFallback.text })) : null,
+					st.lastError ? h("p", { className: "snowlumab-hint" }, t("ttsLastError", { time: time(st.lastError.at), text: st.lastError.text })) : null,
+					h("div", { className: "snowlumab-testRow" }, h(P.Button, { size: "sm", onClick: load }, t("ttsRefresh")))) : null,
 				G(h(Select, Object.assign({ field: "ttsMode", label: t("ttsMode"), hint: t("ttsModeHint"), fallback: "tag", options: [{ value: "tag", label: t("ttsModeTag") }, { value: "always", label: t("ttsModeAlways") }, { value: "chance", label: t("ttsModeChance") }] }, common)),
 					mode === "chance" ? h(Value, Object.assign({ field: "ttsChance", label: t("ttsChance"), hint: t("ttsChanceHint"), numeric: true, invalidLabel: t("invalid") }, common)) : null,
 					h(Value, Object.assign({ field: "ttsMaxChars", label: t("ttsMaxChars"), hint: t("ttsMaxCharsHint"), numeric: true, invalidLabel: t("invalidPositive") }, common)),
@@ -1507,9 +1507,9 @@ window.__ModuleLoader__.load({
 				h(Toggle, Object.assign({ field: "ttsAdminPrivate", label: t("ttsAdminPrivate"), hint: t("ttsAdminPrivateHint") }, common)),
 				h(Toggle, Object.assign({ field: "ttsPrivate", label: t("ttsPrivate"), hint: t("ttsPrivateHint") }, common)),
 				h(Toggle, Object.assign({ field: "ttsGroup", label: t("ttsGroup"), hint: t("ttsGroupHint") }, common)),
-				h("div", { className: "napcatb-field" },
-					h("label", { className: "napcatb-label", htmlFor: "napcat-bridge-ttsTestText" }, h(Label, { text: t("ttsTestText"), hint: t("ttsTestUsesForm") })),
-					h("input", { id: "napcat-bridge-ttsTestText", className: "napcatb-input", type: "text", maxLength: 200, placeholder: t("ttsTestDefault"), value: text, onChange: function (e) { setText(e.target.value); } })),
+				h("div", { className: "snowlumab-field" },
+					h("label", { className: "snowlumab-label", htmlFor: "snowluma-bridge-ttsTestText" }, h(Label, { text: t("ttsTestText"), hint: t("ttsTestUsesForm") })),
+					h("input", { id: "snowluma-bridge-ttsTestText", className: "snowlumab-input", type: "text", maxLength: 200, placeholder: t("ttsTestDefault"), value: text, onChange: function (e) { setText(e.target.value); } })),
 				Sub(t("breezeSub")),
 				h(Secret, Object.assign({ field: "breezeApiKey", label: t("ttsApiKey"), hint: t("breezeKeyHint"), setLabel: t("keySet"), unsetLabel: t("keyUnset") }, common)),
 				G(h(Value, Object.assign({ field: "breezeVoiceId", label: t("ttsVoiceId"), hint: t("breezeVoiceHint") }, common)),
@@ -1527,16 +1527,16 @@ window.__ModuleLoader__.load({
 		function SaveBar(props) {
 			var t = props.t, st = props.state;
 			if (!st.dirty) return null;
-			return h("div", { className: "napcatb-saveBar", role: "region", "aria-label": t("unsavedBar") },
-				h("span", { className: "napcatb-saveText" }, t("unsavedBar")),
-				h("div", { className: "napcatb-saveBtns" },
+			return h("div", { className: "snowlumab-saveBar", role: "region", "aria-label": t("unsavedBar") },
+				h("span", { className: "snowlumab-saveText" }, t("unsavedBar")),
+				h("div", { className: "snowlumab-saveBtns" },
 					h(P.Button, { size: "sm", disabled: st.saving, onClick: props.discard }, t("discardChanges")),
 					h(P.Button, { size: "sm", disabled: st.saving || !st.writable, onClick: props.save }, st.saving ? t("saving") : t("save"))));
 		}
 		function SettingsPage(props) {
 			var t = props.t;
 			if (props.view === "summary") return t("summary");
-			var state = props.useNapcatForm(function (s) { return s; });
+			var state = props.useSnowlumaForm(function (s) { return s; });
 			var disabled = !state.writable || state.saving;
 			var common = { t: t, state: state, disabled: disabled, edit: props.edit, resetField: props.resetField };
 			var sttMode = state.sttMode.text || "off";
@@ -1552,23 +1552,23 @@ window.__ModuleLoader__.load({
 				h(WatchBanner, { t: t }),
 				h(Tabs, { t: t, cur: tab, onChange: setTab }),
 				tab === "conn" ? [
-					h("details", { key: "c", className: "napcatb-details" },
-						h("summary", { className: "napcatb-summary" },
-							h("span", { className: "napcatb-chevron", "aria-hidden": true }, "›"),
+					h("details", { key: "c", className: "snowlumab-details" },
+						h("summary", { className: "snowlumab-summary" },
+							h("span", { className: "snowlumab-chevron", "aria-hidden": true }, "›"),
 							h(Label, { text: t("connection"), hint: t("connectionHint") })),
-						h("div", { className: "napcatb-detailsBody" },
+						h("div", { className: "snowlumab-detailsBody" },
 							G(h(Value, Object.assign({ field: "ws_reverse_host", label: t("host"), hint: t("hostHint") }, common)),
 								h(Value, Object.assign({ field: "ws_reverse_port", label: t("port"), hint: t("portHint"), numeric: true, invalidLabel: t("invalidPort") }, common)),
 								h(Value, Object.assign({ field: "id", label: t("platformId"), hint: t("platformIdHint") }, common))),
 							h(Secret, Object.assign({ field: "ws_reverse_token", label: t("token"), hint: t("tokenHint"), setLabel: t("tokenSet"), unsetLabel: t("tokenUnset") }, common)),
-							h(NapcatSetup, { t: t, state: state, edit: props.edit, disabled: disabled }),
+							h(SnowlumaSetup, { t: t, state: state, edit: props.edit, disabled: disabled }),
 							h(ConnectionTest, { t: t, dirty: state.dirty }))),
 					h(Section, { key: "a", title: t("access"), hint: t("accessHint") },
 						G(h(Value, Object.assign({ field: "admins", label: t("admins"), hint: t("adminsHint") }, common)),
 							h(Value, Object.assign({ field: "groupWhitelist", label: t("groupWhitelist"), hint: t("groupWhitelistHint") }, common)),
 							h(Value, Object.assign({ field: "privateWhitelist", label: t("privateWhitelist"), hint: t("privateWhitelistHint") }, common))),
 						h(Toggle, Object.assign({ field: "whitelistEnabled", label: t("whitelistEnabled"), hint: t("whitelistEnabledHint") }, common)),
-						h("p", { className: "napcatb-hint" }, t("wlAdminGroup")),
+						h("p", { className: "snowlumab-hint" }, t("wlAdminGroup")),
 						h(Toggle, Object.assign({ field: "whitelistLog", label: t("wlLog"), hint: t("wlLogHint") }, common)),
 						Sub(t("rateSub")),
 						G(h(Value, Object.assign({ field: "rateLimitCount", label: t("rateCount"), hint: t("rateCountHint"), numeric: true, invalidLabel: t("invalidCount") }, common)),
@@ -1616,7 +1616,7 @@ window.__ModuleLoader__.load({
 						sttMode === "command" ? h(Value, Object.assign({ field: "sttCommand", label: t("sttCommand"), hint: t("sttCommandHint") }, common)) : null,
 						sttMode === "openai" ? h(ProviderField, Object.assign({ urlField: "sttApiUrl", modelField: "sttModel" }, common)) : null,
 						sttMode === "openai" ? h(Secret, Object.assign({ field: "sttApiKey", label: t("sttApiKey"), hint: t("sttApiKeyHint"), setLabel: t("keySet"), unsetLabel: t("keyUnset") }, common)) : null,
-						sttMode === "openai" ? h(ModelField, Object.assign({ urlField: "sttApiUrl", modelField: "sttModel", keyField: "sttApiKey", apiPath: "api/napcat-bridge/stt/models", label: t("sttModel"), common: common }, common)) : null,
+						sttMode === "openai" ? h(ModelField, Object.assign({ urlField: "sttApiUrl", modelField: "sttModel", keyField: "sttApiKey", apiPath: "api/snowluma-bridge/stt/models", label: t("sttModel"), common: common }, common)) : null,
 						sttMode === "openai" ? h(Value, Object.assign({ field: "sttApiUrl", label: t("sttApiUrl"), hint: t("sttApiUrlHint") }, common)) : null,
 						sttMode !== "off" ? h(SttTest, { t: t, dirty: state.dirty }) : null),
 					h(Section, { key: "v", title: t("video"), hint: t("videoHint") },
@@ -1661,12 +1661,12 @@ window.__ModuleLoader__.load({
 		var inject = ["slots", "locale", "configForms", "remote", "remote.settings"];
 
 		function apply(ctx) {
-			ctx.effect(function () { return ctx.locale.register(NS, { zh: zh, en: en }); }, "napcat-bridge: dictionaries");
+			ctx.effect(function () { return ctx.locale.register(NS, { zh: zh, en: en }); }, "snowluma-bridge: dictionaries");
 			var scope = ctx.configForms.get(SECTION);
 			var model = createForm(scope);
-			ctx.effect(function () { return function () { model.form.dispose(); }; }, "napcat-bridge: form");
+			ctx.effect(function () { return function () { model.form.dispose(); }; }, "snowluma-bridge: form");
 			var disposed = false;
-			ctx.effect(function () { return function () { disposed = true; }; }, "napcat-bridge: lifetime");
+			ctx.effect(function () { return function () { disposed = true; }; }, "snowluma-bridge: lifetime");
 			function refreshToken() {
 				ctx.remote.settings.describe().then(function (response) {
 					if (disposed || !response.ok) return;
@@ -1677,7 +1677,7 @@ window.__ModuleLoader__.load({
 				}, function () {});
 			}
 			refreshToken();
-			ctx.effect(function () { return scope.subscribe(refreshToken); }, "napcat-bridge: token state");
+			ctx.effect(function () { return scope.subscribe(refreshToken); }, "snowluma-bridge: token state");
 			ctx.effect(function () {
 				return ctx.configForms.whileServed([SECTION], function () {
 					return ctx.slots.inject("plugins.bundle.config", function () {
@@ -1685,11 +1685,11 @@ window.__ModuleLoader__.load({
 							name: "plugins.bundle.config",
 							key: PACKAGE,
 							locale: NS,
-							inject: function () { return Object.assign({ hooks: { napcatForm: model.store } }, model.form.actions()); }
+							inject: function () { return Object.assign({ hooks: { snowlumaForm: model.store } }, model.form.actions()); }
 						}, SettingsPage);
 					});
 				});
-			}, "napcat-bridge: page");
+			}, "snowluma-bridge: page");
 		}
 		//#endregion
 

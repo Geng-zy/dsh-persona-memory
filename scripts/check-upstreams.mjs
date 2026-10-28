@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url'
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const base = JSON.parse(readFileSync(join(ROOT, 'upstreams.json'), 'utf-8')).upstreams
 
-const headers = { 'user-agent': 'dsh-napcat-bridge', accept: 'application/vnd.github+json' }
+const headers = { 'user-agent': 'dsh-snowluma-bridge', accept: 'application/vnd.github+json' }
 if (process.env.GITHUB_TOKEN) headers.authorization = 'Bearer ' + process.env.GITHUB_TOKEN
 const get = async (url, raw = false) => {
   const res = await fetch(url, { headers })
@@ -24,11 +24,11 @@ const checks = {
   },
   astrbot: async () => ({ latest: (await get('https://api.github.com/repos/AstrBotDevs/AstrBot/releases/latest')).tag_name }),
   aiocqhttp: async () => ({ latest: (await get('https://pypi.org/pypi/aiocqhttp/json')).info.version }),
-  napcat: async () => ({ latest: (await get('https://api.github.com/repos/NapNeko/NapCatQQ/releases/latest')).tag_name }),
+  snowluma: async () => ({ latest: (await get('https://api.github.com/repos/SnowLuma/SnowLuma/releases/latest')).tag_name }),
   linuxqq: async () => {
-    const script = await get('https://raw.githubusercontent.com/NapNeko/NapCat-Installer/main/script/install.sh', true)
-    const m = /linuxqq_target_version="([^"]+)"/.exec(script)
-    return { latest: m ? m[1] : '（没找到，检查安装脚本是否改了写法）' }
+    const script = await get('https://raw.githubusercontent.com/SnowLuma/SnowLuma.Docker.Framework/main/Dockerfile', true)
+    const m = /ARG QQ_VERSION=([^\s]+)/.exec(script)
+    return { latest: m ? m[1] : '（没找到，检查 Dockerfile 是否改了写法）' }
   },
   qface: async () => {
     const c = await get('https://api.github.com/repos/koishijs/QFace/commits?path=public/assets/qq_emoji/_index.v2.json&per_page=1')

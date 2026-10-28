@@ -1,5 +1,5 @@
 // 本插件新增：把消息里的图片、语音、视频变成模型能收的内容。
-// 插件一自己用，也通过 ctx.napcat.media 给其他插件（例如记忆插件附带群聊之前几条消息时）用。
+// 插件一自己用，也通过 ctx.snowluma.media 给其他插件（例如记忆插件附带群聊之前几条消息时）用。
 //   图片 → 原图（交给 dsh 的附件服务）
 //   语音 → 配了语音转文字就转成文字，没配就写 [语音]
 //   视频 → 有 ffmpeg 就截几张画面当图片，没有就写 [视频]
@@ -69,7 +69,7 @@ export class Media {
     }
   }
 
-  /** 读一张图片（url / base64 / NapCat get_image）。 */
+  /** 读一张图片（url / base64 / SnowLuma get_image）。 */
   loadImage(comp: Component): Promise<LoadedImage> {
     return loadImage(comp, this.deps.callAction)
   }
@@ -105,11 +105,12 @@ export class Media {
     }
     if (isHttp(url)) return httpSource(url)
     if (isHttp(String(comp.file || ''))) return httpSource(String(comp.file))
-    // NapCat：get_file 会把视频下载到它的缓存里，返回本地路径或地址
+    // SnowLuma：get_file 会把视频下载到它的缓存里，返回本地路径或地址
     const file = String(comp.file || '')
     if (file !== '') {
       try {
         const ret = await this.deps.callAction('get_file', { file })
+        if (ret?.file && isHttp(String(ret.file))) return httpSource(String(ret.file))
         if (ret?.file) {
           const found = await local(String(ret.file))
           if (found !== undefined) return found

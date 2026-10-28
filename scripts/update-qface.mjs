@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url'
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const OUT = join(ROOT, 'src', 'qface.ts')
 const getJson = async url => {
-  const res = await fetch(url, { headers: { 'user-agent': 'dsh-napcat-bridge' } })
+  const res = await fetch(url, { headers: { 'user-agent': 'dsh-snowluma-bridge' } })
   if (!res.ok) throw new Error(url + ' → HTTP ' + res.status)
   return res.json()
 }

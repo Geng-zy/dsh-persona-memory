@@ -1,6 +1,6 @@
 {
   "说明": "插件当前对齐的上游版本。scripts/check-upstreams.mjs 拿最新版本和这里比较；跟进完某个上游后，把对应的 aligned 改成新版本并一起提交。",
-  "checkedAt": "2026-10-24",
+  "checkedAt": "2026-10-28",
   "upstreams": {
     "dsh": {
       "aligned": "0.2.1-rc.2",
@@ -14,13 +14,13 @@
       "aligned": "1.4.4",
       "source": "PyPI aiocqhttp（AstrBot 依赖，src/onebot/ 移植自它）"
     },
-    "napcat": {
-      "aligned": "v4.18.41",
-      "source": "GitHub NapNeko/NapCatQQ 最新 release"
+    "snowluma": {
+      "aligned": "v2.2.1",
+      "source": "GitHub SnowLuma/SnowLuma 最新 release"
     },
     "linuxqq": {
-      "aligned": "3.2.34-53644",
-      "source": "GitHub NapNeko/NapCat-Installer script/install.sh 里的 linuxqq_target_version（腾讯官网 Linux 版页面长期不更新，不以它为准）"
+      "aligned": "3.2.32_260812",
+      "source": "官方 SnowLuma/SnowLuma.Docker.Framework Dockerfile 的 QQ_VERSION，镜像内打包版本"
     },
     "qface": {
       "aligned": "20ab855",

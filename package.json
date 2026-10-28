@@ -1,13 +1,13 @@
 {
-  "name": "dsh-napcat-bridge",
-  "version": "0.20.4",
-  "description": "把 NapCat（OneBot v11）接到 dsh（DeepSeek Harness）的插件，照搬 AstrBot 的 aiocqhttp 适配器实现。",
+  "name": "dsh-snowluma-bridge",
+  "version": "0.21.0",
+  "description": "通过 OneBot v11 将 SnowLuma 或 SnowLuma 接入 dsh，支持会话、权限、媒体和主动聊天。",
   "keywords": [
     "dsh",
     "deepseek-harness",
     "onebot",
     "onebot11",
-    "napcat",
+    "snowluma",
     "qq",
     "astrbot"
   ],
@@ -23,7 +23,10 @@
     "LICENSE",
     "NOTICE.md",
     "README.md",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "docs",
+    "deploy/snowluma.compose.yml",
+    "deploy/snowluma.env.example"
   ],
   "scripts": {
     "build": "rm -rf lib && tsc -p tsconfig.json && cp src/client/client.js lib/client.js",
@@ -92,7 +95,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Geng-zy/dsh-napcat-bridge.git"
+    "url": "git+https://github.com/Geng-zy/dsh-snowluma-bridge.git"
   },
   "exports": {
     ".": {
