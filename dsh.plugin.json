@@ -1,6 +1,6 @@
 {
   "id": "dsh-snowluma-bridge",
-  "version": "0.21.0",
+  "version": "0.21.1",
   "main": "./lib/index.js",
   "description": "Connect SnowLuma or SnowLuma to dsh over OneBot v11, preserving existing sessions and companion data.",
   "engines": {

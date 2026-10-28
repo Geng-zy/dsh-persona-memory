@@ -1,6 +1,6 @@
 {
   "name": "dsh-snowluma-bridge",
-  "version": "0.21.0",
+  "version": "0.21.1",
   "description": "通过 OneBot v11 将 SnowLuma 或 SnowLuma 接入 dsh，支持会话、权限、媒体和主动聊天。",
   "keywords": [
     "dsh",
@@ -26,7 +26,8 @@
     "CHANGELOG.md",
     "docs",
     "deploy/snowluma.compose.yml",
-    "deploy/snowluma.env.example"
+    "deploy/snowluma.env.example",
+    "deploy/start-snowluma.sh"
   ],
   "scripts": {
     "build": "rm -rf lib && tsc -p tsconfig.json && cp src/client/client.js lib/client.js",

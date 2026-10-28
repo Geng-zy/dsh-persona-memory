@@ -4,6 +4,7 @@ services:
   snowluma:
     image: ${SNOWLUMA_IMAGE:-motricseven7/snowluma:v2.2.1}
     container_name: dsh-snowluma
+    entrypoint: ["/bin/bash", "/opt/dsh/start-snowluma.sh"]
     restart: unless-stopped
     shm_size: 1gb
     mem_limit: 1800m
@@ -29,6 +30,7 @@ services:
       - "127.0.0.1:${SNOWLUMA_NOVNC_PORT:-6081}:6081"
       - "127.0.0.1:${SNOWLUMA_WEBUI_PORT:-5099}:5099"
     volumes:
+      - ./start-snowluma.sh:/opt/dsh/start-snowluma.sh:ro
       - ./data:/app/data
       - ./qq-config:/app/.config
       - ./qq-share:/app/.local/share

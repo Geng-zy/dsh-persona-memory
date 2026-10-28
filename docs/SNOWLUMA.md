@@ -8,7 +8,7 @@
 
 ## Compose部署
 
-由管理用户安装Docker和Compose，在独立目录放置`deploy/snowluma.compose.yml`与`snowluma.env.example`，后者复制为`.env`，然后：
+由管理用户安装Docker和Compose，在独立目录放置`deploy/snowluma.compose.yml`、`deploy/start-snowluma.sh`与`snowluma.env.example`，后者复制为`.env`，然后：
 
 ```sh
 sudo docker compose --env-file .env -f snowluma.compose.yml up -d
@@ -53,3 +53,5 @@ ssh -L 15099:127.0.0.1:5099 -L 16081:127.0.0.1:6081 ubuntu@你的服务器
 迁移期间保留私有回退副本，验证数据关联及新端登录后清理原协议端程序、服务、配置和安装包。原有数据先验证后切换，不能以删除聊天记录代替标识迁移。普通备份不增加QQ登录态、运行环境或电脑同步功能。
 
 参考：[SnowLuma官方Docker文档](https://snowluma.github.io/zh/docs/guide/deploy/docker)、[官方Compose镜像仓库](https://github.com/SnowLuma/SnowLuma.Docker.Framework)。接口核对版本：SnowLuma v2.2.1（8ffd314），镜像框架3f388b1。
+
+首次扫码时使用默认QQ启动参数。带`-q`的快速登录若失败，登录窗口可能最小化；先恢复QQ窗口后刷新二维码。启动包装脚本启用VNC的alwaysshared，允许通过认证的新连接接入，不会因遗留连接被拒绝。
