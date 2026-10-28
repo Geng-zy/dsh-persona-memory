@@ -45,3 +45,5 @@
 [data-shortcut-modal="settings"]:has(.sc-settings-entry)>div:last-child>div:first-child{height:42px;padding:6px 12px}
 [data-shortcut-modal="settings"]:has(.sc-settings-entry)>div:last-child>div:last-child{padding:0 12px 12px}
 }
+
+.sc-selfcheck-query{min-width:0}.sc-selfcheck-query+.sc-selfcheck-query{border-top:1px solid var(--sc-border);padding-top:14px;margin-top:14px}.sc-selfcheck-query h4{margin:0 0 6px;font-size:13px}.sc-selfcheck-memory{margin-top:10px;padding:12px;border:1px solid var(--sc-border);border-radius:8px;background:var(--sc-soft)}.sc-selfcheck-memory p{margin:0}.sc-selfcheck-content{margin:8px 0;white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;line-height:1.8;color:var(--sc-text)}

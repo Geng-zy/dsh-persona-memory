@@ -156,6 +156,24 @@ export async function runUi(session) {
   await navigate('人格与核心记忆')
   assert.equal(await editor.inputValue(),before.docs.persona.text,'selected editor replaces its stale draft after restore')
   console.log('[ui] Uploaded .tar.gz, detected payload files, explicit multi-select and real persona/core restore passed; unselected memory and diary preserved')
+  // A date heading must not hide the rest of a retrieved memory in migration self-check.
+  await navigate('备份与迁移');await expand()
+  const selfcheck=app.locator('[data-section="companion-selfCheckSec"]')
+  const marker='SELF_CHECK_DATE_HEADER_'+Date.now()
+  const promise='我们约好下周一起看星星。'
+  await post('memory/add',{scope:'master',kind:'promise',content:'# 2026-10-29\n'+promise+'\n'+marker,importance:1})
+  await selfcheck.locator('#companion-core-selfCheckQueries').fill(marker)
+  await save.click()
+  await page.waitForFunction(()=>document.querySelector('.sc-save strong')?.textContent==='所有设置已保存')
+  await selfcheck.getByRole('button',{name:'现在自检',exact:true}).click()
+  await selfcheck.locator('.sc-selfcheck-content').filter({hasText:promise}).waitFor()
+  const excerpt=selfcheck.locator('.sc-selfcheck-content').filter({hasText:promise})
+  assert.ok((await excerpt.innerText()).includes('# 2026-10-29'))
+  assert.ok((await excerpt.innerText()).includes(marker),'multiline excerpts remain visible after a date heading')
+  const checked=(await state()).selfCheck.results[0]
+  assert.equal(await selfcheck.locator('.sc-selfcheck-memory').count(),checked.found.length,'show all returned candidates, not just the first match')
+  await selfcheck.locator('.sc-selfcheck-query').screenshot({path:join(artifacts,'migration-selfcheck.png')})
+  console.log('[ui] Migration self-check shows all candidate excerpts with date headings and body, record IDs and retrieval-only labels')
   assert.deepEqual(errors,[])
   console.log('[ui] Single entry, nine groups, fold/search, two-module save, validation, draft retention, desktop/mobile rendering passed')
  } finally {await browser.close()}

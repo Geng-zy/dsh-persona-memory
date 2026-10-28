@@ -550,8 +550,10 @@ window.__ModuleLoader__.load({
 			selfCheckHint: "使用固定查询检查主人范围记忆的检索结果，适用于迁移或导入后验证。多个问题用空格或逗号分隔；此检查不等于调用聊天模型生成答案，导入完成后也会自动执行。",
 			selfCheckQueries: "自检问题",
 			runSelfCheck: "现在自检",
-			selfCheckResult: "「{q}」→ {a}",
-			selfCheckNone: "（没想起来）",
+			selfCheckMatches: "检索命中 {n} 条候选记忆；以下是原文节选，不是模型生成的答案。",
+			selfCheckMatchMeta: "记忆 #{id} · 检索相关度 {score}",
+			selfCheckExcerpt: "最多展示前200字符；完整记录可在“记忆与存档”中查看。",
+			selfCheckNone: "未检索到候选记忆；不表示相关事实一定不存在。",
 			personaGuardHintField: "模型自改人格的规则检查总开关，默认开启。关闭后跳过该自改限制流程；设置页直接编辑本就不使用此流程。",
 			personaEditMaxCharsHint: "模型一次人格修改允许增加的非空白字符数，默认 300，最小 10。限制净新增量，不限制同等长度的正常替换；仅用于已启用的人格自改检查。",
 			personaAllowedHint: "供人格修改审核使用的允许内容清单，每行一条。建议描述稳定的身份、性格及表达方式；审核模型将与禁止清单共同参考。",
@@ -1139,8 +1141,10 @@ window.__ModuleLoader__.load({
 			selfCheckHint: "Run fixed queries against master-scope memory to verify retrieval after migration or import. Separate queries with spaces or commas. This checks retrieval rather than generating chat-model answers, and also runs after import.",
 			selfCheckQueries: "Questions",
 			runSelfCheck: "Run self-check",
-			selfCheckResult: "\"{q}\" → {a}",
-			selfCheckNone: "(nothing recalled)",
+			selfCheckMatches: "Found {n} candidate memories. These are source excerpts, not model-generated answers.",
+			selfCheckMatchMeta: "Memory #{id} · retrieval relevance {score}",
+			selfCheckExcerpt: "Showing up to the first 200 characters. Full records are available in Memory & archives.",
+			selfCheckNone: "No candidate memory found; this does not establish that the fact is absent.",
 			personaGuardHintField: "Master switch for persona self-edit validation, enabled by default. Disabling bypasses this validation workflow; direct UI edits already bypass it.",
 			personaEditMaxCharsHint: "Maximum added non-whitespace characters per model persona edit, default 300, minimum 10. Limits net growth rather than equal-length replacement, when self-edit validation is enabled.",
 			personaAllowedHint: "Allowed-content criteria for persona-edit review, one per line. Describe stable identity, personality, and expression; the reviewer considers both allow and deny lists.",
@@ -2324,7 +2328,14 @@ window.__ModuleLoader__.load({
 				sc ? h("div", { className: "compc-card" },
 					h("p", { className: "compc-hint" }, fmtTime(sc.at)),
 					sc.results.map(function (r, i) {
-						return h("p", { key: i, className: r.found.length > 0 ? "compc-memText" : "compc-result compc-warn" }, t("selfCheckResult", { q: r.query, a: r.found.length > 0 ? firstLine(r.found[0].content) : t("selfCheckNone") }));
+						return h("div", { key: i, className: "sc-selfcheck-query" },
+							h("h4", null, r.query),
+							h("p", { className: "compc-hint" }, t("selfCheckMatches", { n: r.found.length })),
+							r.found.length === 0 ? h("p", { className: "compc-result compc-warn" }, t("selfCheckNone")) :
+								r.found.map(function (memory) { return h("div", { key: memory.id, className: "sc-selfcheck-memory", "data-memory-id": memory.id },
+									h("p", { className: "compc-hint" }, t("selfCheckMatchMeta", { id: memory.id, score: memory.relevance })),
+									h("pre", { className: "sc-selfcheck-content" }, memory.content),
+									h("p", { className: "compc-hint" }, t("selfCheckExcerpt"))); }));
 					})) : null);
 		}
 		//#endregion
