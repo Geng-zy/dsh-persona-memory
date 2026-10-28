@@ -2,6 +2,18 @@
 
 将 SnowLuma 的 QQ 接入、人格与核心记忆、长期记忆、日记、主动聊天和备份整合为一个 dsh 插件。包名及仓库为 **dsh-snowluma-companion**，由原 bridge 仓库继续维护，合入 companion-core 的代码与提交历史。
 
+## 已有 dsh：只安装插件
+
+适用于 **dsh 0.2.1-rc.2 / Node ≥22.13** 的网页环境。先停止 dsh，再以运行 dsh 的同一系统账号、相同 `DSH_HOME` 执行（`dsh` 和 `pnpm` 须在 PATH 中）：
+
+```sh
+dsh plugin --profile web add "https://github.com/Geng-zy/dsh-snowluma-companion/releases/download/v1.3.1/dsh-snowluma-companion-1.3.1.tgz" --ignore-scripts
+```
+
+命令向现有 `web` profile 安装插件，首次安装自动加入 bundle。随后重新启动 dsh，进入 **更多 → 设置 → SnowLuma 陪伴助手**。QQ 接入需要已有 SnowLuma 及反向 WS 配置。[命令路径、其他 profile、本地安装包与升级说明](docs/PLUGIN-INSTALL.md)。
+
+桌面版也可通过应用内插件管理安装[同一发行包](https://github.com/Geng-zy/dsh-snowluma-companion/releases/tag/v1.3.1)。从两个旧插件合并升级时，使用下方迁移流程。
+
 ## 全新服务器一键部署
 
 支持Ubuntu22.04/24.04/26.04。可以选择[一键安装](docs/INSTALL.md)或[手动安装图文教程](docs/MANUAL-INSTALL.md)。
