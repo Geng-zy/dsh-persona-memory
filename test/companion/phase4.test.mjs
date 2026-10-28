@@ -146,7 +146,7 @@ test('定期整合：相近的合成一条，旧的被取代；撤销恢复；�
   assert.equal(store.get(g1.id), undefined, '下一次整合时删掉')
 })
 
-test('备份：打包（不含别人的存档、不含 Key）、列表、每类留几份、核对、导入替换', async () => {
+test('备份：打包（不含别人的存档、不含 Key）、列表、合计保留几份、核对、导入替换', async () => {
   const dataDir = tmp()
   const archive = new Archive(join(dataDir, 'companion.db'))
   const store = new MemoryStore(archive.db)
@@ -175,9 +175,9 @@ test('备份：打包（不含别人的存档、不含 Key）、列表、每类�
   assert.ok(!JSON.stringify(manifest).includes('embedApiKey'))
   assert.ok(!manifest.files.some(f => f.path.includes('history')), '不带历史版本')
   for (let i = 1; i <= 3; i++) await createBackup({ ...opts, reason: 'auto', now: Date.parse('2026-10-2' + i + 'T04:00:00Z') })
-  assert.deepEqual(listBackups(out).map(b => b.reason).sort(), ['auto', 'auto', 'manual'], '自动的只留 2 份，手动的另算')
+  assert.deepEqual(listBackups(out).map(b => b.reason).sort(), ['auto', 'manual'], '自动与手动合计仅留最新2份')
   prune(out, 1)
-  assert.equal(listBackups(out).length, 2)
+  assert.equal(listBackups(out).length, 1)
   // 核对 + 导入
   const work = join(dataDir, '.import-x')
   const { manifest: m2 } = await inspectBackup(join(out, name), work)
@@ -261,4 +261,30 @@ test('备份：按勾选打包；导入时只换勾选的部分，没勾的保�
   assert.equal(archive.cursor('org:' + M), ids[0], '整理进度换算到新的 id')
   assert.equal(archive.cursor('cat:' + M), 1)
   archive.close()
+})
+
+
+test('备份保留：三类合计只保留最新五份，不清理临时文件或无关文件；备份失败不删已有包', async () => {
+  const dir = tmp(), out = join(dir, 'backups')
+  mkdirSync(out)
+  const names = []
+  for (let i = 1; i <= 8; i++) {
+    const name = 'companion-' + ['auto', 'manual', 'before-import'][i % 3] + '-20261029-00000' + i + '.tar.gz'
+    writeFileSync(join(out, name), 'fixture-' + i); names.push(name)
+  }
+  writeFileSync(join(out, 'in-progress.tar.gz.part'), 'keep temporary')
+  writeFileSync(join(out, 'notes.txt'), 'keep unrelated')
+  prune(out, 5)
+  assert.deepEqual(listBackups(out).map(x => x.name), names.slice(-5).reverse())
+  assert.equal(readFileSync(join(out, 'in-progress.tar.gz.part'), 'utf8'), 'keep temporary')
+  assert.equal(readFileSync(join(out, 'notes.txt'), 'utf8'), 'keep unrelated')
+  const archive = new Archive(join(dir, 'companion.db'))
+  const created = await createBackup({ dataDir: dir, db: archive.db, outDir: out, reason: 'manual', plugin: 'test', schema: 5,
+    settings: {}, embed: {}, keep: 5, items: ['persona'], now: Date.parse('2026-10-30T01:00:00Z') })
+  const newest = [created.name, ...names.slice(-4).reverse()]
+  assert.deepEqual(listBackups(out).map(x => x.name), newest, '满五份时新包生成成功后淘汰三类合计最早的一份')
+  archive.close()
+  await assert.rejects(createBackup({ dataDir: dir, db: archive.db, outDir: out, reason: 'manual', plugin: 'test', schema: 5,
+    settings: {}, embed: {}, keep: 5, items: ['memory'] }))
+  assert.deepEqual(listBackups(out).map(x => x.name), newest, '未成功生成新包时五份原备份均保留')
 })

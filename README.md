@@ -7,12 +7,12 @@
 适用于 **dsh 0.2.1-rc.2 / Node ≥22.13** 的网页环境。先停止 dsh，再以运行 dsh 的同一系统账号、相同 `DSH_HOME` 执行（`dsh` 和 `pnpm` 须在 PATH 中）：
 
 ```sh
-dsh plugin --profile web add "https://github.com/Geng-zy/dsh-snowluma-companion/releases/download/v1.3.2/dsh-snowluma-companion-1.3.2.tgz" --ignore-scripts
+dsh plugin --profile web add "https://github.com/Geng-zy/dsh-snowluma-companion/releases/download/v1.3.3/dsh-snowluma-companion-1.3.3.tgz" --ignore-scripts
 ```
 
 命令向现有 `web` profile 安装插件，首次安装自动加入 bundle。随后重新启动 dsh，进入 **更多 → 设置 → SnowLuma 陪伴助手**。QQ 接入需要已有 SnowLuma 及反向 WS 配置。[命令路径、其他 profile、本地安装包与升级说明](docs/PLUGIN-INSTALL.md)。
 
-桌面版也可通过应用内插件管理安装[同一发行包](https://github.com/Geng-zy/dsh-snowluma-companion/releases/tag/v1.3.2)。从两个旧插件合并升级时，使用下方迁移流程。
+桌面版也可通过应用内插件管理安装[同一发行包](https://github.com/Geng-zy/dsh-snowluma-companion/releases/tag/v1.3.3)。从两个旧插件合并升级时，使用下方迁移流程。
 
 ## 全新服务器一键部署
 
@@ -30,12 +30,12 @@ curl -fsSL https://raw.githubusercontent.com/Geng-zy/dsh-snowluma-companion/main
 
 ## 安装与升级
 
-要求 dsh **0.2.1-rc.2** 对应 SDK、Node **≥22.13**（使用内置 SQLite）。在 dsh 插件管理页安装本仓库 [v1.3.2](https://github.com/Geng-zy/dsh-snowluma-companion/releases/tag/v1.3.2) 的 `.tgz`。只需安装一个包；QQ 协议端仍由官方 SnowLuma Docker 镜像运行。
+要求 dsh **0.2.1-rc.2** 对应 SDK、Node **≥22.13**（使用内置 SQLite）。在 dsh 插件管理页安装本仓库 [v1.3.3](https://github.com/Geng-zy/dsh-snowluma-companion/releases/tag/v1.3.3) 的 `.tgz`。只需安装一个包；QQ 协议端仍由官方 SnowLuma Docker 镜像运行。
 
 从两个旧插件升级时，停止 dsh，保留现有数据与 profile 配置，以 profile 所属用户执行：
 
 ```sh
-node /解包目录/deploy/migrate-profile.mjs /绝对路径/profiles/web /绝对路径/dsh-snowluma-companion-1.3.2.tgz
+node /解包目录/deploy/migrate-profile.mjs /绝对路径/profiles/web /绝对路径/dsh-snowluma-companion-1.3.3.tgz
 cd /绝对路径/profiles/web
 pnpm install
 ```
@@ -114,3 +114,5 @@ scripts/check.sh
 原桥接历史见 [CHANGELOG](CHANGELOG.md)，原核心历史见 [COMPANION-HISTORY](docs/COMPANION-HISTORY.md)。许可为 AGPL-3.0-or-later，移植来源见 [NOTICE](NOTICE.md)。
 
 迁移后自检展示每个查询命中的候选记忆、编号、检索相关度与多行正文节选，保留日期标题下的内容。它用于检查检索情况，结果是记忆原文节选，并非聊天模型生成的答案；完整记录可在“记忆与存档”查看。
+
+备份保留按所有类型合计计数：自动、手动和导入前备份共用“备份总保留份数”，默认5份。只有新备份成功生成后才删除超出数量的最早旧包，保留最新五份；失败不触发清理。

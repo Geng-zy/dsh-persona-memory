@@ -135,7 +135,7 @@ export interface CreateOptions {
   now?: number
 }
 
-/** 打一个备份包，返回文件名。超过 keep 份的旧的（同类：自动的只删自动的）删掉。 */
+/** 打一个备份包，返回文件名。成功生成后，所有类型合计仅保留最新 keep 份。 */
 export async function createBackup(o: CreateOptions): Promise<{ name: string; manifest: Manifest }> {
   const now = o.now ?? Date.now()
   mkdirSync(o.outDir, { recursive: true })
@@ -228,10 +228,9 @@ export function listBackups(outDir: string): BackupInfo[] {
   }).sort((a, b) => b.name.slice(-22).localeCompare(a.name.slice(-22)))
 }
 
-/** 每一类（自动、手动、导入前）各留 keep 份。 */
+/** 自动、手动、导入前备份合计保留最新 keep 份；只处理列表中的正式备份包。 */
 export function prune(outDir: string, keep: number): void {
-  const byReason = Map.groupBy(listBackups(outDir), b => b.reason ?? '')
-  for (const list of byReason.values()) for (const b of list.slice(Math.max(1, keep))) rmSync(join(outDir, b.name), { force: true })
+  for (const b of listBackups(outDir).slice(Math.max(1, keep))) rmSync(join(outDir, b.name), { force: true })
 }
 
 export function safeBackupName(name: string): boolean {

@@ -84,14 +84,14 @@ export interface CreateOptions {
     sessionServices?: MasterSessionServices;
     now?: number;
 }
-/** 打一个备份包，返回文件名。超过 keep 份的旧的（同类：自动的只删自动的）删掉。 */
+/** 打一个备份包，返回文件名。成功生成后，所有类型合计仅保留最新 keep 份。 */
 export declare function createBackup(o: CreateOptions): Promise<{
     name: string;
     manifest: Manifest;
 }>;
 /** 备份文件列表，新的在前。 */
 export declare function listBackups(outDir: string): BackupInfo[];
-/** 每一类（自动、手动、导入前）各留 keep 份。 */
+/** 自动、手动、导入前备份合计保留最新 keep 份；只处理列表中的正式备份包。 */
 export declare function prune(outDir: string, keep: number): void;
 export declare function safeBackupName(name: string): boolean;
 /** 解开一个备份包、核对清单和校验值。返回解开的目录和清单。 */
