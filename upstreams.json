@@ -34,5 +34,10 @@
       "aligned": "n9.0",
       "source": "GitHub BtbN/FFmpeg-Builds latest release 里 Linux x64 LGPL 正式版分支的最新版本（一键安装自动选最新分支；这里只用来发现命名规则变化或新分支）"
     }
+  },
+  "package": "dsh-snowluma-companion",
+  "mergedFrom": {
+    "bridge": "0.21.2",
+    "companion": "0.18.1"
   }
 }

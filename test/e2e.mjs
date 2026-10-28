@@ -88,11 +88,11 @@ const llmUrl = 'http://127.0.0.1:' + llm.address().port + '/anthropic'
 const home = mkdtempSync(join(tmpdir(), 'dsh-snowluma-e2e-'))
 const profile = join(home, 'profiles', 'web')
 mkdirSync(join(profile, 'node_modules'), { recursive: true })
-symlinkSync(ROOT, join(profile, 'node_modules', 'dsh-snowluma-bridge'), 'dir')
+symlinkSync(ROOT, join(profile, 'node_modules', 'dsh-snowluma-companion'), 'dir')
 writeFileSync(join(profile, 'package.json'), JSON.stringify({
   name: 'dsh-profile-web', private: true,
-  dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', 'dsh-snowluma-bridge'] } },
-  dependencies: { 'dsh-snowluma-bridge': 'link:' + ROOT },
+  dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', 'dsh-snowluma-companion'] } },
+  dependencies: { 'dsh-snowluma-companion': 'link:' + ROOT },
 }, null, 2))
 const workspace = join(home, 'workspace')
 mkdirSync(workspace)
@@ -111,7 +111,16 @@ writeFileSync(join(profile, 'cordis.patch.yml'), `- id: snowluma-bridge
     typingMinSeconds: 1
     typingMaxSeconds: 1
     groupMinGapSeconds: 0
-${GROUP_REPLY ? '    groupReplyMention: true\n    groupReplyQuote: true\n' : ''}`)
+${GROUP_REPLY ? '    groupReplyMention: true\n    groupReplyQuote: true\n' : ''}
+- id: companion-core
+  config:
+    recallEnabled: false
+    groupContextCount: 0
+    proactiveEnabled: false
+    diaryEnabled: false
+    organizeEveryRounds: 0
+    organizeBeforeCompact: false
+`)
 
 const dsh = spawn(process.env.DSH_BIN ?? 'dsh', ['web', '--host', '127.0.0.1', '--port', process.env.E2E_WEB_PORT ?? '0', '--no-open'], {
   env: { ...process.env, DSH_HOME: home, DEEPSEEK_API_KEY: 'sk-e2e-fake', DEEPSEEK_BASE_URL: llmUrl, DSH_TELEMETRY_DISABLED: '1' },

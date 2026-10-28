@@ -254,12 +254,15 @@ export const Config: z<LiveConfig> = z.object({
   logLevel: z.union(['debug', 'info', 'warn', 'error']).default('info').volatile().description('日志级别'),
 }) as never
 
-export const name = 'dsh-snowluma-bridge'
+export const name = 'dsh-snowluma-companion'
 // agentDefaultModel / agentPresets / sessionPersistence 是可选的，用到时再 ctx.get
 export const inject = ['agents']
 
 /** 给其他插件（如记忆插件）用的服务：ctx.snowluma */
 export interface SnowlumaService {
+  /** 合并插件共用回复与主动聊天的静默标记。 */
+  silenceToken(): string
+
   /** 是否允许消息存档；群必须在群名单内，管理员仅私聊豁免；关闭白名单时都允许。 */
   canArchive(session: MessageSession): boolean
   adapter: AiocqhttpAdapter
@@ -419,6 +422,7 @@ export function apply(ctx: Context, live: LiveConfig): void {
   })
 
   const service: SnowlumaService = {
+    silenceToken: () => get('silenceToken') ?? '[不发]',
     canArchive: session => bridge.canArchive(session),
     adapter,
     callAction,

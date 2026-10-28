@@ -1,8 +1,8 @@
 {
-  "id": "dsh-snowluma-bridge",
-  "version": "0.21.2",
+  "id": "dsh-snowluma-companion",
+  "version": "1.0.0",
   "main": "./lib/index.js",
-  "description": "Connect SnowLuma to dsh over OneBot v11, preserving existing sessions and companion data.",
+  "description": "SnowLuma 陪伴助手：QQ 接入、人格、记忆、主动聊天与备份的一体化 dsh 插件。",
   "engines": {
     "dsh": ">=0.2.0-0 <0.2.1-0 || >=0.2.1-0 <0.2.2-0 || >=0.2.2-0 <0.2.3-0 || >=0.2.3-0 <0.2.4-0 || >=0.2.4-0 <0.2.5-0 || >=0.2.5-0 <0.2.6-0 || >=0.2.6-0 <0.2.7-0 || >=0.2.7-0 <0.2.8-0 || >=0.2.8-0 <0.2.9-0 || >=0.2.9-0 <0.3.0-0"
   },

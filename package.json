@@ -1,7 +1,7 @@
 {
-  "name": "dsh-snowluma-bridge",
-  "version": "0.21.2",
-  "description": "通过 OneBot v11 将 SnowLuma 接入 dsh，支持会话、权限、媒体和主动聊天。",
+  "name": "dsh-snowluma-companion",
+  "version": "1.0.0",
+  "description": "SnowLuma 陪伴助手：QQ 接入、人格、记忆、主动聊天与备份的一体化 dsh 插件。",
   "keywords": [
     "dsh",
     "deepseek-harness",
@@ -27,12 +27,13 @@
     "docs",
     "deploy/snowluma.compose.yml",
     "deploy/snowluma.env.example",
-    "deploy/start-snowluma.sh"
+    "deploy/start-snowluma.sh",
+    "deploy/migrate-profile.mjs"
   ],
   "scripts": {
-    "build": "rm -rf lib && tsc -p tsconfig.json && cp src/client/client.js lib/client.js",
-    "test": "node --test test/*.test.mjs",
-    "e2e": "node test/e2e.mjs",
+    "build": "rm -rf lib && tsc -p tsconfig.json && node scripts/build-client.mjs",
+    "test": "node --test test/*.test.mjs test/companion/*.test.mjs",
+    "e2e": "node test/e2e.mjs && node test/companion/e2e.mjs",
     "setup-test-env": "scripts/setup-test-env.sh",
     "check": "scripts/check.sh",
     "update-qface": "node scripts/update-qface.mjs"
@@ -44,8 +45,12 @@
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
     "@deepseek-ai/dsh-agent": ">=0.2.0-0 <0.2.1-0 || >=0.2.1-0 <0.2.2-0 || >=0.2.2-0 <0.2.3-0 || >=0.2.3-0 <0.2.4-0 || >=0.2.4-0 <0.2.5-0 || >=0.2.5-0 <0.2.6-0 || >=0.2.6-0 <0.2.7-0 || >=0.2.7-0 <0.2.8-0 || >=0.2.8-0 <0.2.9-0 || >=0.2.9-0 <0.3.0-0",
+    "@deepseek-ai/dsh-compaction": ">=0.2.0-0 <0.2.1-0 || >=0.2.1-0 <0.2.2-0 || >=0.2.2-0 <0.2.3-0 || >=0.2.3-0 <0.2.4-0 || >=0.2.4-0 <0.2.5-0 || >=0.2.5-0 <0.2.6-0 || >=0.2.6-0 <0.2.7-0 || >=0.2.7-0 <0.2.8-0 || >=0.2.8-0 <0.2.9-0 || >=0.2.9-0 <0.3.0-0",
+    "@deepseek-ai/dsh-compaction-basic": ">=0.2.0-0 <0.2.1-0 || >=0.2.1-0 <0.2.2-0 || >=0.2.2-0 <0.2.3-0 || >=0.2.3-0 <0.2.4-0 || >=0.2.4-0 <0.2.5-0 || >=0.2.5-0 <0.2.6-0 || >=0.2.6-0 <0.2.7-0 || >=0.2.7-0 <0.2.8-0 || >=0.2.8-0 <0.2.9-0 || >=0.2.9-0 <0.3.0-0",
     "@deepseek-ai/dsh-llm": ">=0.2.0-0 <0.2.1-0 || >=0.2.1-0 <0.2.2-0 || >=0.2.2-0 <0.2.3-0 || >=0.2.3-0 <0.2.4-0 || >=0.2.4-0 <0.2.5-0 || >=0.2.5-0 <0.2.6-0 || >=0.2.6-0 <0.2.7-0 || >=0.2.7-0 <0.2.8-0 || >=0.2.8-0 <0.2.9-0 || >=0.2.9-0 <0.3.0-0",
     "@deepseek-ai/dsh-session": ">=0.2.0-0 <0.2.1-0 || >=0.2.1-0 <0.2.2-0 || >=0.2.2-0 <0.2.3-0 || >=0.2.3-0 <0.2.4-0 || >=0.2.4-0 <0.2.5-0 || >=0.2.5-0 <0.2.6-0 || >=0.2.6-0 <0.2.7-0 || >=0.2.7-0 <0.2.8-0 || >=0.2.8-0 <0.2.9-0 || >=0.2.9-0 <0.3.0-0",
+    "@deepseek-ai/dsh-system-prompt": ">=0.2.0-0 <0.2.1-0 || >=0.2.1-0 <0.2.2-0 || >=0.2.2-0 <0.2.3-0 || >=0.2.3-0 <0.2.4-0 || >=0.2.4-0 <0.2.5-0 || >=0.2.5-0 <0.2.6-0 || >=0.2.6-0 <0.2.7-0 || >=0.2.7-0 <0.2.8-0 || >=0.2.8-0 <0.2.9-0 || >=0.2.9-0 <0.3.0-0",
+    "@deepseek-ai/dsh-tools": ">=0.2.0-0 <0.2.1-0 || >=0.2.1-0 <0.2.2-0 || >=0.2.2-0 <0.2.3-0 || >=0.2.3-0 <0.2.4-0 || >=0.2.4-0 <0.2.5-0 || >=0.2.5-0 <0.2.6-0 || >=0.2.6-0 <0.2.7-0 || >=0.2.7-0 <0.2.8-0 || >=0.2.8-0 <0.2.9-0 || >=0.2.9-0 <0.3.0-0",
     "@deepseek-ai/schemastery": "^3.18.0"
   },
   "peerDependenciesMeta": {
@@ -63,22 +68,41 @@
     },
     "@deepseek-ai/schemastery": {
       "optional": true
+    },
+    "@deepseek-ai/dsh-system-prompt": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-tools": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-compaction": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-compaction-basic": {
+      "optional": true
     }
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.0.5",
     "@deepseek-ai/dsh-agent": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-compaction": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-compaction-basic": "0.2.1-rc.2",
     "@deepseek-ai/dsh-llm": "0.2.1-rc.2",
     "@deepseek-ai/dsh-session": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-system-prompt": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-tools": "0.2.1-rc.2",
     "@deepseek-ai/schemastery": "3.18.5",
     "@types/node": "^24.0.0",
     "@types/nodemailer": "^8.0.2",
     "@types/ws": "^8.5.12",
-    "typescript": "^7.0.2"
+    "acorn": "8.19.0",
+    "playwright": "1.64.1",
+    "typescript": "^7.0.2",
+    "ws": "^8.22.0"
   },
   "engines": {
     "dsh": ">=0.2.0-0 <0.2.1-0 || >=0.2.1-0 <0.2.2-0 || >=0.2.2-0 <0.2.3-0 || >=0.2.3-0 <0.2.4-0 || >=0.2.4-0 <0.2.5-0 || >=0.2.5-0 <0.2.6-0 || >=0.2.6-0 <0.2.7-0 || >=0.2.7-0 <0.2.8-0 || >=0.2.8-0 <0.2.9-0 || >=0.2.9-0 <0.3.0-0",
-    "node": ">=22"
+    "node": ">=22.13"
   },
   "dsh": {
     "bundle": {
@@ -96,7 +120,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Geng-zy/dsh-snowluma-bridge.git"
+    "url": "git+https://github.com/Geng-zy/dsh-snowluma-companion.git"
   },
   "exports": {
     ".": {
@@ -104,6 +128,14 @@
       "default": "./lib/index.js"
     },
     "./client": "./lib/client.js",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./companion": {
+      "types": "./lib/types/companion/index.d.ts",
+      "default": "./lib/companion/index.js"
+    },
+    "./context": {
+      "types": "./lib/types/companion/context.d.ts",
+      "default": "./lib/companion/context.js"
+    }
   }
 }

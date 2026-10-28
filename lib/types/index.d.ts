@@ -126,10 +126,12 @@ export type LiveConfig = {
     };
 };
 export declare const Config: z<LiveConfig>;
-export declare const name = "dsh-snowluma-bridge";
+export declare const name = "dsh-snowluma-companion";
 export declare const inject: string[];
 /** 给其他插件（如记忆插件）用的服务：ctx.snowluma */
 export interface SnowlumaService {
+    /** 合并插件共用回复与主动聊天的静默标记。 */
+    silenceToken(): string;
     /** 是否允许消息存档；群必须在群名单内，管理员仅私聊豁免；关闭白名单时都允许。 */
     canArchive(session: MessageSession): boolean;
     adapter: AiocqhttpAdapter;

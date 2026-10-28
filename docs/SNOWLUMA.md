@@ -1,6 +1,6 @@
 # SnowLuma 部署与数据迁移
 
-本插件从0.21.0起统一使用SnowLuma OneBot v11反向WebSocket。插件包名为`dsh-snowluma-bridge`，设置id为`snowluma-bridge`，服务为`ctx.snowluma`，事件以`snowluma/`开头；配套companion-core ≥ 0.18.0。
+当前统一插件为`dsh-snowluma-companion`。QQ内部设置id仍为`snowluma-bridge`，服务为`ctx.snowluma`，事件以`snowluma/`开头；陪伴核心已包含在同一安装包中。
 
 ## 保持会话与记忆
 
