@@ -8,6 +8,10 @@
 //   - 日记和月度总览、主人开新会话时先读日记、存档到期（整理 → 删存档 → 换会话 → 归档/删旧会话）、群消息图片收到时下载；
 //   - 设置页（client.js）和它用的接口 <dsh>/api/companion/…（要先登录 dsh 网页）。
 
+import { ImageGenerator, IMAGE_PROVIDERS, type ImageProvider, imageOptions } from '../image-generation.js'
+import { imageTool } from './image-tool.js'
+import { make } from '../components.js'
+import type { SnowlumaService } from '../index.js'
 import z from '@deepseek-ai/schemastery'
 import type { Context as CordisContext } from '@deepseek-ai/cordis'
 import { join } from 'node:path'
@@ -53,6 +57,19 @@ export type { BeforeCompactPayload, CompanionService, ContextPolicy } from './se
 export type { RuleRow, Scope } from './rules.js'
 
 export interface Config {
+  imageGenEnabled: boolean
+  imageGenProvider: ImageProvider
+  imageGenApiUrl: string
+  imageGenApiKey: string
+  imageGenModel: string
+  imageGenOptions: string
+  imageGenCommand: string
+  imageGenPrivate: boolean
+  imageGenGroup: boolean
+  imageGenTimeoutSeconds: number
+  imageGenMaxImages: number
+  imageGenMaxMB: number
+  imageGenKeepDays: number
   excludedPresets: string[]
   personaPresets: string[]
   pluginAccess: 'all' | 'public' | 'off'
@@ -177,6 +194,19 @@ const mode = (def: ContextMode) => z.union(['truncate', 'llm']).default(def).vol
 
 // 每项都 .volatile()：dsh 的设置服务只在线编辑这种字段，保存后插件直接读到新值
 export const Config: z<LiveConfig> = z.object({
+  imageGenEnabled: z.boolean().default(false).volatile().description('启用图片生成工具；关闭时不调用生图服务'),
+  imageGenProvider: z.union(Object.keys(IMAGE_PROVIDERS) as ImageProvider[]).default('modelscope').volatile().description('图片生成协议；独立于聊天模型提供商'),
+  imageGenApiUrl: z.string().default('https://api-inference.modelscope.cn/v1').volatile().description('生图基础地址；Azure、Vertex和自定义HTTP填写完整端点'),
+  imageGenApiKey: z.string().role('secret').volatile().description('生图服务密钥或Bearer令牌；不回显、不导出到备份'),
+  imageGenModel: z.string().default('Qwen/Qwen-Image-2.1').volatile().description('生图模型或部署ID；使用提供商实际支持的标识'),
+  imageGenOptions: z.string().default('{}').volatile().description('额外JSON参数，ComfyUI工作流或自定义HTTP模板；不要填写密钥，认证模板用{{apiKey}}'),
+  imageGenCommand: z.string().default('').volatile().description('本地程序JSON参数数组，首项为可执行文件绝对路径；不经过Shell，提示词通过stdin JSON传入'),
+  imageGenPrivate: z.boolean().default(false).volatile().description('允许白名单中的其他人私聊使用生图'),
+  imageGenGroup: z.boolean().default(false).volatile().description('允许获准群聊回复使用生图；沿用群聊和管理员权限规则'),
+  imageGenTimeoutSeconds: z.natural().min(10).max(1800).default(180).volatile().description('一次生图总超时秒数，包含提交、轮询、下载；取消不保证远端退款'),
+  imageGenMaxImages: z.natural().min(1).max(4).default(1).volatile().description('每次最多生成图片张数；部分接口会逐张提交，分别计费'),
+  imageGenMaxMB: z.natural().min(1).max(50).default(20).volatile().description('每张生成图片的最大下载大小，单位MB'),
+  imageGenKeepDays: z.natural().min(1).max(365).default(7).volatile().description('本地生成图片保留天数，每次生成后清理，并最多保留100张；不包含在普通插件备份中'),
   personaPresets: z.array(z.string()).default(['companion']).volatile().description('生效的预设 id（默认只有陪伴模式；* = 所有预设）。别的插件带来的预设不会被套上人格和记忆'),
   excludedPresets: z.array(z.string()).default([]).volatile().description('不生效的预设 id（例如写代码用的预设）'),
   pluginAccess: z.union(['all', 'public', 'off']).default('all').volatile().description('给其他插件用：all = 人格、核心记忆和记忆都能取（含主人的）；public = 只给公开的；off = 不给'),
@@ -348,6 +378,12 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
   const dir = defaultDataDir()
   const keep = (): number => get('historyKeep')
   const persona = new TextDoc(join(dir, 'persona', 'persona.md'), join(dir, 'persona', 'history'), keep)
+  const imageGenerator = new ImageGenerator(join(dir, 'generated-images'), () => ({
+    enabled: get('imageGenEnabled'), provider: get('imageGenProvider'), baseUrl: get('imageGenApiUrl'),
+    apiKey: get('imageGenApiKey') ?? '', model: get('imageGenModel'), options: get('imageGenOptions'), command: get('imageGenCommand'),
+    timeoutSeconds: get('imageGenTimeoutSeconds'), maxImages: get('imageGenMaxImages'), maxMB: get('imageGenMaxMB'), keepDays: get('imageGenKeepDays'),
+  }))
+  ctx.effect(() => () => imageGenerator.dispose(), 'companion: image generation')
   const readPersona = () => personaText(persona.read(), get('personaIgnoreComments'))
   const coreMaster = new TextDoc(join(dir, 'core', 'master.md'), join(dir, 'core', 'history-master'), keep)
   const corePublic = new TextDoc(join(dir, 'core', 'public.md'), join(dir, 'core', 'history-public'), keep)
@@ -929,6 +965,31 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
     afterWrite,
     log,
   }
+  const imageAllowed = (sessionId: string): boolean => {
+    if (!get('imageGenEnabled')) return false
+    const agent = (ctx.get('agents' as never) as { list?(): any[] } | undefined)?.list?.().find(a => String(a.session?.id) === sessionId)
+    if (agent && excluded(agent.session?.meta?.agentPreset)) return false
+    const s = scope(sessionId)
+    if (s.category === 'private' && !get('imageGenPrivate') || s.category === 'group' && !get('imageGenGroup')) return false
+    return !s.qq || (snowluma() as SnowlumaService | undefined)?.canSendToolResult?.(sessionId) === true
+  }
+  const imageDefinition = imageTool({ generator: imageGenerator, allowed: imageAllowed,
+    deliver: async (sessionId, images, signal) => {
+      if (!scope(sessionId).qq) return false
+      signal.throwIfAborted()
+      const bridge = snowluma() as SnowlumaService | undefined
+      if (!bridge?.sendToolImages || !imageAllowed(sessionId)) throw new Error('QQ会话已不允许发送')
+      // Base64 is portable across host/container boundaries; never expose host file paths to QQ.
+      const chain = { chain: images.map(image => make('Image', { file: 'base64://' + readFileSync(image.path).toString('base64') })) }
+      await bridge.sendToolImages(sessionId, chain)
+      return true
+    },
+    attach: async image => {
+      const attachments = sessionServices().attachments
+      if (!attachments) throw new Error('dsh附件服务不可用；图片已生成，可在设置页下载')
+      return attachments.saveImage({ data: readFileSync(image.path), mediaType: image.mediaType, name: image.id })
+    },
+  })
   const equipped = new WeakMap<object, Array<() => void>>()
   const equip = (agent: any): void => {
     if (agent === undefined || equipped.has(agent)) return
@@ -936,6 +997,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
     if (excluded(agent.session?.meta?.agentPreset)) return
     const master = scope(sessionId).category === 'master'
     const defs = [
+      imageDefinition,
       ...(master ? [personaTool(toolDeps), coreTool(toolDeps)] : []),
       ...(get('activeMemory') && memoryToolDeps !== undefined ? [searchTool(memoryToolDeps), saveTool(memoryToolDeps), forgetTool(memoryToolDeps)] : []),
     ]
@@ -1143,6 +1205,33 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
       res.end(JSON.stringify(value))
     }
     try {
+      if (parts[0] === 'images') {
+        if (req.method === 'GET' && parts.length === 1) return json(200, { providers: IMAGE_PROVIDERS, images: imageGenerator.list() })
+        if (req.method === 'GET' && parts.length === 2) {
+          const file = imageGenerator.file(parts[1])
+          if (!file) return json(404, { error: '图片不存在或已清理' })
+          res.writeHead(200, { 'content-type': 'image/' + (file.endsWith('.jpg') ? 'jpeg' : file.split('.').pop()), 'cache-control': 'private, no-store', 'x-content-type-options': 'nosniff' })
+          createReadStream(file).pipe(res)
+          return
+        }
+        if (req.method === 'POST' && parts[1] === 'generate') {
+          if (!String(req.headers['content-type'] ?? '').includes('application/json')) return json(415, { error: '需要 application/json' })
+          const body = await readBody(req)
+          const abort = new AbortController()
+          const onClose = () => { if (!res.writableEnded) abort.abort() }
+          res.on('close', onClose)
+          try {
+            const result = await imageGenerator.run({ prompt: String(body.prompt ?? ''), ...(body.size ? { size: String(body.size) } : {}), count: Number(body.count ?? 1) }, abort.signal)
+            return json(200, { images: result.images.map(({ path: _path, ...image }) => image), warning: result.warning })
+          } finally { res.off('close', onClose) }
+        }
+        if (req.method === 'POST' && parts[1] === 'validate') {
+          if (!String(req.headers['content-type'] ?? '').includes('application/json')) return json(415, { error: '需要 application/json' })
+          imageOptions(get('imageGenOptions'))
+          return json(200, { ok: true, message: '高级参数JSON有效；未请求远端、不消耗额度。实际生成仍需验证模型与账号权限。' })
+        }
+        return json(405, { error: '不支持的图片操作' })
+      }
       if (req.method === 'GET' && parts[0] === 'state') return json(200, state())
       const url = new URL(req.url ?? '/', 'http://localhost')
       if (req.method === 'GET' && parts[0] === 'memory' && parts.length === 1) {

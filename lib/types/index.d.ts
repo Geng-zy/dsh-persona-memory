@@ -139,6 +139,8 @@ export interface SnowlumaService {
     callAction(action: string, params?: Record<string, unknown>): Promise<any>;
     /** 按会话主动发送（AstrBot send_by_session）；发出后也会发 'snowluma/sent' */
     sendBySession(session: MessageSession, chain: MessageChain): Promise<void>;
+    canSendToolResult(sessionId: string): boolean;
+    sendToolImages(sessionId: string, chain: MessageChain): Promise<void>;
     /** 已建立的会话 */
     sessions(): Array<{
         umo: string;

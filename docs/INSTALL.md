@@ -6,7 +6,7 @@
 
 Ubuntu26.04已加入安装器允许列表，Docker官方已支持该版本；尚未完成26.04全新虚拟机整机安装实测。已有的实际dsh/profile、Docker及systemd验证不等于所有Ubuntu版本均已完成整机验证。
 
-适用Ubuntu22.04/24.04/26.04、amd64/arm64、systemd及可用的sudo/root终端。部署当前验证的软件组合：Node24.22.1、dsh0.2.1-rc.2、SnowLuma官方镜像及本插件1.3.3。用于全新环境；不会把开发者的QQ登录、密码、人格、记忆或聊天数据放入公开仓库。
+适用Ubuntu22.04/24.04/26.04、amd64/arm64、systemd及可用的sudo/root终端。部署当前验证的软件组合：Node24.22.1、dsh0.2.1-rc.2、SnowLuma官方镜像及本插件1.4.0。用于全新环境；不会把开发者的QQ登录、密码、人格、记忆或聊天数据放入公开仓库。
 
 需要目标服务器能够访问GitHub、Node官方站、npm和系统软件源；Docker镜像也需要可下载或事先导入。网络不可达时不能保证在线一条命令完成，不会自动使用未经选择的第三方下载源。
 
@@ -97,7 +97,7 @@ sudo python3 /opt/dsh-snowluma-companion/install.py --resume /opt/dsh-snowluma-c
 也支持事先上传文件：
 
 ```sh
-sudo bash install.sh --plugin-archive /绝对路径/dsh-snowluma-companion-1.3.3.tgz --image-archive /绝对路径/snowluma-image.tar
+sudo bash install.sh --plugin-archive /绝对路径/dsh-snowluma-companion-1.4.0.tgz --image-archive /绝对路径/snowluma-image.tar
 ```
 
 如果服务器连GitHub raw都不可达，在网络可用的电脑下载本仓库Release的tgz后上传到新服务器，直接运行包内安装器，可绕过在线入口和GitHub插件下载：
@@ -106,8 +106,8 @@ sudo bash install.sh --plugin-archive /绝对路径/dsh-snowluma-companion-1.3.3
 mkdir companion-install
 # 将下载的同版本tgz上传到当前目录后执行
 # 归档来源由你自行核验
-tar -xzf dsh-snowluma-companion-1.3.3.tgz -C companion-install
-sudo python3 companion-install/package/deploy/install.py --plugin-archive "$PWD/dsh-snowluma-companion-1.3.3.tgz"
+tar -xzf dsh-snowluma-companion-1.4.0.tgz -C companion-install
+sudo python3 companion-install/package/deploy/install.py --plugin-archive "$PWD/dsh-snowluma-companion-1.4.0.tgz"
 ```
 
 本地插件包需由操作者核验来源；本地镜像导入后仍需选择正确的镜像名称。Node/npm及系统软件源仍需要相应网络或缓存，本选项不是完整离线系统安装包。

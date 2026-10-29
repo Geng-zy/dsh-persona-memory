@@ -270,6 +270,8 @@ export interface SnowlumaService {
   callAction(action: string, params?: Record<string, unknown>): Promise<any>
   /** 按会话主动发送（AstrBot send_by_session）；发出后也会发 'snowluma/sent' */
   sendBySession(session: MessageSession, chain: MessageChain): Promise<void>
+  canSendToolResult(sessionId: string): boolean
+  sendToolImages(sessionId: string, chain: MessageChain): Promise<void>
   /** 已建立的会话 */
   sessions(): Array<{ umo: string; sessionId: string }>
   masterPrivateBindings(): Array<{ ownerId: string; prefix: string; sessionId: string; cwd: string }>
@@ -431,6 +433,8 @@ export function apply(ctx: Context, live: LiveConfig): void {
       const text = chain.chain.filter(c => c.type === 'Plain').map(c => String(c.text ?? '')).join('')
       bridge.notifySent({ umo: sessionToString(session), session, text, chain, source: 'service', time: Date.now() })
     },
+    canSendToolResult: sessionId => bridge.canSendToolResult(sessionId),
+    sendToolImages: (sessionId, chain) => bridge.sendToolImages(sessionId, chain),
     sessions: () => bridge.sessions(),
     masterPrivateBindings: () => bridge.masterPrivateBindings(get('id')),
     restoreMasterPrivateBinding: (ownerId, sessionId) => bridge.restoreMasterPrivateBinding(get('id'), ownerId, sessionId),

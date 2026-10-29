@@ -387,6 +387,20 @@ export class Bridge {
   }
 
   /** 给其他插件代发时也检查，不能绕过群白名单。 */
+  canSendToolResult(sessionId: string): boolean {
+    const chat = [...this.chats.values()].find(c => String((c.handle.agent as Agent).session.id) === sessionId)
+    if (!chat || !chat.running) return false
+    const admin = [...chat.replySenders].find(id => this.deps.settings().admins.includes(id))
+    return this.canSend(chat.session, admin)
+  }
+
+  async sendToolImages(sessionId: string, chain: MessageChain): Promise<void> {
+    const chat = [...this.chats.values()].find(c => String((c.handle.agent as Agent).session.id) === sessionId)
+    if (!chat || !this.canSendToolResult(sessionId)) throw new Error('当前 QQ 会话已结束或不再允许发送')
+    await chat.send(chain)
+    this.notifySent({ umo: chat.umo, session: chat.session, text: '[生成图片]', chain, source: 'service', time: Date.now() })
+  }
+
   async sendBySession(session: MessageSession, chain: MessageChain): Promise<void> {
     if (!this.canSend(session)) throw new Error('会话 ' + sessionToString(session) + ' 不在白名单里，禁止发送')
     await this.deps.sendBySession(session, chain)

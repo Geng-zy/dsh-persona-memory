@@ -18,7 +18,7 @@ try {
  writeFileSync(join(profile,'pnpm-workspace.yaml'),'packages:\n  - .\nnodeLinker: hoisted\nautoInstallPeers: false\n')
  const generated=execFileSync('python3',['-c',`import sys,json;sys.path.insert(0,'test/installer');from test_install import config,installer;c=config();c['bridge_port']=int(sys.argv[1]);print(json.dumps(installer.profile_patch(c,sys.argv[2])))`,String(wsPort),workspace],{cwd:root,encoding:'utf8'})
  writeFileSync(join(profile,'cordis.patch.yml'),generated)
- execFileSync('npx',['--offline','--yes','pnpm@11.28.5','install','--offline','--ignore-scripts'],{cwd:profile,stdio:'pipe'})
+ execFileSync('npx',['--offline','--yes','pnpm@11.28.5','install',...(process.env.INSTALL_E2E_ONLINE==='1'?[]:['--offline']),'--ignore-scripts'],{cwd:profile,stdio:'pipe'})
  child=spawn(process.env.DSH_BIN??join(root,'.cache/test-env/dsh/node_modules/.bin/dsh'),['web','--host','127.0.0.1','--port',String(webPort),'--public-url',`http://example.test:${webPort}/`,'--trusted-host',`example.test:${webPort}`,'--no-open'],{cwd:workspace,env:{...process.env,DSH_HOME:home,DSH_TELEMETRY_DISABLED:'1',DEEPSEEK_API_KEY:'fake-install-api-key'},stdio:['ignore','pipe','pipe']})
  for(const stream of [child.stdout,child.stderr])stream.on('data',b=>{logs+=b})
  const end=Date.now()+90000

@@ -120,6 +120,16 @@ const llm = createServer((req, res) => {
       return
     }
     if (toolResult) return text('改好了')
+    if (last.includes('IMAGE-GENERATE') && entry.tools.includes('generate_image')) {
+      start()
+      ev('content_block_start', { index: 0, content_block: { type: 'tool_use', id: 'toolu_image', name: 'generate_image', input: {} } })
+      ev('content_block_delta', { index: 0, delta: { type: 'input_json_delta', partial_json: JSON.stringify({ prompt: 'a cat' }) } })
+      ev('content_block_stop', { index: 0 })
+      ev('message_delta', { delta: { stop_reason: 'tool_use' }, usage: { output_tokens: 5 } })
+      ev('message_stop', {})
+      res.end()
+      return
+    }
     if (last.includes('违规改人格') && entry.tools.includes('persona_edit')) {
       start()
       ev('content_block_start', { index: 0, content_block: { type: 'tool_use', id: 'toolu_e2e2', name: 'persona_edit', input: {} } })
@@ -147,8 +157,15 @@ await new Promise(r => llm.listen(0, '127.0.0.1', r))
 const llmUrl = 'http://127.0.0.1:' + llm.address().port + '/anthropic'
 // 图片服务器：给假 SnowLuma 的图片地址用（1x1 PNG）
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')
-let imageDownloads = 0
-const imgServer = createServer((_req, res) => { imageDownloads++; res.writeHead(200, { 'content-type': 'image/png' }).end(PNG) })
+let imageDownloads = 0, generatedImages = 0
+const imgServer = createServer((req, res) => {
+  if (req.method === 'POST' && req.url === '/v1/images/generations') {
+    generatedImages++
+    req.resume()
+    return req.on('end', () => res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ data: [{ b64_json: PNG.toString('base64') }] })))
+  }
+  imageDownloads++; res.writeHead(200, { 'content-type': 'image/png' }).end(PNG)
+})
 await new Promise(r => imgServer.listen(0, '127.0.0.1', r))
 const imgUrl = 'http://127.0.0.1:' + imgServer.address().port + '/a.png'
 
@@ -181,6 +198,11 @@ writeFileSync(join(profile, 'cordis.patch.yml'), `- id: snowluma-bridge
 - id: companion-core
   config:
     logLevel: debug
+    imageGenEnabled: true
+    imageGenProvider: openai
+    imageGenApiUrl: ${imgUrl.replace('/a.png', '')}/v1
+    imageGenApiKey: image-e2e-secret
+    imageGenModel: test-image
     embedApiUrl: ${llmUrl.replace('/anthropic', '')}/v1
     embedApiKey: e2e-embed-key
     embedModel: fake-embed
@@ -669,6 +691,27 @@ if (process.env.E2E_UI === '1') {
   log('真实模型请求使用过滤后人格，变量保持字面量，原文件保留注释 OK')
 }
 
+// Image tool with real dsh execution: master delivery, ordinary-group refusal and authenticated gallery.
+const beforeImages = generatedImages
+const sentBeforeImage = sent.length
+privateMsg([text('IMAGE-GENERATE master')])
+await waitFor(() => sent.slice(sentBeforeImage).some(x => x.params.message?.some(c => c.type === 'image')), '生成图片发送到主人QQ')
+await waitFor(() => requests.slice(-3).some(x => x.toolResult), '生图工具后继续回复')
+if (generatedImages !== beforeImages + 1) await fail('生图重复提交')
+const beforeGroupImages = generatedImages
+await say(() => groupMsg([at(BOT), text(' IMAGE-GENERATE denied')]), '未开放群生图拒绝后回复')
+if (generatedImages !== beforeGroupImages) await fail('未开放群生图却请求了付费接口')
+const gallery = await api('GET', 'images')
+if (!gallery.json.images.length || gallery.json.images[0].path) await fail('生成图片列表不正确或泄漏本地路径')
+const generatedFile = await fetch(webBase0 + 'api/companion/images/' + gallery.json.images[0].id, { headers: { cookie: cookie0 } })
+if (!generatedFile.ok || !Buffer.from(await generatedFile.arrayBuffer()).equals(PNG)) await fail('无法读取生成图片')
+const unauthImages = await fetch(webBase0 + 'api/companion/images', { redirect: 'manual' })
+if (unauthImages.status === 200) await fail('未登录可读取生图列表')
+const trial = await api('POST', 'images/generate', { prompt: 'web settings trial' })
+if (trial.status !== 200 || !trial.json.images.length) await fail('设置页试画失败')
+log('生图：真实dsh工具 → 主人QQ图片、群聊拒绝、网页试画/下载/鉴权 OK')
+
+
 // 14. 删过会话以后重启 dsh：能正常起来、不报错、设置页接口照常
 if (!process.env.E2E_HOLD) {
   finished = true
@@ -701,6 +744,7 @@ if (!process.env.E2E_HOLD) {
   }
   log('删过会话以后重启 dsh 正常 OK')
 }
+
 
 log('全部通过')
 if (process.env.E2E_HOLD) {
