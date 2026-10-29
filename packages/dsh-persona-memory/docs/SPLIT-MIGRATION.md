@@ -6,11 +6,11 @@
 
 等待模型回复、生图和待发队列全部完成，再停止dsh。保留原profile的package.json、pnpm-lock.yaml、cordis.yml/cordis.patch.yml，以及DSH_HOME下的`storages`、`companion`、`snowluma-bridge`目录。`storages`包含工作区归档状态；只恢复旧安装包不能撤销已归档标记。逻辑会话文件原件保留，迁移不会清空QQ登录。
 
-以原dsh运行账号下载[发行页](https://github.com/Geng-zy/dsh-snowluma-companion/releases/tag/v2.0.0)的两个tgz，分别解压到独立临时目录。将`QQ包解压目录/package/deploy`中的两个脚本视为待审查的迁移工具。
+以原dsh运行账号下载[发行页](https://github.com/Geng-zy/dsh-snowluma-companion/releases/tag/v2.0.1)的两个tgz，分别解压到独立临时目录。将`QQ包解压目录/package/deploy`中的两个脚本视为待审查的迁移工具。
 
 ## 迁移配置和安装
 
-迁移配置脚本使用YAML AST保留密钥节点，将QQ相关设置移动到QQ命名空间，保留其余人格记忆设置。需要已安装依赖的源码目录，或安装到目标profile后执行对应工具。若只是解开tgz而没有依赖，不能直接运行需要yaml模块的脚本。
+首次拆分将旧通用工作目录设置切换为独立QQ工作区默认值；此后用户仍可自定义绝对路径。迁移配置脚本使用YAML AST保留密钥节点，将QQ相关设置移动到QQ命名空间，保留其余人格记忆设置。需要已安装依赖的源码目录，或安装到目标profile后执行对应工具。若只是解开tgz而没有依赖，不能直接运行需要yaml模块的脚本。
 
 下面示例通过临时工具目录安装依赖；把所有大写占位路径替换成自己的**绝对路径**：
 
@@ -19,7 +19,7 @@ cd /绝对路径/临时工具目录
 pnpm init
 pnpm add yaml@2.9.1
 # 将QQ发行包的deploy目录复制到这个工具目录，再执行：
-node deploy/migrate-profile.mjs /绝对路径/DSH_HOME/profiles/web /绝对路径/dsh-qq-gateway-2.0.0.tgz /绝对路径/dsh-persona-memory-2.0.0.tgz
+node deploy/migrate-profile.mjs /绝对路径/DSH_HOME/profiles/web /绝对路径/dsh-qq-gateway-2.0.1.tgz /绝对路径/dsh-persona-memory-2.0.1.tgz
 cd /绝对路径/DSH_HOME/profiles/web
 pnpm install --ignore-scripts
 ```

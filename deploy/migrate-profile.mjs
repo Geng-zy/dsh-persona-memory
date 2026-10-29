@@ -34,6 +34,8 @@ for(const filename of ['cordis.yml','cordis.patch.yml']){
  function config(id){let row=rows.find(r=>r.get('id')===id);if(!row){row=document.createNode({id,config:{}});document.contents.add(row);rows.push(row)}let value=row.get('config',true);if(!(value instanceof YAMLMap)){value=new YAMLMap();row.set('config',value)}return value}
  function rename(node){if(node instanceof YAMLMap){const name=node.get('name');if(references[name])node.set('name',references[name]);for(const pair of node.items)rename(pair.value)}else if(node instanceof YAMLSeq)node.items.forEach(rename)}
  rename(document.contents)
+ // The legacy cwd was shared with ordinary sessions; a split starts a dedicated QQ workspace.
+ if(firstMigration)config('snowluma-bridge').set('workspacePath','')
  const companion=rows.find(r=>r.get('id')==='companion-core')?.get('config',true)
  if(companion instanceof YAMLMap){
   const bridge=config('snowluma-bridge')
