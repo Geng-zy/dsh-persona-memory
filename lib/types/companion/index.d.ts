@@ -1,3 +1,4 @@
+import { type UpdateConfig } from '../updates.js';
 import z from '@deepseek-ai/schemastery';
 import type { Context as CordisContext } from '@deepseek-ai/cordis';
 import { type ContextMode, type ForgetMode, type SnowlumaLike, type RuleRow } from './rules.js';
@@ -11,7 +12,7 @@ declare module '@deepseek-ai/dsh-llm' {
 }
 export type { BeforeCompactPayload, CompanionService, ContextPolicy } from './service.js';
 export type { RuleRow, Scope } from './rules.js';
-export interface Config {
+export interface Config extends UpdateConfig {
     sessionScope: 'qq' | 'all';
     excludedPresets: string[];
     personaPresets: string[];

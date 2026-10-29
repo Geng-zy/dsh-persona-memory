@@ -1562,8 +1562,11 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 
+		var Updates = require("dsh-persona-memory/ui-updates");
+		BOOLS.push(...Updates.BOOLS); TEXTS.push(...Updates.TEXTS); INTS.push(...Updates.INTS); SECRETS.push(...Updates.SECRETS);
 		//#region 表单模型
 		function createForm(scope) {
+			ENUMS.some(x=>x[0]==="updatesPushService") || ENUMS.push(["updatesPushService",["off","serverchan","pushplus"]]);
 			var specs = INTS.map(function (x) { return intField(x[0], x[1], x[2] === void 0 ? Number.MAX_SAFE_INTEGER : x[2]); })
 				.concat(ENUMS.map(function (x) { return enumField(x[0], x[1]); }), LISTS.map(listField), LINE_LISTS.map(lineListField), BOOLS.map(boolField),
 					TEXTS.map(function (f) { return P.settingsTextField(f); }), FLOATS.map(floatField), [rulesField("rules")]);
@@ -2770,7 +2773,7 @@ window.__ModuleLoader__.load({
 					stats ? h("p", { key: "a", className: "compc-hint" }, t("archiveCount", { total: stats.total, private: (stats.byKind && stats.byKind.private) || 0, group: (stats.byKind && stats.byKind.group) || 0 })) : null,
 					h("p", { key: "d", className: "compc-hint" }, t("dataDir", { dir: data.dataDir }))
 				];
-			return h(React.Fragment, null, h(React.Fragment, null,
+			return h(React.Fragment, null, h(Updates.Panel, common), h(React.Fragment, null,
                 null,
 				h(Section, { sectionId: "companion-status", category: "overview", title: t("status"), hint: t("statusHint") },
 					statusLines,

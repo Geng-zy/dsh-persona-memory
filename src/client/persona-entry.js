@@ -3,10 +3,10 @@ const PACKAGE="dsh-persona-memory";
 window.__ModuleLoader__.load({id: PACKAGE,factory:require=>{
  const R=require('react'),React=R.createElement?R:R.default,h=React.createElement,P=require('@deepseek-ai/dsh-client-ui-primitives');
  const modules=["ui-companion"].map(x=>require(PACKAGE+'/'+x)),Layout=require(PACKAGE+'/ui-layout');
- const NS=PACKAGE.replaceAll('-',''),categoryLabels={"overview": "运行概览", "persona": "人格与核心记忆", "memory": "长期记忆", "chat": "上下文管理", "life": "日记", "backup": "备份与迁移", "maintenance": "记忆维护"},title="人格与记忆";
+ const NS=PACKAGE.replaceAll('-',''),categoryLabels={"overview": "运行概览", "persona": "人格与核心记忆", "memory": "长期记忆", "chat": "上下文管理", "life": "日记", "backup": "备份与迁移", "maintenance": "记忆维护", "developer": "开发者选项"},title="人格与记忆";
  function Editor(props){
   if(props.view==='summary')return title;
-  const english=props.t?.('language')==='en',title=english?"Persona & Memory":"人格与记忆",categories=english?{overview:'Overview',persona:'Persona & core memory',memory:'Long-term memory',chat:'Context management',life:'Diary',backup:'Backup & migration',maintenance:'Memory maintenance'}:categoryLabels;
+  const english=props.t?.('language')==='en',title=english?"Persona & Memory":"人格与记忆",categories=english?{overview:'Overview',persona:'Persona & core memory',memory:'Long-term memory',chat:'Context management',life:'Diary',backup:'Backup & migration',maintenance:'Memory maintenance',developer:'Developer options'}:categoryLabels;
   const states=modules.map((_,i)=>props['useForm'+i](s=>s));
   const [category,setCategory]=React.useState(()=>{try{const previous=localStorage.getItem(PACKAGE+':category');return Object.hasOwn(categories,previous)?previous:'overview'}catch{return 'overview'}}),[query,setQuery]=React.useState(''),[activeSection,setActiveSection]=React.useState(()=>{try{return localStorage.getItem(PACKAGE+':active-section')||'companion-status'}catch{return 'companion-status'}}),[documents,setDocuments]=React.useState({});
   React.useEffect(()=>{try{localStorage.setItem(PACKAGE+':active-section',activeSection)}catch{}},[activeSection]);

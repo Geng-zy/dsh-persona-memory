@@ -1,3 +1,5 @@
+import { UpdateMonitor, updateSchema, type UpdateConfig } from '../updates.js'
+import { updateCatalog } from '../update-catalog.js'
 import {describeSettings} from './backup-guide.js'
 // dsh-companion-core（插件二）常驻部分：
 //   - 人格、核心记忆：挂在 dsh 全局的系统提示词组装环节，QQ 和 dsh 的所有会话每一步都现读；
@@ -51,7 +53,7 @@ declare module '@deepseek-ai/dsh-llm' {
 export type { BeforeCompactPayload, CompanionService, ContextPolicy } from './service.js'
 export type { RuleRow, Scope } from './rules.js'
 
-export interface Config {
+export interface Config extends UpdateConfig {
   sessionScope: 'qq' | 'all'
   excludedPresets: string[]
   personaPresets: string[]
@@ -156,6 +158,7 @@ const mode = (def: ContextMode) => z.union(['truncate', 'llm']).default(def).vol
 
 // 每项都 .volatile()：dsh 的设置服务只在线编辑这种字段，保存后插件直接读到新值
 export const Config: z<LiveConfig> = z.object({
+  ...updateSchema,
   sessionScope: z.union(['qq','all']).default('qq').volatile().description('默认只在QQ会话注入人格、记忆和工具；all也包含网页普通会话'),
   personaPresets: z.array(z.string()).default(['*']).volatile().description('生效的预设 id（默认只有陪伴模式；* = 所有预设）。别的插件带来的预设不会被套上人格和记忆'),
   excludedPresets: z.array(z.string()).default([]).volatile().description('不生效的预设 id（例如写代码用的预设）'),
@@ -302,6 +305,8 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
     workspaces: ctx.get('workspaceRegistry' as never) as never,
   })
   const dir = defaultDataDir()
+  const updates = new UpdateMonitor({ catalog: updateCatalog, directory: join(dir, 'developer'), settings: () => Object.fromEntries(Object.keys(updateSchema).map(key => [key, get(key as keyof Config)])) as unknown as UpdateConfig, llm: () => ctx.get('llm' as never) as never })
+  ctx.effect(() => updates.start(), 'upstream updates: independent and opt-in')
   const keep = (): number => get('historyKeep')
   const persona = new TextDoc(join(dir, 'persona', 'persona.md'), join(dir, 'persona', 'history'), keep)
   const readPersona = () => personaText(persona.read(), get('personaIgnoreComments'))
@@ -594,7 +599,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
   const backupsDir = join(dir, 'backups')
   const pluginVersion = (() => { try { return String(JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf-8')).version) } catch { return '?' } })()
   /** 不含任何 Key 的设置快照 */
-  const settingsSnapshot = (): Record<string, unknown> => Object.fromEntries(Object.keys(live).filter(k => !/ApiKey$/.test(k)).map(k => [k, (live as any)[k]?.get()]))
+  const settingsSnapshot = (): Record<string, unknown> => Object.fromEntries(Object.keys(live).filter(k => !/ApiKey$/.test(k) && !['updatesGithubToken','updatesSmtpPass','updatesPushKey'].includes(k)).map(k => [k, (live as any)[k]?.get()]))
   // 插件设置走 dsh 的设置服务：读的时候它已经去掉了标成 Key 的字段（我们的向量 Key、插件一的连接 Token 和语音 Key 等）
   type SettingsForm = { ns: string; value?: Record<string, unknown>; user?: Record<string, unknown>; secrets?: Array<{ path: string[] }> }
   const settingsService = (): { describe(o: { redactSecrets: boolean }): SettingsForm[]; mutate(ns: string, ops: unknown[]): Promise<void> } | undefined => ctx.get('settings' as never) as never
@@ -935,6 +940,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
     logs: logs.slice(-100),
   })
   ctx.on('connection/request' as never, (async (req: import('node:http').IncomingMessage, res: import('node:http').ServerResponse, next: () => Promise<void>) => {
+    if (await updates.handle(req, res, '/api/companion/updates')) return
     const path = new URL(req.url ?? '/', 'http://localhost').pathname
     const at = path.indexOf('/companion/')
     if (at < 0 || !path.slice(0, at).endsWith('/api')) return next()

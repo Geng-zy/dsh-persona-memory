@@ -1,6 +1,6 @@
 {
   "name": "dsh-persona-memory",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "人格与记忆：人格、分域核心和长期记忆、日记、上下文管理与独立备份。",
   "keywords": [
     "dsh",
@@ -26,7 +26,7 @@
     "docs"
   ],
   "scripts": {
-    "build": "rm -rf lib && tsc -p tsconfig.json && node scripts/build-client.mjs",
+    "build": "node scripts/build-update-catalog.mjs && rm -rf lib && tsc -p tsconfig.json && node scripts/build-client.mjs",
     "test": "node --test test/*.test.mjs test/companion/*.test.mjs"
   },
   "peerDependencies": {
@@ -115,10 +115,16 @@
     "@deepseek-ai/schemastery": "3.18.5",
     "@types/node": "^24.0.0",
     "@types/nodemailer": "^8.0.2",
+    "@types/semver": "7.7.1",
     "@types/ws": "^8.5.12",
     "acorn": "8.19.0",
     "playwright": "1.64.1",
     "typescript": "^7.0.2",
-    "ws": "^8.22.0"
+    "ws": "^8.22.0",
+    "yaml": "2.9.1"
+  },
+  "dependencies": {
+    "nodemailer": "10.2.1",
+    "semver": "7.8.5"
   }
 }
