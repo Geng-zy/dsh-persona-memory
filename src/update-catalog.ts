@@ -2,7 +2,7 @@
 import type {Catalog} from "./updates.js"
 export const updateCatalog: Catalog = {
   "owner": "dsh-persona-memory",
-  "version": "2.4.2",
+  "version": "2.5.0",
   "repository": "https://github.com/Geng-zy/dsh-persona-memory",
   "lockHash": "7326754d83ddace9c1ccb816a90f5945b1965c5fe6bc53a998c2ac94987c8438",
   "sources": [
@@ -953,23 +953,11 @@ export const updateCatalog: Catalog = {
       "prerelease": true
     },
     {
-      "id": "import:,\n\t\t\tquietEnd: ",
-      "name": ",\n\t\t\tquietEnd: ",
-      "kind": "npm",
-      "target": ",\n\t\t\tquietEnd: ",
-      "purpose": "源码引用的宿主提供模块；未随本插件锁定的版本仅按公开发行观测，实际兼容需随dsh核对",
-      "files": [
-        "src/client/companion.js"
-      ],
-      "category": "host-provided-module",
-      "prerelease": false
-    },
-    {
       "id": "plugin-release",
       "name": "dsh-persona-memory正式发行",
       "kind": "github",
       "target": "Geng-zy/dsh-persona-memory",
-      "current": "2.4.2",
+      "current": "2.5.0",
       "purpose": "本插件公开正式发行；不自动下载安装",
       "files": [
         "README.md"
@@ -981,7 +969,7 @@ export const updateCatalog: Catalog = {
       "name": "QQ接入插件可选联动",
       "kind": "github",
       "target": "Geng-zy/dsh-qq-gateway",
-      "current": "2.4.2",
+      "current": "2.5.0",
       "purpose": "可选插件间事件与服务接口兼容；独立安装不要求另一个插件在场",
       "files": [
         "docs/SPLIT-MIGRATION.md"
@@ -1253,13 +1241,300 @@ export const updateCatalog: Catalog = {
         "src/client/updates.js"
       ],
       "category": "service"
+    },
+    {
+      "id": "service:mistral",
+      "name": "Mistral",
+      "kind": "document",
+      "target": "https://docs.mistral.ai/getting-started/changelog/",
+      "purpose": "内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用",
+      "files": [
+        "src/client/companion.js"
+      ],
+      "category": "related-project"
+    },
+    {
+      "id": "service:groq",
+      "name": "Groq",
+      "kind": "document",
+      "target": "https://console.groq.com/docs/changelog",
+      "purpose": "内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用",
+      "files": [
+        "src/client/companion.js"
+      ],
+      "category": "related-project"
+    },
+    {
+      "id": "service:moonshot",
+      "name": "Kimi / Moonshot",
+      "kind": "document",
+      "target": "https://platform.moonshot.cn/docs/introduction",
+      "purpose": "内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用",
+      "files": [
+        "src/client/companion.js"
+      ],
+      "category": "related-project"
+    },
+    {
+      "id": "service:minimax",
+      "name": "MiniMax",
+      "kind": "document",
+      "target": "https://platform.minimaxi.com/docs/release-notes/models",
+      "purpose": "内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用",
+      "files": [
+        "src/client/companion.js"
+      ],
+      "category": "related-project"
+    },
+    {
+      "id": "service:hunyuan",
+      "name": "腾讯混元",
+      "kind": "document",
+      "target": "https://cloud.tencent.com/document/product/1729",
+      "purpose": "内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用",
+      "files": [
+        "src/client/companion.js"
+      ],
+      "category": "related-project"
+    },
+    {
+      "id": "service:qianfan",
+      "name": "百度千帆",
+      "kind": "document",
+      "target": "https://cloud.baidu.com/doc/qianfan-api/index.html",
+      "purpose": "内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用",
+      "files": [
+        "src/client/companion.js"
+      ],
+      "category": "related-project"
+    },
+    {
+      "id": "service:jina-embed",
+      "name": "Jina Embeddings",
+      "kind": "document",
+      "target": "https://jina.ai/embeddings/",
+      "purpose": "内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用",
+      "files": [
+        "src/client/companion.js"
+      ],
+      "category": "related-project"
+    },
+    {
+      "id": "service:cohere",
+      "name": "Cohere",
+      "kind": "document",
+      "target": "https://docs.cohere.com/changelog",
+      "purpose": "内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用",
+      "files": [
+        "src/client/companion.js"
+      ],
+      "category": "related-project"
+    },
+    {
+      "id": "service:gemini",
+      "name": "Gemini / Imagen",
+      "kind": "document",
+      "target": "https://ai.google.dev/gemini-api/docs/changelog",
+      "purpose": "内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用",
+      "files": [
+        "src/client/companion.js"
+      ],
+      "category": "related-project"
+    },
+    {
+      "id": "service:serverchan",
+      "name": "Server酱",
+      "kind": "document",
+      "target": "https://sct.ftqq.com",
+      "purpose": "内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用",
+      "files": [
+        "src/client/companion.js"
+      ],
+      "category": "related-project"
+    },
+    {
+      "id": "service:pushplus",
+      "name": "PushPlus",
+      "kind": "document",
+      "target": "https://www.pushplus.plus/doc/guide/api.html",
+      "purpose": "内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用",
+      "files": [
+        "src/client/companion.js"
+      ],
+      "category": "related-project"
+    },
+    {
+      "id": "ollama",
+      "name": "Ollama",
+      "kind": "github",
+      "target": "ollama/ollama",
+      "purpose": "可选OpenAI兼容本地模型服务，不读取本机模型和安装版本",
+      "files": [
+        "src/models.ts"
+      ],
+      "category": "related-project"
+    },
+    {
+      "id": "lmstudio",
+      "name": "LM Studio",
+      "kind": "document",
+      "target": "https://lmstudio.ai/changelog",
+      "purpose": "可选本地OpenAI兼容服务的官方稳定版发布记录",
+      "files": [
+        "src/client/companion.js"
+      ],
+      "category": "related-project"
+    },
+    {
+      "id": "icons",
+      "name": "LobeHub服务商图标",
+      "kind": "npm",
+      "target": "@lobehub/icons-static-svg",
+      "purpose": "静态内嵌Logo来源；核对资源署名和商标许可",
+      "files": [
+        "NOTICE.md",
+        "src/client/layout.js"
+      ],
+      "category": "resource",
+      "current": "1.98.0"
+    },
+    {
+      "id": "design-reference",
+      "name": "dsh-agent-md设计参考",
+      "kind": "github-file",
+      "target": "wwsmiler1-bit/dsh-agent-md",
+      "purpose": "记录设计参考来源变化，不自动移植或纳入人格提示",
+      "files": [
+        "NOTICE.md"
+      ],
+      "category": "resource",
+      "path": "README.md"
+    },
+    {
+      "id": "gh-cli",
+      "name": "GitHub CLI",
+      "kind": "github",
+      "target": "cli/cli",
+      "purpose": "公开发行与开发发布流程兼容；不扫描本机CLI或读取登录凭据",
+      "files": [
+        "README.md"
+      ],
+      "category": "development-tool-reference"
+    },
+    {
+      "id": "node-bundled",
+      "name": "Node内置依赖目录",
+      "kind": "github-file",
+      "target": "nodejs/node",
+      "purpose": "Node绑定的V8、OpenSSL、SQLite、libuv、zlib/zstd、ICU、网络/压缩库等依赖变化；随Node集成更新，不单独替换",
+      "files": [
+        "package.json"
+      ],
+      "category": "resource",
+      "path": "deps"
+    },
+    {
+      "id": "openssl",
+      "name": "OpenSSL LTS",
+      "kind": "github",
+      "target": "openssl/openssl",
+      "purpose": "Node/HTTPS及外部工具的间接TLS依赖；只比较受支持最新LTS，不单独替换Node内置库",
+      "files": [
+        "src/updates.ts"
+      ],
+      "category": "related-project",
+      "ltsProduct": "openssl"
+    },
+    {
+      "id": "openssl-policy",
+      "name": "OpenSSL支持政策",
+      "kind": "document",
+      "target": "https://www.openssl-library.org/policies/releasestrat/",
+      "purpose": "LTS通道政策的官方证据，仅元数据参考",
+      "files": [
+        "src/updates.ts"
+      ],
+      "category": "related-project"
+    },
+    {
+      "id": "node-ref:zstd",
+      "name": "zstd（Node绑定）",
+      "kind": "document",
+      "target": "https://github.com/facebook/zstd/releases",
+      "purpose": "Node内置库的公开发行参考，不作为独立可升级组件",
+      "files": [
+        "package.json"
+      ],
+      "category": "related-project"
+    },
+    {
+      "id": "node-ref:ICU",
+      "name": "ICU（Node绑定）",
+      "kind": "document",
+      "target": "https://icu.unicode.org/download",
+      "purpose": "Node内置库的公开发行参考，不作为独立可升级组件",
+      "files": [
+        "package.json"
+      ],
+      "category": "related-project"
+    },
+    {
+      "id": "node-ref:libuv",
+      "name": "libuv（Node绑定）",
+      "kind": "document",
+      "target": "https://github.com/libuv/libuv/releases",
+      "purpose": "Node内置库的公开发行参考，不作为独立可升级组件",
+      "files": [
+        "package.json"
+      ],
+      "category": "related-project"
+    },
+    {
+      "id": "lts-metadata:openssl",
+      "name": "openssl生命周期数据来源",
+      "kind": "github-file",
+      "target": "endoflife-date/endoflife.date",
+      "purpose": "版本筛选新增依赖的社区生命周期元数据本身；支持政策仍需核对官方证据",
+      "files": [
+        "src/upstream-policy.ts"
+      ],
+      "category": "resource",
+      "path": "products/openssl.md"
+    },
+    {
+      "id": "host:@deepseek-ai/dsh-base",
+      "name": "@deepseek-ai/dsh-base",
+      "kind": "npm",
+      "target": "@deepseek-ai/dsh-base",
+      "current": "0.2.1-rc.2",
+      "purpose": "宿主基础bundle与预设/UI接口，保留预览例外",
+      "files": [
+        "cordis.patch.yml"
+      ],
+      "category": "upstream",
+      "prerelease": true
+    },
+    {
+      "id": "host:@deepseek-ai/dsh-web-app",
+      "name": "@deepseek-ai/dsh-web-app",
+      "kind": "npm",
+      "target": "@deepseek-ai/dsh-web-app",
+      "current": "0.2.1-rc.2",
+      "purpose": "宿主基础bundle与预设/UI接口，保留预览例外",
+      "files": [
+        "cordis.patch.yml"
+      ],
+      "category": "upstream",
+      "prerelease": true
     }
   ],
   "limitations": [
-    "清单覆盖仓库锁文件全部npm直接/间接依赖、SDK、移植代码和已声明的外部接入；不扫描宿主安装软件。",
+    "清单覆盖本插件锁/声明/源码/脚本/测试导入、资源和接入；QQ另含官方公开镜像声明、SnowLuma公开锁快照。均不扫描宿主，不把公开快照当实际安装证明。",
     "公开资料型服务没有可靠版本API时比较正文摘要，首次只建立基线；页面改版、脚本渲染、缺少历史或访问失败均须人工核实。",
     "自定义HTTP、本地命令、第三方模型/工作流/插件和用户后加的工具无法从私有配置推断；请在补充上游中登记公开来源与适配基准。报告不会读取命令或密钥。",
     "npm稳定版本不等于适配兼容；dsh/SDK预览版也必须做回归。间接依赖优先通过上层包升级。安全公告只覆盖OSV已收录的npm版本。",
+    "没有公开SBOM的闭源QQ/镜像内部、用户自定义命令/私有模型/后加插件不能凭空枚举；新项目须登记公开来源。公开上游锁与镜像声明变化时须刷新UPSTREAM-SNAPSHOT，覆盖不代表永久不漏项。",
+    "版本规则：明确LTS优先，无LTS采用正式稳定版；不自动回退预览。dsh/SDK是预览例外。文件/服务文档监测内容变化，不等于软件发版。",
     "当前报告记录仓库发布基准，不能代表服务器实际安装；部署状态由接手者获得授权后核对。",
     "邮件/微信厂商的账号额度、地域、服务端灰度和不公开变更无法保证自动识别；报告列出来源和未决项，不宣称覆盖上游未公开信息。"
   ]

@@ -1,6 +1,8 @@
 import {readFileSync,writeFileSync,readdirSync} from 'node:fs'
 import {createHash} from 'node:crypto'
 import {parse} from 'yaml'
+import {externalImports,staticProviderIds} from './import-inventory.mjs'
+import {addRelatedSources} from './related-upstreams.mjs'
 const root=new URL('../',import.meta.url),pkg=JSON.parse(readFileSync(new URL('package.json',root))),lockText=readFileSync(new URL('pnpm-lock.yaml',root),'utf8'),lock=parse(lockText),qq=pkg.name==='dsh-qq-gateway';
 const direct={...pkg.dependencies,...pkg.devDependencies,...pkg.peerDependencies},sources=[];
 for(const key of Object.keys(lock.packages||{})){
@@ -11,8 +13,8 @@ for(const key of Object.keys(lock.packages||{})){
 }
 const source=(id,name,kind,target,current,purpose,files=[],extra={})=>sources.push({id,name,kind,target,current,purpose,files,category:'upstream',...extra});
 const imported=new Map();
-function scan(dir){for(const ent of readdirSync(new URL(dir,root),{withFileTypes:true})){const path=dir+ent.name;if(ent.isDirectory())scan(path+'/');else if(/\.(ts|js|mjs)$/.test(path)){const text=readFileSync(new URL(path,root),'utf8');for(const m of text.matchAll(/(?:from\s*|require\(\s*)['"]((?:@[^/'"]+\/)?[^/'"]+)[^'"]*['"]/g)){const name=m[1];if(name.startsWith('.')||name.startsWith('node:')||name==='__UPDATES_PACKAGE__'||name===pkg.name||name.startsWith('dsh-qq-gateway')||name.startsWith('dsh-persona-memory')||name.startsWith('dsh-snowluma'))continue;const files=imported.get(name)||[];if(!files.includes(path))files.push(path);imported.set(name,files)}}}}
-scan('src/');
+function scan(dir){for(const ent of readdirSync(new URL(dir,root),{withFileTypes:true})){const path=dir+ent.name;if(ent.isDirectory())scan(path+'/');else if(/\.(ts|js|mjs)$/.test(path)){const text=readFileSync(new URL(path,root),'utf8');for(const name of externalImports(text)){if(name.startsWith('.')||name.startsWith('node:')||name==='__UPDATES_PACKAGE__'||name===pkg.name||name.startsWith('dsh-qq-gateway')||name.startsWith('dsh-persona-memory')||name.startsWith('dsh-snowluma'))continue;const files=imported.get(name)||[];if(!files.includes(path))files.push(path);imported.set(name,files)}}}}
+scan('src/');scan('scripts/');scan('test/');
 for(const [name,files]of imported){if(sources.some(x=>x.kind==='npm'&&x.target===name))continue;source('import:'+name,name,'npm',name,name.startsWith('@deepseek-ai/dsh')?'0.2.1-rc.2':undefined,'源码引用的宿主提供模块；未随本插件锁定的版本仅按公开发行观测，实际兼容需随dsh核对',files,{prerelease:name.startsWith('@deepseek-ai/dsh'),category:'host-provided-module'})}
 
 source('plugin-release',pkg.name+'正式发行','github','Geng-zy/'+pkg.name,pkg.version,'本插件公开正式发行；不自动下载安装',['README.md']);
@@ -64,15 +66,23 @@ if(qq){
  source('bge-m3','BAAI/bge-m3向量模型','github-file','FlagOpen/FlagEmbedding',undefined,'默认向量模型来源/检索框架公开说明；API提供商实际模型版本另需核实',['src/companion/embed.ts'],{path:'README.md',category:'resource'});
 }
 for(const [id,name,url]of [['anthropic','Anthropic报告API','https://platform.claude.com/docs/en/release-notes/api'],['deepseek','DeepSeek报告API','https://api-docs.deepseek.com/updates/'],['modelscope','魔搭报告API','https://modelscope.cn/docs/model-service/API-Inference/intro'],['siliconflow','硅基流动报告API','https://docs.siliconflow.cn/cn/release-notes/overview']]){if(!sources.some(x=>x.id==='service:'+id))source('service:'+id,name,'document',url,undefined,'独立报告模型模板的公开接口与弃用说明',['src/update-model.ts','src/client/updates.js'],{category:'service'})}
+addRelatedSources(sources,{root,qq});
+for(const name of Object.keys(direct)){if(!sources.some(s=>s.kind==='npm'&&s.target===name))source('declared:'+name,name,'npm',name,undefined,'声明但未由锁文件固定的依赖，首次公开观测不代表已适配',['package.json'],{prerelease:name.startsWith('@deepseek-ai/dsh')})}
+for(const name of ['@deepseek-ai/dsh-base','@deepseek-ai/dsh-web-app'])if(!sources.some(s=>s.target===name))source('host:'+name,name,'npm',name,'0.2.1-rc.2','宿主基础bundle与预设/UI接口，保留预览例外',['cordis.patch.yml'],{prerelease:true});
+if(sources.some(s=>s.kind==='npm'&&!/^(?:@[a-z0-9_.-]+\/)?[a-z0-9_.-]+$/i.test(s.target)))throw Error('Invalid npm inventory entry');
+const providerAliases={bailian:'service:dashscope',zhipu:'service:glm',jina:'service:jina-embed',ollama:'ollama',lmstudio:'lmstudio',imagen:'service:gemini',a1111:'a1111',comfyui:'comfyui'};
+for(const file of ['src/client/'+(qq?'bridge.js':'companion.js'),'src/client/updates.js'])for(const id of staticProviderIds(readFileSync(new URL(file,root),'utf8'))){if(id==='custom'||id==='command')continue;const key=providerAliases[id]??'service:'+id;if(!sources.some(s=>s.id===key))throw Error('Missing provider upstream: '+id+' in '+file)}
 const catalog={owner:pkg.name,version:pkg.version,repository:pkg.repository.url.replace('git+','').replace(/\.git$/,''),lockHash:createHash('sha256').update(lockText).digest('hex'),sources,limitations:[
- '清单覆盖仓库锁文件全部npm直接/间接依赖、SDK、移植代码和已声明的外部接入；不扫描宿主安装软件。',
+ '清单覆盖本插件锁/声明/源码/脚本/测试导入、资源和接入；QQ另含官方公开镜像声明、SnowLuma公开锁快照。均不扫描宿主，不把公开快照当实际安装证明。',
  '公开资料型服务没有可靠版本API时比较正文摘要，首次只建立基线；页面改版、脚本渲染、缺少历史或访问失败均须人工核实。',
  '自定义HTTP、本地命令、第三方模型/工作流/插件和用户后加的工具无法从私有配置推断；请在补充上游中登记公开来源与适配基准。报告不会读取命令或密钥。',
  'npm稳定版本不等于适配兼容；dsh/SDK预览版也必须做回归。间接依赖优先通过上层包升级。安全公告只覆盖OSV已收录的npm版本。',
+ '没有公开SBOM的闭源QQ/镜像内部、用户自定义命令/私有模型/后加插件不能凭空枚举；新项目须登记公开来源。公开上游锁与镜像声明变化时须刷新UPSTREAM-SNAPSHOT，覆盖不代表永久不漏项。',
+ '版本规则：明确LTS优先，无LTS采用正式稳定版；不自动回退预览。dsh/SDK是预览例外。文件/服务文档监测内容变化，不等于软件发版。',
  '当前报告记录仓库发布基准，不能代表服务器实际安装；部署状态由接手者获得授权后核对。',
  '邮件/微信厂商的账号额度、地域、服务端灰度和不公开变更无法保证自动识别；报告列出来源和未决项，不宣称覆盖上游未公开信息。'
 ]};
 writeFileSync(new URL('src/update-catalog.ts',root),'// Generated from package.json, pnpm-lock.yaml and public upstream inventory; no local environment.\nimport type {Catalog} from "./updates.js"\nexport const updateCatalog: Catalog = '+JSON.stringify(catalog,null,2)+'\n');
 
 writeFileSync(new URL('docs/DEPENDENCIES.json',root),JSON.stringify(catalog,null,2)+'\n');
-writeFileSync(new URL('docs/DEPENDENCIES.md',root),'# 依赖与公开上游清单\n\n本清单随构建自动生成，来源为package.json、pnpm-lock.yaml、源码外部模块引用和scripts/build-update-catalog.mjs中的上游资源定义。不是对宿主已安装程序的检查。当前插件：'+catalog.owner+' '+catalog.version+'。\n\n| 项目 | 类别 | 仓库适配基准 | 检查来源 | 用途 |\n| --- | --- | --- | --- | --- |\n'+sources.map(s=>'| '+s.name+' | '+s.category+' | '+(s.current||'首次公开观测建立基准，非已适配证明')+' | '+s.kind+': '+s.target+(s.path?' / '+s.path:'')+' | '+s.purpose+' |').join('\n')+'\n\n## 覆盖边界\n\n'+catalog.limitations.map(s=>'- '+s).join('\n')+'\n');
+writeFileSync(new URL('docs/DEPENDENCIES.md',root),'# 依赖与公开上游清单\n\n本清单随构建自动生成，来源为package.json、pnpm-lock.yaml、源码外部模块引用和scripts/build-update-catalog.mjs中的上游资源定义。不是对宿主已安装程序的检查。当前插件：'+catalog.owner+' '+catalog.version+'。\n\n| 项目 | 类别 | 声明/公开快照基准（非安装证明） | 检查来源 | 用途 |\n| --- | --- | --- | --- | --- |\n'+sources.map(s=>'| '+s.name+' | '+s.category+' | '+(s.current||'首次公开观测建立基准，非已适配证明')+' | '+s.kind+': '+s.target+(s.path?' / '+s.path:'')+' | '+s.purpose+' |').join('\n')+'\n\n## 覆盖边界\n\n'+catalog.limitations.map(s=>'- '+s).join('\n')+'\n');

@@ -1,8 +1,8 @@
 # 依赖与公开上游清单
 
-本清单随构建自动生成，来源为package.json、pnpm-lock.yaml、源码外部模块引用和scripts/build-update-catalog.mjs中的上游资源定义。不是对宿主已安装程序的检查。当前插件：dsh-persona-memory 2.4.2。
+本清单随构建自动生成，来源为package.json、pnpm-lock.yaml、源码外部模块引用和scripts/build-update-catalog.mjs中的上游资源定义。不是对宿主已安装程序的检查。当前插件：dsh-persona-memory 2.5.0。
 
-| 项目 | 类别 | 仓库适配基准 | 检查来源 | 用途 |
+| 项目 | 类别 | 声明/公开快照基准（非安装证明） | 检查来源 | 用途 |
 | --- | --- | --- | --- | --- |
 | @deepseek-ai/cordis | host-sdk | 4.0.5 | npm: @deepseek-ai/cordis | 插件调用的宿主SDK接口，随dsh预览版本校验兼容 |
 | @deepseek-ai/cosmokit | transitive-package | 1.8.6 | npm: @deepseek-ai/cosmokit | 锁文件间接依赖，核对引入它的上层包后再更新 |
@@ -70,11 +70,8 @@
 | zod | transitive-package | 4.6.7 | npm: zod | 锁文件间接依赖，核对引入它的上层包后再更新 |
 | react | host-provided-module | 首次公开观测建立基准，非已适配证明 | npm: react | 源码引用的宿主提供模块；未随本插件锁定的版本仅按公开发行观测，实际兼容需随dsh核对 |
 | @deepseek-ai/dsh-client-ui-primitives | host-provided-module | 0.2.1-rc.2 | npm: @deepseek-ai/dsh-client-ui-primitives | 源码引用的宿主提供模块；未随本插件锁定的版本仅按公开发行观测，实际兼容需随dsh核对 |
-| ,
-			quietEnd:  | host-provided-module | 首次公开观测建立基准，非已适配证明 | npm: ,
-			quietEnd:  | 源码引用的宿主提供模块；未随本插件锁定的版本仅按公开发行观测，实际兼容需随dsh核对 |
-| dsh-persona-memory正式发行 | upstream | 2.4.2 | github: Geng-zy/dsh-persona-memory | 本插件公开正式发行；不自动下载安装 |
-| QQ接入插件可选联动 | upstream | 2.4.2 | github: Geng-zy/dsh-qq-gateway | 可选插件间事件与服务接口兼容；独立安装不要求另一个插件在场 |
+| dsh-persona-memory正式发行 | upstream | 2.5.0 | github: Geng-zy/dsh-persona-memory | 本插件公开正式发行；不自动下载安装 |
+| QQ接入插件可选联动 | upstream | 2.5.0 | github: Geng-zy/dsh-qq-gateway | 可选插件间事件与服务接口兼容；独立安装不要求另一个插件在场 |
 | DeepSeek Harness | upstream | 0.2.1-rc.2 | npm: @deepseek-ai/dsh | 宿主公开发行与插件SDK兼容，允许预览版；不扫描宿主安装情况 |
 | Node.js LTS | upstream | 24.22.1 | node-lts: https://nodejs.org/dist/index.json | 插件运行/开发所需的上游最新LTS；不检测服务器安装 |
 | Jina Reader公开网页读取后备 | service | 首次公开观测建立基准，非已适配证明 | document: https://jina.ai/reader/ | 可选公开文档读取后备服务；仅发送公开来源URL，不发送凭据、配置或业务数据 |
@@ -97,12 +94,39 @@
 | BAAI/bge-m3向量模型 | resource | 首次公开观测建立基准，非已适配证明 | github-file: FlagOpen/FlagEmbedding / README.md | 默认向量模型来源/检索框架公开说明；API提供商实际模型版本另需核实 |
 | Anthropic报告API | service | 首次公开观测建立基准，非已适配证明 | document: https://platform.claude.com/docs/en/release-notes/api | 独立报告模型模板的公开接口与弃用说明 |
 | 魔搭报告API | service | 首次公开观测建立基准，非已适配证明 | document: https://modelscope.cn/docs/model-service/API-Inference/intro | 独立报告模型模板的公开接口与弃用说明 |
+| Mistral | related-project | 首次公开观测建立基准，非已适配证明 | document: https://docs.mistral.ai/getting-started/changelog/ | 内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用 |
+| Groq | related-project | 首次公开观测建立基准，非已适配证明 | document: https://console.groq.com/docs/changelog | 内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用 |
+| Kimi / Moonshot | related-project | 首次公开观测建立基准，非已适配证明 | document: https://platform.moonshot.cn/docs/introduction | 内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用 |
+| MiniMax | related-project | 首次公开观测建立基准，非已适配证明 | document: https://platform.minimaxi.com/docs/release-notes/models | 内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用 |
+| 腾讯混元 | related-project | 首次公开观测建立基准，非已适配证明 | document: https://cloud.tencent.com/document/product/1729 | 内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用 |
+| 百度千帆 | related-project | 首次公开观测建立基准，非已适配证明 | document: https://cloud.baidu.com/doc/qianfan-api/index.html | 内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用 |
+| Jina Embeddings | related-project | 首次公开观测建立基准，非已适配证明 | document: https://jina.ai/embeddings/ | 内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用 |
+| Cohere | related-project | 首次公开观测建立基准，非已适配证明 | document: https://docs.cohere.com/changelog | 内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用 |
+| Gemini / Imagen | related-project | 首次公开观测建立基准，非已适配证明 | document: https://ai.google.dev/gemini-api/docs/changelog | 内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用 |
+| Server酱 | related-project | 首次公开观测建立基准，非已适配证明 | document: https://sct.ftqq.com | 内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用 |
+| PushPlus | related-project | 首次公开观测建立基准，非已适配证明 | document: https://www.pushplus.plus/doc/guide/api.html | 内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用 |
+| Ollama | related-project | 首次公开观测建立基准，非已适配证明 | github: ollama/ollama | 可选OpenAI兼容本地模型服务，不读取本机模型和安装版本 |
+| LM Studio | related-project | 首次公开观测建立基准，非已适配证明 | document: https://lmstudio.ai/changelog | 可选本地OpenAI兼容服务的官方稳定版发布记录 |
+| LobeHub服务商图标 | resource | 1.98.0 | npm: @lobehub/icons-static-svg | 静态内嵌Logo来源；核对资源署名和商标许可 |
+| dsh-agent-md设计参考 | resource | 首次公开观测建立基准，非已适配证明 | github-file: wwsmiler1-bit/dsh-agent-md / README.md | 记录设计参考来源变化，不自动移植或纳入人格提示 |
+| GitHub CLI | development-tool-reference | 首次公开观测建立基准，非已适配证明 | github: cli/cli | 公开发行与开发发布流程兼容；不扫描本机CLI或读取登录凭据 |
+| Node内置依赖目录 | resource | 首次公开观测建立基准，非已适配证明 | github-file: nodejs/node / deps | Node绑定的V8、OpenSSL、SQLite、libuv、zlib/zstd、ICU、网络/压缩库等依赖变化；随Node集成更新，不单独替换 |
+| OpenSSL LTS | related-project | 首次公开观测建立基准，非已适配证明 | github: openssl/openssl | Node/HTTPS及外部工具的间接TLS依赖；只比较受支持最新LTS，不单独替换Node内置库 |
+| OpenSSL支持政策 | related-project | 首次公开观测建立基准，非已适配证明 | document: https://www.openssl-library.org/policies/releasestrat/ | LTS通道政策的官方证据，仅元数据参考 |
+| zstd（Node绑定） | related-project | 首次公开观测建立基准，非已适配证明 | document: https://github.com/facebook/zstd/releases | Node内置库的公开发行参考，不作为独立可升级组件 |
+| ICU（Node绑定） | related-project | 首次公开观测建立基准，非已适配证明 | document: https://icu.unicode.org/download | Node内置库的公开发行参考，不作为独立可升级组件 |
+| libuv（Node绑定） | related-project | 首次公开观测建立基准，非已适配证明 | document: https://github.com/libuv/libuv/releases | Node内置库的公开发行参考，不作为独立可升级组件 |
+| openssl生命周期数据来源 | resource | 首次公开观测建立基准，非已适配证明 | github-file: endoflife-date/endoflife.date / products/openssl.md | 版本筛选新增依赖的社区生命周期元数据本身；支持政策仍需核对官方证据 |
+| @deepseek-ai/dsh-base | upstream | 0.2.1-rc.2 | npm: @deepseek-ai/dsh-base | 宿主基础bundle与预设/UI接口，保留预览例外 |
+| @deepseek-ai/dsh-web-app | upstream | 0.2.1-rc.2 | npm: @deepseek-ai/dsh-web-app | 宿主基础bundle与预设/UI接口，保留预览例外 |
 
 ## 覆盖边界
 
-- 清单覆盖仓库锁文件全部npm直接/间接依赖、SDK、移植代码和已声明的外部接入；不扫描宿主安装软件。
+- 清单覆盖本插件锁/声明/源码/脚本/测试导入、资源和接入；QQ另含官方公开镜像声明、SnowLuma公开锁快照。均不扫描宿主，不把公开快照当实际安装证明。
 - 公开资料型服务没有可靠版本API时比较正文摘要，首次只建立基线；页面改版、脚本渲染、缺少历史或访问失败均须人工核实。
 - 自定义HTTP、本地命令、第三方模型/工作流/插件和用户后加的工具无法从私有配置推断；请在补充上游中登记公开来源与适配基准。报告不会读取命令或密钥。
 - npm稳定版本不等于适配兼容；dsh/SDK预览版也必须做回归。间接依赖优先通过上层包升级。安全公告只覆盖OSV已收录的npm版本。
+- 没有公开SBOM的闭源QQ/镜像内部、用户自定义命令/私有模型/后加插件不能凭空枚举；新项目须登记公开来源。公开上游锁与镜像声明变化时须刷新UPSTREAM-SNAPSHOT，覆盖不代表永久不漏项。
+- 版本规则：明确LTS优先，无LTS采用正式稳定版；不自动回退预览。dsh/SDK是预览例外。文件/服务文档监测内容变化，不等于软件发版。
 - 当前报告记录仓库发布基准，不能代表服务器实际安装；部署状态由接手者获得授权后核对。
 - 邮件/微信厂商的账号额度、地域、服务端灰度和不公开变更无法保证自动识别；报告列出来源和未决项，不宣称覆盖上游未公开信息。
