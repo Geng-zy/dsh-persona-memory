@@ -1,6 +1,6 @@
 # 依赖与公开上游清单
 
-本清单随构建自动生成，来源为package.json、pnpm-lock.yaml、源码外部模块引用和scripts/build-update-catalog.mjs中的上游资源定义。不是对宿主已安装程序的检查。当前插件：dsh-persona-memory 2.4.1。
+本清单随构建自动生成，来源为package.json、pnpm-lock.yaml、源码外部模块引用和scripts/build-update-catalog.mjs中的上游资源定义。不是对宿主已安装程序的检查。当前插件：dsh-persona-memory 2.4.2。
 
 | 项目 | 类别 | 仓库适配基准 | 检查来源 | 用途 |
 | --- | --- | --- | --- | --- |
@@ -73,8 +73,8 @@
 | ,
 			quietEnd:  | host-provided-module | 首次公开观测建立基准，非已适配证明 | npm: ,
 			quietEnd:  | 源码引用的宿主提供模块；未随本插件锁定的版本仅按公开发行观测，实际兼容需随dsh核对 |
-| dsh-persona-memory正式发行 | upstream | 2.4.1 | github: Geng-zy/dsh-persona-memory | 本插件公开正式发行；不自动下载安装 |
-| QQ接入插件可选联动 | upstream | 2.4.1 | github: Geng-zy/dsh-qq-gateway | 可选插件间事件与服务接口兼容；独立安装不要求另一个插件在场 |
+| dsh-persona-memory正式发行 | upstream | 2.4.2 | github: Geng-zy/dsh-persona-memory | 本插件公开正式发行；不自动下载安装 |
+| QQ接入插件可选联动 | upstream | 2.4.2 | github: Geng-zy/dsh-qq-gateway | 可选插件间事件与服务接口兼容；独立安装不要求另一个插件在场 |
 | DeepSeek Harness | upstream | 0.2.1-rc.2 | npm: @deepseek-ai/dsh | 宿主公开发行与插件SDK兼容，允许预览版；不扫描宿主安装情况 |
 | Node.js LTS | upstream | 24.22.1 | node-lts: https://nodejs.org/dist/index.json | 插件运行/开发所需的上游最新LTS；不检测服务器安装 |
 | Jina Reader公开网页读取后备 | service | 首次公开观测建立基准，非已适配证明 | document: https://jina.ai/reader/ | 可选公开文档读取后备服务；仅发送公开来源URL，不发送凭据、配置或业务数据 |

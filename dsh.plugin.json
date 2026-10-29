@@ -1,6 +1,6 @@
 {
   "id": "dsh-persona-memory",
-  "version": "2.4.1",
+  "version": "2.4.2",
   "main": "./lib/companion/index.js",
   "description": "人格与记忆：人格、分域核心和长期记忆、日记、上下文管理与独立备份。",
   "engines": {

@@ -14,7 +14,7 @@ function harness(t,sources=[source()],more={}){
  const deps={catalog:cat,directory,settings:()=>config,now:()=>now,fetch,notify:async(channel,title,text)=>sent.push({channel,title,text}),...more};const monitor=new UpdateMonitor(deps);return{monitor,config,sent,requests,directory,deps,setNow:n=>now=n};
 }
 test('默认关闭；两个插件清单包含锁定间接依赖、宿主接口和公开来源，不包含本机信息',()=>{
- assert.equal(updateSchema.updatesEnabled.meta.default,false);assert.equal(updateSchema.updatesIntervalDays.meta.default,7)
+ assert.equal(updateSchema.updatesEnabled.meta.default,false);assert.equal(updateSchema.updatesIntervalDays.meta.default,7);assert.equal(updateSchema.updatesMaxTokens.meta.default,32768)
  assert.ok(updateCatalog.sources.some(x=>x.category==='transitive-package'));assert.ok(updateCatalog.sources.some(x=>x.kind==='npm'&&x.prerelease));assert.ok(updateCatalog.sources.some(x=>x.category==='service'))
  assert.ok(updateCatalog.sources.every(x=>x.id&&x.purpose&&x.target));assert.doesNotMatch(JSON.stringify(updateCatalog),/\/Users\/|\/home\/|62\.234\./)
 })
