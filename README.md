@@ -2,6 +2,8 @@
 
 独立管理人格、公共/管理员/群聊/其他私聊核心记忆、长期记忆与关系图、日记、记忆整理、上下文压缩和自身备份恢复。默认仅作用于QQ会话，不修改全局默认预设。QQ接入、原始聊天存档、主动聊天和媒体功能由独立仓库[dsh-qq-gateway](https://github.com/Geng-zy/dsh-qq-gateway)负责。
 
+维护入口：[本插件独立交接文档](docs/HANDOFF.md)。
+
 ```sh
 dsh plugin --profile web add "https://github.com/Geng-zy/dsh-persona-memory/releases/download/v2.6.0/dsh-persona-memory-2.6.0.tgz" --ignore-scripts
 ```
