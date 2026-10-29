@@ -11,6 +11,7 @@ import { createHash } from 'node:crypto'
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
+import {writeBackupGuide} from './backup-guide.js'
 import { Archive } from './archive.js'
 import { TextDoc } from './docs.js'
 import { exportMasterSessions, importMasterSessions, type MasterSessionServices } from './master-sessions.js'
@@ -82,7 +83,7 @@ export interface Manifest {
   range: { from?: number; to?: number }
   embed: { model?: string; dim?: number }
   settings: Record<string, unknown>
-  files: Array<{ path: string; sha256: string; size: number }>
+  files: Array<{ path: string; sha256: string; size: number; description?:string; restoreItem?:string|null }>
 }
 
 export interface BackupInfo { name: string; size: number; createdAt: number; reason?: string }
@@ -131,6 +132,7 @@ export interface CreateOptions {
   /** 备份哪些；不给就是默认的 */
   items?: readonly BackupItem[]
   /** 设置文件（名字见 SETTINGS_FILES），只放勾选了的 */
+  settingDescriptions?:Record<string,string>
   settingsFiles?: Record<string, unknown>
   sessionServices?: MasterSessionServices
   now?: number
@@ -170,7 +172,7 @@ export async function createBackup(o: CreateOptions): Promise<{ name: string; ma
         copy.exec('DELETE FROM journal')
         copy.exec("DELETE FROM meta WHERE key LIKE 'carry:%' OR key LIKE 'proactive:%'")
         memories=Number((copy.prepare('SELECT COUNT(*) AS n FROM memories').get() as {n:number}).n)
-        copy.exec('VACUUM')
+        copy.exec('VACUUM; PRAGMA journal_mode=DELETE;')
       } finally {
         copy.close()
       }
@@ -188,7 +190,8 @@ export async function createBackup(o: CreateOptions): Promise<{ name: string; ma
       writeFileSync(join(staging, 'settings', name + '.json'), JSON.stringify(value, null, 2))
     }
     const diaryFiles = walk(join(staging, 'diary'))
-    const files = walk(staging).map(path => ({ path, sha256: sha256(join(staging, path)), size: statSync(join(staging, path)).size }))
+    const descriptions=writeBackupGuide(staging,{owner:'dsh-persona-memory',plugin:o.plugin,createdAt:now,items:ITEMS.filter(i=>items.has(i)),payload:walk(staging),settingDescriptions:o.settingDescriptions})
+    const files = walk(staging).map(path => ({ path, sha256: sha256(join(staging, path)), size: statSync(join(staging, path)).size, description:descriptions[path]?.description,restoreItem:descriptions[path]?.restoreItem??null }))
     const manifest: Manifest = {
       owner: 'dsh-persona-memory', format: BACKUP_FORMAT, formatVersion: BACKUP_FORMAT_VERSION, plugin: o.plugin, schema: o.schema, createdAt: now, reason: o.reason,
       items: ITEMS.filter(i => items.has(i)),

@@ -1,3 +1,4 @@
+import {describeSettings} from './backup-guide.js'
 // dsh-companion-core（插件二）常驻部分：
 //   - 人格、核心记忆：挂在 dsh 全局的系统提示词组装环节，QQ 和 dsh 的所有会话每一步都现读；
 //   - 她自己改人格/核心记忆的工具：只装在主人的会话里；
@@ -639,7 +640,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
     // 导入前的备份什么都带上，万一要退回去
     const chosen = reason === 'before-import' ? ITEMS : items ?? configuredItems(get('backupItems'))
     const r = await createBackup({
-      dataDir: dir, db: archive.db, outDir: backupsDir, reason, plugin: pluginVersion, schema: SCHEMA_VERSION, settings: settingsSnapshot(),
+      settingDescriptions:describeSettings(Config), dataDir: dir, db: archive.db, outDir: backupsDir, reason, plugin: pluginVersion, schema: SCHEMA_VERSION, settings: settingsSnapshot(),
       embed: { ...(es.model.trim() ? { model: es.model.trim() } : {}), ...(Number.isFinite(dim) ? { dim } : {}) }, keep: get('backupKeep'),
       items: chosen, sessionServices: sessionServices(), settingsFiles: chosen.some(i => SETTINGS_ITEMS.includes(i)) ? captureSettings() : {},
     })

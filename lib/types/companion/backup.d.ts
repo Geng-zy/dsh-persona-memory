@@ -61,6 +61,8 @@ export interface Manifest {
         path: string;
         sha256: string;
         size: number;
+        description?: string;
+        restoreItem?: string | null;
     }>;
 }
 export interface BackupInfo {
@@ -82,6 +84,7 @@ export interface CreateOptions {
     /** 备份哪些；不给就是默认的 */
     items?: readonly BackupItem[];
     /** 设置文件（名字见 SETTINGS_FILES），只放勾选了的 */
+    settingDescriptions?: Record<string, string>;
     settingsFiles?: Record<string, unknown>;
     sessionServices?: MasterSessionServices;
     now?: number;
