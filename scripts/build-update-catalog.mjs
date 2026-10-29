@@ -3,6 +3,7 @@ import {createHash} from 'node:crypto'
 import {parse} from 'yaml'
 import {externalImports,staticProviderIds} from './import-inventory.mjs'
 import {addRelatedSources} from './related-upstreams.mjs'
+import {groupUpstreams} from './group-upstreams.mjs'
 const root=new URL('../',import.meta.url),pkg=JSON.parse(readFileSync(new URL('package.json',root))),lockText=readFileSync(new URL('pnpm-lock.yaml',root),'utf8'),lock=parse(lockText),qq=pkg.name==='dsh-qq-gateway';
 const direct={...pkg.dependencies,...pkg.devDependencies,...pkg.peerDependencies},sources=[];
 for(const key of Object.keys(lock.packages||{})){
@@ -67,12 +68,15 @@ if(qq){
 }
 for(const [id,name,url]of [['anthropic','Anthropic报告API','https://platform.claude.com/docs/en/release-notes/api'],['deepseek','DeepSeek报告API','https://api-docs.deepseek.com/updates/'],['modelscope','魔搭报告API','https://modelscope.cn/docs/model-service/API-Inference/intro'],['siliconflow','硅基流动报告API','https://docs.siliconflow.cn/cn/release-notes/overview']]){if(!sources.some(x=>x.id==='service:'+id))source('service:'+id,name,'document',url,undefined,'独立报告模型模板的公开接口与弃用说明',['src/update-model.ts','src/client/updates.js'],{category:'service'})}
 addRelatedSources(sources,{root,qq});
+if(qq)source('snowluma-image','SnowLuma官方镜像','docker-image','motricseven7/snowluma',undefined,'监测官方默认镜像标签内容变化；应用正式版本由SnowLuma项目单独判断，不自动升级或重启',['deploy/snowluma.compose.yml'],{path:'latest'});
 for(const name of Object.keys(direct)){if(!sources.some(s=>s.kind==='npm'&&s.target===name))source('declared:'+name,name,'npm',name,undefined,'声明但未由锁文件固定的依赖，首次公开观测不代表已适配',['package.json'],{prerelease:name.startsWith('@deepseek-ai/dsh')})}
 for(const name of ['@deepseek-ai/dsh-base','@deepseek-ai/dsh-web-app'])if(!sources.some(s=>s.target===name))source('host:'+name,name,'npm',name,'0.2.1-rc.2','宿主基础bundle与预设/UI接口，保留预览例外',['cordis.patch.yml'],{prerelease:true});
 if(sources.some(s=>s.kind==='npm'&&!/^(?:@[a-z0-9_.-]+\/)?[a-z0-9_.-]+$/i.test(s.target)))throw Error('Invalid npm inventory entry');
 const providerAliases={bailian:'service:dashscope',zhipu:'service:glm',jina:'service:jina-embed',ollama:'ollama',lmstudio:'lmstudio',imagen:'service:gemini',a1111:'a1111',comfyui:'comfyui'};
 for(const file of ['src/client/'+(qq?'bridge.js':'companion.js'),'src/client/updates.js'])for(const id of staticProviderIds(readFileSync(new URL(file,root),'utf8'))){if(id==='custom'||id==='command')continue;const key=providerAliases[id]??'service:'+id;if(!sources.some(s=>s.id===key))throw Error('Missing provider upstream: '+id+' in '+file)}
-const catalog={owner:pkg.name,version:pkg.version,repository:pkg.repository.url.replace('git+','').replace(/\.git$/,''),lockHash:createHash('sha256').update(lockText).digest('hex'),sources,limitations:[
+const grouped=groupUpstreams(sources);
+const catalog={owner:pkg.name,version:pkg.version,repository:pkg.repository.url.replace('git+','').replace(/\.git$/,''),lockHash:createHash('sha256').update(lockText).digest('hex'),sources:grouped.sources,managedSources:grouped.managedSources,limitations:[
+ '检查单位按可独立更新的上层项目合并；内部模块保留managedSources归属记录，既不逐个联网检查，也不单独提醒。软件发布、镜像发布和独立工具不是同一升级单位。',
  '清单覆盖本插件锁/声明/源码/脚本/测试导入、资源和接入；QQ另含官方公开镜像声明、SnowLuma公开锁快照。均不扫描宿主，不把公开快照当实际安装证明。',
  '公开资料型服务没有可靠版本API时比较正文摘要，首次只建立基线；页面改版、脚本渲染、缺少历史或访问失败均须人工核实。',
  '自定义HTTP、本地命令、第三方模型/工作流/插件和用户后加的工具无法从私有配置推断；请在补充上游中登记公开来源与适配基准。报告不会读取命令或密钥。',
@@ -85,4 +89,4 @@ const catalog={owner:pkg.name,version:pkg.version,repository:pkg.repository.url.
 writeFileSync(new URL('src/update-catalog.ts',root),'// Generated from package.json, pnpm-lock.yaml and public upstream inventory; no local environment.\nimport type {Catalog} from "./updates.js"\nexport const updateCatalog: Catalog = '+JSON.stringify(catalog,null,2)+'\n');
 
 writeFileSync(new URL('docs/DEPENDENCIES.json',root),JSON.stringify(catalog,null,2)+'\n');
-writeFileSync(new URL('docs/DEPENDENCIES.md',root),'# 依赖与公开上游清单\n\n本清单随构建自动生成，来源为package.json、pnpm-lock.yaml、源码外部模块引用和scripts/build-update-catalog.mjs中的上游资源定义。不是对宿主已安装程序的检查。当前插件：'+catalog.owner+' '+catalog.version+'。\n\n| 项目 | 类别 | 声明/公开快照基准（非安装证明） | 检查来源 | 用途 |\n| --- | --- | --- | --- | --- |\n'+sources.map(s=>'| '+s.name+' | '+s.category+' | '+(s.current||'首次公开观测建立基准，非已适配证明')+' | '+s.kind+': '+s.target+(s.path?' / '+s.path:'')+' | '+s.purpose+' |').join('\n')+'\n\n## 覆盖边界\n\n'+catalog.limitations.map(s=>'- '+s).join('\n')+'\n');
+writeFileSync(new URL('docs/DEPENDENCIES.md',root),'# 依赖与公开上游清单\n\n本清单随构建自动生成，来源为package.json、pnpm-lock.yaml、源码外部模块引用和scripts/build-update-catalog.mjs中的上游资源定义。不是对宿主已安装程序的检查。当前插件：'+catalog.owner+' '+catalog.version+'。\n\n| 项目 | 类别 | 声明/公开快照基准（非安装证明） | 检查来源 | 用途 |\n| --- | --- | --- | --- | --- |\n'+catalog.sources.map(s=>'| '+s.name+' | '+s.category+' | '+(s.current||'首次公开观测建立基准，非已适配证明')+' | '+s.kind+': '+s.target+(s.path?' / '+s.path:'')+' | '+s.purpose+' |').join('\n')+'\n\n## 随上层统一管理的组件\n\n'+catalog.sources.filter(s=>s.managedCount).map(s=>'- '+s.name+'：'+s.managedCount+'项。').join('\n')+'\n\n详细映射保留在DEPENDENCIES.json的managedSources，供维护审查；内部组件不作为独立检查或通知项。更新上层会采用该上层所集成的组件版本，不保证每个组件都恰为其独立最新版。\n\n## 覆盖边界\n\n'+catalog.limitations.map(s=>'- '+s).join('\n')+'\n');

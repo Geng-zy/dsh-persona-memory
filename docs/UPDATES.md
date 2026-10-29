@@ -6,7 +6,7 @@
 
 ## 完整范围和版本规则
 
-[完整清单](DEPENDENCIES.md)和[JSON清单](DEPENDENCIES.json)随构建生成，来源是package.json、pnpm锁文件、源码外部模块引用及scripts/build-update-catalog.mjs中的公开来源定义，包含直接/间接、开发/测试依赖及宿主提供的接口模块。
+[完整清单](DEPENDENCIES.md)和[JSON清单](DEPENDENCIES.json)随构建生成，来源是package.json、pnpm锁文件、源码外部模块引用及scripts/build-update-catalog.mjs中的公开来源定义，包含直接/间接、开发/测试依赖及宿主提供的接口模块；sources为实际独立检查单位，managedSources保留随上层管理的完整组件归属。
 
 QQ插件还覆盖SnowLuma、官方镜像构建/QQ版本定义、AstrBot/aiocqhttp移植来源、QFace小黄脸数字编号/名称与旧数据、FFmpeg、语音/生图/识别/通知服务及可选本地接入项目。人格插件覆盖其模型、向量服务及默认向量模型来源。SMTP客户端更新由nodemailer覆盖，SMTP标准或邮箱本身没有统一的“最新版”。
 
@@ -70,3 +70,23 @@ QQ插件还覆盖SnowLuma、官方镜像构建/QQ版本定义、AstrBot/aiocqhtt
 QQ维护者在公开上游锁或Dockerfile变化时，显式运行`node scripts/refresh-upstream-inventory.mjs`刷新`docs/UPSTREAM-SNAPSHOT.json`，再build/test。该脚本只读取公开GitHub资料，不执行下载内容；可选GITHUB_TOKEN仅用于GitHub，不写快照。不执行本机软件探测。构建离线读取已提交快照，不隐式联网。
 
 覆盖边界：清单依据当前两仓库与公开上游声明，可核对这些文件中可识别的项目；闭源QQ/镜像未公开内部、完整发行版传递依赖、私有命令/工作流、用户新增模型和未登记扩展不能凭空枚举。镜像与上游锁变化另有监控条目提醒刷新清单，不能宣称永久绝不遗漏。
+
+## 2.6.0按实际升级单位合并
+
+只对可独立更新的上层项目联网检查与提醒，内部组件不逐个追版本。完整声明仍保留在JSON清单managedSources，字段managedBy和managedReason说明由谁管理；Markdown只列上层项目与组件数量。
+
+| 上层项目 | 合并内容 |
+| --- | --- |
+| dsh | 随宿主交付的内部插件、SDK、UI模块及其专属间接依赖 |
+| Node LTS | 当前使用的内置OpenSSL、SQLite、libuv、V8、ICU、压缩等库 |
+| TypeScript | 同版本平台编译器二进制 |
+| Playwright | 同版本core与匹配浏览器，升级后仍须运行playwright install安装浏览器 |
+| Node类型声明 | 配套undici-types |
+| SnowLuma应用 | 公开锁中的内部npm依赖及锁文件 |
+| SnowLuma官方镜像 | 镜像内QQ、noVNC/websockify、桌面、系统包、构建/启动/进程定义 |
+
+应用发布与镜像更新不保证同步，分别保留SnowLuma正式软件发行检查和官方默认motricseven7/snowluma:latest内容检查。Docker Hub公开标签摘要变化可发现同名标签重建；组合指纹只用于变化识别，不是下载校验或正式版证明。自定义镜像不能从私密配置推断，需另外登记/维护公开来源。
+
+Docker Engine、CLI、Compose、Buildx、BuildKit、containerd、runc是各自发版的升级单位，不因名称相关就合并；更新Engine不保证所有独立组件更新。插件直接声明的独立基础库、复制进代码的QFace/图标/移植代码仍检查；更新宿主不会改写这些静态代码或资源。
+
+“随上层管理”表示采用上层选定的集成版本，不承诺每次上层更新都会把每个内部库升到其独立最新版。报告模型仅在上层项目下说明内部影响，不单列内部升级任务。迁移到policyVersion=3会清理旧粒度结果/报告/待发重试，保留设置、周期与公开基线，等待下一次手动/定时检查。

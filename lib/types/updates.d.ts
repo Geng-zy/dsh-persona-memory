@@ -52,7 +52,7 @@ export declare const updateSchema: {
     updatesPushKey: z<string, string, "volatile">;
     updatesExtraSources: z<string, string, "volatile-defined">;
 };
-export type SourceKind = 'npm' | 'pypi' | 'github' | 'github-file' | 'document' | 'node-lts' | 'ffmpeg-release' | 'lifecycle' | 'github-tags';
+export type SourceKind = 'npm' | 'pypi' | 'github' | 'github-file' | 'document' | 'node-lts' | 'ffmpeg-release' | 'lifecycle' | 'github-tags' | 'docker-image';
 export interface UpdateSource {
     id: string;
     name: string;
@@ -67,6 +67,7 @@ export interface UpdateSource {
     category: string;
     ltsProduct?: string;
     baselineKind?: string;
+    managedCount?: number;
 }
 export interface Catalog {
     owner: string;
@@ -74,6 +75,10 @@ export interface Catalog {
     repository: string;
     lockHash: string;
     sources: UpdateSource[];
+    managedSources?: (UpdateSource & {
+        managedBy: string;
+        managedReason: string;
+    })[];
     limitations: string[];
 }
 export interface Finding {

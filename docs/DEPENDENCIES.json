@@ -1,6 +1,6 @@
 {
   "owner": "dsh-persona-memory",
-  "version": "2.5.0",
+  "version": "2.6.0",
   "repository": "https://github.com/Geng-zy/dsh-persona-memory",
   "lockHash": "7326754d83ddace9c1ccb816a90f5945b1965c5fe6bc53a998c2ac94987c8438",
   "sources": [
@@ -27,363 +27,6 @@
       "current": "1.8.6",
       "category": "transitive-package",
       "prerelease": false,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@deepseek-ai/dsh-agent@0.2.1-rc.2",
-      "name": "@deepseek-ai/dsh-agent",
-      "kind": "npm",
-      "target": "@deepseek-ai/dsh-agent",
-      "current": "0.2.1-rc.2",
-      "range": ">=0.2.0-0 <0.2.1-0 || >=0.2.1-0 <0.2.2-0 || >=0.2.2-0 <0.2.3-0 || >=0.2.3-0 <0.2.4-0 || >=0.2.4-0 <0.2.5-0 || >=0.2.5-0 <0.2.6-0 || >=0.2.6-0 <0.2.7-0 || >=0.2.7-0 <0.2.8-0 || >=0.2.8-0 <0.2.9-0 || >=0.2.9-0 <0.3.0-0",
-      "category": "host-sdk",
-      "prerelease": true,
-      "purpose": "插件调用的宿主SDK接口，随dsh预览版本校验兼容",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@deepseek-ai/dsh-attachment@0.2.1-rc.2",
-      "name": "@deepseek-ai/dsh-attachment",
-      "kind": "npm",
-      "target": "@deepseek-ai/dsh-attachment",
-      "current": "0.2.1-rc.2",
-      "category": "transitive-package",
-      "prerelease": true,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@deepseek-ai/dsh-brand@0.2.1-rc.2",
-      "name": "@deepseek-ai/dsh-brand",
-      "kind": "npm",
-      "target": "@deepseek-ai/dsh-brand",
-      "current": "0.2.1-rc.2",
-      "category": "transitive-package",
-      "prerelease": true,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@deepseek-ai/dsh-commands@0.2.1-rc.2",
-      "name": "@deepseek-ai/dsh-commands",
-      "kind": "npm",
-      "target": "@deepseek-ai/dsh-commands",
-      "current": "0.2.1-rc.2",
-      "category": "transitive-package",
-      "prerelease": true,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@deepseek-ai/dsh-compaction-basic@0.2.1-rc.2",
-      "name": "@deepseek-ai/dsh-compaction-basic",
-      "kind": "npm",
-      "target": "@deepseek-ai/dsh-compaction-basic",
-      "current": "0.2.1-rc.2",
-      "range": ">=0.2.0-0 <0.2.1-0 || >=0.2.1-0 <0.2.2-0 || >=0.2.2-0 <0.2.3-0 || >=0.2.3-0 <0.2.4-0 || >=0.2.4-0 <0.2.5-0 || >=0.2.5-0 <0.2.6-0 || >=0.2.6-0 <0.2.7-0 || >=0.2.7-0 <0.2.8-0 || >=0.2.8-0 <0.2.9-0 || >=0.2.9-0 <0.3.0-0",
-      "category": "host-sdk",
-      "prerelease": true,
-      "purpose": "插件调用的宿主SDK接口，随dsh预览版本校验兼容",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@deepseek-ai/dsh-compaction-image-offload@0.2.1-rc.2",
-      "name": "@deepseek-ai/dsh-compaction-image-offload",
-      "kind": "npm",
-      "target": "@deepseek-ai/dsh-compaction-image-offload",
-      "current": "0.2.1-rc.2",
-      "category": "transitive-package",
-      "prerelease": true,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@deepseek-ai/dsh-compaction@0.2.1-rc.2",
-      "name": "@deepseek-ai/dsh-compaction",
-      "kind": "npm",
-      "target": "@deepseek-ai/dsh-compaction",
-      "current": "0.2.1-rc.2",
-      "range": ">=0.2.0-0 <0.2.1-0 || >=0.2.1-0 <0.2.2-0 || >=0.2.2-0 <0.2.3-0 || >=0.2.3-0 <0.2.4-0 || >=0.2.4-0 <0.2.5-0 || >=0.2.5-0 <0.2.6-0 || >=0.2.6-0 <0.2.7-0 || >=0.2.7-0 <0.2.8-0 || >=0.2.8-0 <0.2.9-0 || >=0.2.9-0 <0.3.0-0",
-      "category": "host-sdk",
-      "prerelease": true,
-      "purpose": "插件调用的宿主SDK接口，随dsh预览版本校验兼容",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@deepseek-ai/dsh-fs@0.2.1-rc.2",
-      "name": "@deepseek-ai/dsh-fs",
-      "kind": "npm",
-      "target": "@deepseek-ai/dsh-fs",
-      "current": "0.2.1-rc.2",
-      "category": "transitive-package",
-      "prerelease": true,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@deepseek-ai/dsh-llm-retry@0.2.1-rc.2",
-      "name": "@deepseek-ai/dsh-llm-retry",
-      "kind": "npm",
-      "target": "@deepseek-ai/dsh-llm-retry",
-      "current": "0.2.1-rc.2",
-      "category": "transitive-package",
-      "prerelease": true,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@deepseek-ai/dsh-llm@0.2.1-rc.2",
-      "name": "@deepseek-ai/dsh-llm",
-      "kind": "npm",
-      "target": "@deepseek-ai/dsh-llm",
-      "current": "0.2.1-rc.2",
-      "range": ">=0.2.0-0 <0.2.1-0 || >=0.2.1-0 <0.2.2-0 || >=0.2.2-0 <0.2.3-0 || >=0.2.3-0 <0.2.4-0 || >=0.2.4-0 <0.2.5-0 || >=0.2.5-0 <0.2.6-0 || >=0.2.6-0 <0.2.7-0 || >=0.2.7-0 <0.2.8-0 || >=0.2.8-0 <0.2.9-0 || >=0.2.9-0 <0.3.0-0",
-      "category": "host-sdk",
-      "prerelease": true,
-      "purpose": "插件调用的宿主SDK接口，随dsh预览版本校验兼容",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@deepseek-ai/dsh-ptc-runtime@0.2.1-rc.2",
-      "name": "@deepseek-ai/dsh-ptc-runtime",
-      "kind": "npm",
-      "target": "@deepseek-ai/dsh-ptc-runtime",
-      "current": "0.2.1-rc.2",
-      "category": "transitive-package",
-      "prerelease": true,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@deepseek-ai/dsh-sandbox-policy@0.2.1-rc.2",
-      "name": "@deepseek-ai/dsh-sandbox-policy",
-      "kind": "npm",
-      "target": "@deepseek-ai/dsh-sandbox-policy",
-      "current": "0.2.1-rc.2",
-      "category": "transitive-package",
-      "prerelease": true,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@deepseek-ai/dsh-sandbox@0.2.1-rc.2",
-      "name": "@deepseek-ai/dsh-sandbox",
-      "kind": "npm",
-      "target": "@deepseek-ai/dsh-sandbox",
-      "current": "0.2.1-rc.2",
-      "category": "transitive-package",
-      "prerelease": true,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@deepseek-ai/dsh-scope@0.2.1-rc.2",
-      "name": "@deepseek-ai/dsh-scope",
-      "kind": "npm",
-      "target": "@deepseek-ai/dsh-scope",
-      "current": "0.2.1-rc.2",
-      "category": "transitive-package",
-      "prerelease": true,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@deepseek-ai/dsh-session-projection@0.2.1-rc.2",
-      "name": "@deepseek-ai/dsh-session-projection",
-      "kind": "npm",
-      "target": "@deepseek-ai/dsh-session-projection",
-      "current": "0.2.1-rc.2",
-      "category": "transitive-package",
-      "prerelease": true,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@deepseek-ai/dsh-session@0.2.1-rc.2",
-      "name": "@deepseek-ai/dsh-session",
-      "kind": "npm",
-      "target": "@deepseek-ai/dsh-session",
-      "current": "0.2.1-rc.2",
-      "range": ">=0.2.0-0 <0.2.1-0 || >=0.2.1-0 <0.2.2-0 || >=0.2.2-0 <0.2.3-0 || >=0.2.3-0 <0.2.4-0 || >=0.2.4-0 <0.2.5-0 || >=0.2.5-0 <0.2.6-0 || >=0.2.6-0 <0.2.7-0 || >=0.2.7-0 <0.2.8-0 || >=0.2.8-0 <0.2.9-0 || >=0.2.9-0 <0.3.0-0",
-      "category": "host-sdk",
-      "prerelease": true,
-      "purpose": "插件调用的宿主SDK接口，随dsh预览版本校验兼容",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@deepseek-ai/dsh-system-prompt@0.2.1-rc.2",
-      "name": "@deepseek-ai/dsh-system-prompt",
-      "kind": "npm",
-      "target": "@deepseek-ai/dsh-system-prompt",
-      "current": "0.2.1-rc.2",
-      "range": ">=0.2.0-0 <0.2.1-0 || >=0.2.1-0 <0.2.2-0 || >=0.2.2-0 <0.2.3-0 || >=0.2.3-0 <0.2.4-0 || >=0.2.4-0 <0.2.5-0 || >=0.2.5-0 <0.2.6-0 || >=0.2.6-0 <0.2.7-0 || >=0.2.7-0 <0.2.8-0 || >=0.2.8-0 <0.2.9-0 || >=0.2.9-0 <0.3.0-0",
-      "category": "host-sdk",
-      "prerelease": true,
-      "purpose": "插件调用的宿主SDK接口，随dsh预览版本校验兼容",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@deepseek-ai/dsh-timeout@0.2.1-rc.2",
-      "name": "@deepseek-ai/dsh-timeout",
-      "kind": "npm",
-      "target": "@deepseek-ai/dsh-timeout",
-      "current": "0.2.1-rc.2",
-      "category": "transitive-package",
-      "prerelease": true,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@deepseek-ai/dsh-token-meter@0.2.1-rc.2",
-      "name": "@deepseek-ai/dsh-token-meter",
-      "kind": "npm",
-      "target": "@deepseek-ai/dsh-token-meter",
-      "current": "0.2.1-rc.2",
-      "category": "transitive-package",
-      "prerelease": true,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@deepseek-ai/dsh-tools@0.2.1-rc.2",
-      "name": "@deepseek-ai/dsh-tools",
-      "kind": "npm",
-      "target": "@deepseek-ai/dsh-tools",
-      "current": "0.2.1-rc.2",
-      "range": ">=0.2.0-0 <0.2.1-0 || >=0.2.1-0 <0.2.2-0 || >=0.2.2-0 <0.2.3-0 || >=0.2.3-0 <0.2.4-0 || >=0.2.4-0 <0.2.5-0 || >=0.2.5-0 <0.2.6-0 || >=0.2.6-0 <0.2.7-0 || >=0.2.7-0 <0.2.8-0 || >=0.2.8-0 <0.2.9-0 || >=0.2.9-0 <0.3.0-0",
-      "category": "host-sdk",
-      "prerelease": true,
-      "purpose": "插件调用的宿主SDK接口，随dsh预览版本校验兼容",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@deepseek-ai/dsh-typert-protocol@0.2.1-rc.2",
-      "name": "@deepseek-ai/dsh-typert-protocol",
-      "kind": "npm",
-      "target": "@deepseek-ai/dsh-typert-protocol",
-      "current": "0.2.1-rc.2",
-      "category": "transitive-package",
-      "prerelease": true,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@deepseek-ai/dsh-user-approval@0.2.1-rc.2",
-      "name": "@deepseek-ai/dsh-user-approval",
-      "kind": "npm",
-      "target": "@deepseek-ai/dsh-user-approval",
-      "current": "0.2.1-rc.2",
-      "category": "transitive-package",
-      "prerelease": true,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@deepseek-ai/dsh-util-crypto@0.2.1-rc.2",
-      "name": "@deepseek-ai/dsh-util-crypto",
-      "kind": "npm",
-      "target": "@deepseek-ai/dsh-util-crypto",
-      "current": "0.2.1-rc.2",
-      "category": "transitive-package",
-      "prerelease": true,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@deepseek-ai/dsh-util-values@0.2.1-rc.2",
-      "name": "@deepseek-ai/dsh-util-values",
-      "kind": "npm",
-      "target": "@deepseek-ai/dsh-util-values",
-      "current": "0.2.1-rc.2",
-      "category": "transitive-package",
-      "prerelease": true,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@deepseek-ai/dsh-working-directory@0.2.1-rc.2",
-      "name": "@deepseek-ai/dsh-working-directory",
-      "kind": "npm",
-      "target": "@deepseek-ai/dsh-working-directory",
-      "current": "0.2.1-rc.2",
-      "category": "transitive-package",
-      "prerelease": true,
       "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
       "files": [
         "package.json",
@@ -428,11 +71,12 @@
       "range": "^24.0.0",
       "category": "development-package",
       "prerelease": false,
-      "purpose": "插件运行或构建/测试依赖",
+      "purpose": "插件运行或构建/测试依赖；合并管理1项内部记录，详细归属见清单JSON，不逐项检查或提醒",
       "files": [
         "package.json",
         "pnpm-lock.yaml"
-      ]
+      ],
+      "managedCount": 1
     },
     {
       "id": "npm:@types/nodemailer@8.0.2",
@@ -480,286 +124,6 @@
       ]
     },
     {
-      "id": "npm:@typescript/typescript-aix-ppc64@7.0.2",
-      "name": "@typescript/typescript-aix-ppc64",
-      "kind": "npm",
-      "target": "@typescript/typescript-aix-ppc64",
-      "current": "7.0.2",
-      "category": "transitive-package",
-      "prerelease": false,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@typescript/typescript-darwin-arm64@7.0.2",
-      "name": "@typescript/typescript-darwin-arm64",
-      "kind": "npm",
-      "target": "@typescript/typescript-darwin-arm64",
-      "current": "7.0.2",
-      "category": "transitive-package",
-      "prerelease": false,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@typescript/typescript-darwin-x64@7.0.2",
-      "name": "@typescript/typescript-darwin-x64",
-      "kind": "npm",
-      "target": "@typescript/typescript-darwin-x64",
-      "current": "7.0.2",
-      "category": "transitive-package",
-      "prerelease": false,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@typescript/typescript-freebsd-arm64@7.0.2",
-      "name": "@typescript/typescript-freebsd-arm64",
-      "kind": "npm",
-      "target": "@typescript/typescript-freebsd-arm64",
-      "current": "7.0.2",
-      "category": "transitive-package",
-      "prerelease": false,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@typescript/typescript-freebsd-x64@7.0.2",
-      "name": "@typescript/typescript-freebsd-x64",
-      "kind": "npm",
-      "target": "@typescript/typescript-freebsd-x64",
-      "current": "7.0.2",
-      "category": "transitive-package",
-      "prerelease": false,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@typescript/typescript-linux-arm64@7.0.2",
-      "name": "@typescript/typescript-linux-arm64",
-      "kind": "npm",
-      "target": "@typescript/typescript-linux-arm64",
-      "current": "7.0.2",
-      "category": "transitive-package",
-      "prerelease": false,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@typescript/typescript-linux-arm@7.0.2",
-      "name": "@typescript/typescript-linux-arm",
-      "kind": "npm",
-      "target": "@typescript/typescript-linux-arm",
-      "current": "7.0.2",
-      "category": "transitive-package",
-      "prerelease": false,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@typescript/typescript-linux-loong64@7.0.2",
-      "name": "@typescript/typescript-linux-loong64",
-      "kind": "npm",
-      "target": "@typescript/typescript-linux-loong64",
-      "current": "7.0.2",
-      "category": "transitive-package",
-      "prerelease": false,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@typescript/typescript-linux-mips64el@7.0.2",
-      "name": "@typescript/typescript-linux-mips64el",
-      "kind": "npm",
-      "target": "@typescript/typescript-linux-mips64el",
-      "current": "7.0.2",
-      "category": "transitive-package",
-      "prerelease": false,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@typescript/typescript-linux-ppc64@7.0.2",
-      "name": "@typescript/typescript-linux-ppc64",
-      "kind": "npm",
-      "target": "@typescript/typescript-linux-ppc64",
-      "current": "7.0.2",
-      "category": "transitive-package",
-      "prerelease": false,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@typescript/typescript-linux-riscv64@7.0.2",
-      "name": "@typescript/typescript-linux-riscv64",
-      "kind": "npm",
-      "target": "@typescript/typescript-linux-riscv64",
-      "current": "7.0.2",
-      "category": "transitive-package",
-      "prerelease": false,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@typescript/typescript-linux-s390x@7.0.2",
-      "name": "@typescript/typescript-linux-s390x",
-      "kind": "npm",
-      "target": "@typescript/typescript-linux-s390x",
-      "current": "7.0.2",
-      "category": "transitive-package",
-      "prerelease": false,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@typescript/typescript-linux-x64@7.0.2",
-      "name": "@typescript/typescript-linux-x64",
-      "kind": "npm",
-      "target": "@typescript/typescript-linux-x64",
-      "current": "7.0.2",
-      "category": "transitive-package",
-      "prerelease": false,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@typescript/typescript-netbsd-arm64@7.0.2",
-      "name": "@typescript/typescript-netbsd-arm64",
-      "kind": "npm",
-      "target": "@typescript/typescript-netbsd-arm64",
-      "current": "7.0.2",
-      "category": "transitive-package",
-      "prerelease": false,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@typescript/typescript-netbsd-x64@7.0.2",
-      "name": "@typescript/typescript-netbsd-x64",
-      "kind": "npm",
-      "target": "@typescript/typescript-netbsd-x64",
-      "current": "7.0.2",
-      "category": "transitive-package",
-      "prerelease": false,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@typescript/typescript-openbsd-arm64@7.0.2",
-      "name": "@typescript/typescript-openbsd-arm64",
-      "kind": "npm",
-      "target": "@typescript/typescript-openbsd-arm64",
-      "current": "7.0.2",
-      "category": "transitive-package",
-      "prerelease": false,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@typescript/typescript-openbsd-x64@7.0.2",
-      "name": "@typescript/typescript-openbsd-x64",
-      "kind": "npm",
-      "target": "@typescript/typescript-openbsd-x64",
-      "current": "7.0.2",
-      "category": "transitive-package",
-      "prerelease": false,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@typescript/typescript-sunos-x64@7.0.2",
-      "name": "@typescript/typescript-sunos-x64",
-      "kind": "npm",
-      "target": "@typescript/typescript-sunos-x64",
-      "current": "7.0.2",
-      "category": "transitive-package",
-      "prerelease": false,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@typescript/typescript-win32-arm64@7.0.2",
-      "name": "@typescript/typescript-win32-arm64",
-      "kind": "npm",
-      "target": "@typescript/typescript-win32-arm64",
-      "current": "7.0.2",
-      "category": "transitive-package",
-      "prerelease": false,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:@typescript/typescript-win32-x64@7.0.2",
-      "name": "@typescript/typescript-win32-x64",
-      "kind": "npm",
-      "target": "@typescript/typescript-win32-x64",
-      "current": "7.0.2",
-      "category": "transitive-package",
-      "prerelease": false,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
       "id": "npm:acorn@8.19.0",
       "name": "acorn",
       "kind": "npm",
@@ -790,20 +154,6 @@
       ]
     },
     {
-      "id": "npm:playwright-core@1.64.1",
-      "name": "playwright-core",
-      "kind": "npm",
-      "target": "playwright-core",
-      "current": "1.64.1",
-      "category": "transitive-package",
-      "prerelease": false,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
       "id": "npm:playwright@1.64.1",
       "name": "playwright",
       "kind": "npm",
@@ -812,11 +162,12 @@
       "range": "1.64.1",
       "category": "development-package",
       "prerelease": false,
-      "purpose": "插件运行或构建/测试依赖",
+      "purpose": "插件运行或构建/测试依赖；合并管理1项内部记录，详细归属见清单JSON，不逐项检查或提醒",
       "files": [
         "package.json",
         "pnpm-lock.yaml"
-      ]
+      ],
+      "managedCount": 1
     },
     {
       "id": "npm:semver@7.8.5",
@@ -842,25 +193,12 @@
       "range": "^7.0.2",
       "category": "development-package",
       "prerelease": false,
-      "purpose": "插件运行或构建/测试依赖",
+      "purpose": "插件运行或构建/测试依赖；合并管理20项内部记录，详细归属见清单JSON，不逐项检查或提醒",
       "files": [
         "package.json",
         "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:undici-types@7.24.6",
-      "name": "undici-types",
-      "kind": "npm",
-      "target": "undici-types",
-      "current": "7.24.6",
-      "category": "transitive-package",
-      "prerelease": false,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
+      ],
+      "managedCount": 20
     },
     {
       "id": "npm:ws@8.22.0",
@@ -893,69 +231,11 @@
       ]
     },
     {
-      "id": "npm:zod@4.4.3",
-      "name": "zod",
-      "kind": "npm",
-      "target": "zod",
-      "current": "4.4.3",
-      "category": "transitive-package",
-      "prerelease": false,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "npm:zod@4.6.7",
-      "name": "zod",
-      "kind": "npm",
-      "target": "zod",
-      "current": "4.6.7",
-      "category": "transitive-package",
-      "prerelease": false,
-      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
-      "files": [
-        "package.json",
-        "pnpm-lock.yaml"
-      ]
-    },
-    {
-      "id": "import:react",
-      "name": "react",
-      "kind": "npm",
-      "target": "react",
-      "purpose": "源码引用的宿主提供模块；未随本插件锁定的版本仅按公开发行观测，实际兼容需随dsh核对",
-      "files": [
-        "src/client/companion.js",
-        "src/client/layout.js",
-        "src/client/persona-entry.js",
-        "src/client/updates.js"
-      ],
-      "category": "host-provided-module",
-      "prerelease": false
-    },
-    {
-      "id": "import:@deepseek-ai/dsh-client-ui-primitives",
-      "name": "@deepseek-ai/dsh-client-ui-primitives",
-      "kind": "npm",
-      "target": "@deepseek-ai/dsh-client-ui-primitives",
-      "current": "0.2.1-rc.2",
-      "purpose": "源码引用的宿主提供模块；未随本插件锁定的版本仅按公开发行观测，实际兼容需随dsh核对",
-      "files": [
-        "src/client/companion.js",
-        "src/client/persona-entry.js",
-        "src/client/updates.js"
-      ],
-      "category": "host-provided-module",
-      "prerelease": true
-    },
-    {
       "id": "plugin-release",
       "name": "dsh-persona-memory正式发行",
       "kind": "github",
       "target": "Geng-zy/dsh-persona-memory",
-      "current": "2.5.0",
+      "current": "2.6.0",
       "purpose": "本插件公开正式发行；不自动下载安装",
       "files": [
         "README.md"
@@ -967,7 +247,7 @@
       "name": "QQ接入插件可选联动",
       "kind": "github",
       "target": "Geng-zy/dsh-qq-gateway",
-      "current": "2.5.0",
+      "current": "2.6.0",
       "purpose": "可选插件间事件与服务接口兼容；独立安装不要求另一个插件在场",
       "files": [
         "docs/SPLIT-MIGRATION.md"
@@ -980,13 +260,14 @@
       "kind": "npm",
       "target": "@deepseek-ai/dsh",
       "current": "0.2.1-rc.2",
-      "purpose": "宿主公开发行与插件SDK兼容，允许预览版；不扫描宿主安装情况",
+      "purpose": "宿主公开发行与插件SDK兼容，允许预览版；不扫描宿主安装情况；合并管理31项内部记录，详细归属见清单JSON，不逐项检查或提醒",
       "files": [
         "package.json",
         "cordis.patch.yml"
       ],
       "category": "upstream",
-      "prerelease": true
+      "prerelease": true,
+      "managedCount": 31
     },
     {
       "id": "node-lts",
@@ -994,12 +275,13 @@
       "kind": "node-lts",
       "target": "https://nodejs.org/dist/index.json",
       "current": "24.22.1",
-      "purpose": "插件运行/开发所需的上游最新LTS；不检测服务器安装",
+      "purpose": "插件运行/开发所需的上游最新LTS；不检测服务器安装；合并管理8项内部记录，详细归属见清单JSON，不逐项检查或提醒",
       "files": [
         "package.json",
         "scripts/setup-test-env.sh"
       ],
-      "category": "upstream"
+      "category": "upstream",
+      "managedCount": 8
     },
     {
       "id": "reader",
@@ -1044,17 +326,6 @@
       "purpose": "仅跟踪插件相关工具的公开版本/发布资料，不检查或修改宿主安装；首次观测不是已适配基准",
       "files": [
         "src/companion/backup.ts"
-      ],
-      "category": "external-tool-reference"
-    },
-    {
-      "id": "tool:sqlite",
-      "name": "SQLite（随Node提供）",
-      "kind": "document",
-      "target": "https://www.sqlite.org/changes.html",
-      "purpose": "仅跟踪插件相关工具的公开版本/发布资料，不检查或修改宿主安装；首次观测不是已适配基准",
-      "files": [
-        "src/companion/archive.ts"
       ],
       "category": "external-tool-reference"
     },
@@ -1418,6 +689,846 @@
         "README.md"
       ],
       "category": "development-tool-reference"
+    }
+  ],
+  "managedSources": [
+    {
+      "id": "npm:@deepseek-ai/dsh-agent@0.2.1-rc.2",
+      "name": "@deepseek-ai/dsh-agent",
+      "kind": "npm",
+      "target": "@deepseek-ai/dsh-agent",
+      "current": "0.2.1-rc.2",
+      "range": ">=0.2.0-0 <0.2.1-0 || >=0.2.1-0 <0.2.2-0 || >=0.2.2-0 <0.2.3-0 || >=0.2.3-0 <0.2.4-0 || >=0.2.4-0 <0.2.5-0 || >=0.2.5-0 <0.2.6-0 || >=0.2.6-0 <0.2.7-0 || >=0.2.7-0 <0.2.8-0 || >=0.2.8-0 <0.2.9-0 || >=0.2.9-0 <0.3.0-0",
+      "category": "host-sdk",
+      "prerelease": true,
+      "purpose": "插件调用的宿主SDK接口，随dsh预览版本校验兼容",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "dsh",
+      "managedReason": "随dsh宿主版本交付的内部插件、SDK或UI模块"
+    },
+    {
+      "id": "npm:@deepseek-ai/dsh-attachment@0.2.1-rc.2",
+      "name": "@deepseek-ai/dsh-attachment",
+      "kind": "npm",
+      "target": "@deepseek-ai/dsh-attachment",
+      "current": "0.2.1-rc.2",
+      "category": "transitive-package",
+      "prerelease": true,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "dsh",
+      "managedReason": "随dsh宿主版本交付的内部插件、SDK或UI模块"
+    },
+    {
+      "id": "npm:@deepseek-ai/dsh-brand@0.2.1-rc.2",
+      "name": "@deepseek-ai/dsh-brand",
+      "kind": "npm",
+      "target": "@deepseek-ai/dsh-brand",
+      "current": "0.2.1-rc.2",
+      "category": "transitive-package",
+      "prerelease": true,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "dsh",
+      "managedReason": "随dsh宿主版本交付的内部插件、SDK或UI模块"
+    },
+    {
+      "id": "npm:@deepseek-ai/dsh-commands@0.2.1-rc.2",
+      "name": "@deepseek-ai/dsh-commands",
+      "kind": "npm",
+      "target": "@deepseek-ai/dsh-commands",
+      "current": "0.2.1-rc.2",
+      "category": "transitive-package",
+      "prerelease": true,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "dsh",
+      "managedReason": "随dsh宿主版本交付的内部插件、SDK或UI模块"
+    },
+    {
+      "id": "npm:@deepseek-ai/dsh-compaction-basic@0.2.1-rc.2",
+      "name": "@deepseek-ai/dsh-compaction-basic",
+      "kind": "npm",
+      "target": "@deepseek-ai/dsh-compaction-basic",
+      "current": "0.2.1-rc.2",
+      "range": ">=0.2.0-0 <0.2.1-0 || >=0.2.1-0 <0.2.2-0 || >=0.2.2-0 <0.2.3-0 || >=0.2.3-0 <0.2.4-0 || >=0.2.4-0 <0.2.5-0 || >=0.2.5-0 <0.2.6-0 || >=0.2.6-0 <0.2.7-0 || >=0.2.7-0 <0.2.8-0 || >=0.2.8-0 <0.2.9-0 || >=0.2.9-0 <0.3.0-0",
+      "category": "host-sdk",
+      "prerelease": true,
+      "purpose": "插件调用的宿主SDK接口，随dsh预览版本校验兼容",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "dsh",
+      "managedReason": "随dsh宿主版本交付的内部插件、SDK或UI模块"
+    },
+    {
+      "id": "npm:@deepseek-ai/dsh-compaction-image-offload@0.2.1-rc.2",
+      "name": "@deepseek-ai/dsh-compaction-image-offload",
+      "kind": "npm",
+      "target": "@deepseek-ai/dsh-compaction-image-offload",
+      "current": "0.2.1-rc.2",
+      "category": "transitive-package",
+      "prerelease": true,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "dsh",
+      "managedReason": "随dsh宿主版本交付的内部插件、SDK或UI模块"
+    },
+    {
+      "id": "npm:@deepseek-ai/dsh-compaction@0.2.1-rc.2",
+      "name": "@deepseek-ai/dsh-compaction",
+      "kind": "npm",
+      "target": "@deepseek-ai/dsh-compaction",
+      "current": "0.2.1-rc.2",
+      "range": ">=0.2.0-0 <0.2.1-0 || >=0.2.1-0 <0.2.2-0 || >=0.2.2-0 <0.2.3-0 || >=0.2.3-0 <0.2.4-0 || >=0.2.4-0 <0.2.5-0 || >=0.2.5-0 <0.2.6-0 || >=0.2.6-0 <0.2.7-0 || >=0.2.7-0 <0.2.8-0 || >=0.2.8-0 <0.2.9-0 || >=0.2.9-0 <0.3.0-0",
+      "category": "host-sdk",
+      "prerelease": true,
+      "purpose": "插件调用的宿主SDK接口，随dsh预览版本校验兼容",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "dsh",
+      "managedReason": "随dsh宿主版本交付的内部插件、SDK或UI模块"
+    },
+    {
+      "id": "npm:@deepseek-ai/dsh-fs@0.2.1-rc.2",
+      "name": "@deepseek-ai/dsh-fs",
+      "kind": "npm",
+      "target": "@deepseek-ai/dsh-fs",
+      "current": "0.2.1-rc.2",
+      "category": "transitive-package",
+      "prerelease": true,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "dsh",
+      "managedReason": "随dsh宿主版本交付的内部插件、SDK或UI模块"
+    },
+    {
+      "id": "npm:@deepseek-ai/dsh-llm-retry@0.2.1-rc.2",
+      "name": "@deepseek-ai/dsh-llm-retry",
+      "kind": "npm",
+      "target": "@deepseek-ai/dsh-llm-retry",
+      "current": "0.2.1-rc.2",
+      "category": "transitive-package",
+      "prerelease": true,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "dsh",
+      "managedReason": "随dsh宿主版本交付的内部插件、SDK或UI模块"
+    },
+    {
+      "id": "npm:@deepseek-ai/dsh-llm@0.2.1-rc.2",
+      "name": "@deepseek-ai/dsh-llm",
+      "kind": "npm",
+      "target": "@deepseek-ai/dsh-llm",
+      "current": "0.2.1-rc.2",
+      "range": ">=0.2.0-0 <0.2.1-0 || >=0.2.1-0 <0.2.2-0 || >=0.2.2-0 <0.2.3-0 || >=0.2.3-0 <0.2.4-0 || >=0.2.4-0 <0.2.5-0 || >=0.2.5-0 <0.2.6-0 || >=0.2.6-0 <0.2.7-0 || >=0.2.7-0 <0.2.8-0 || >=0.2.8-0 <0.2.9-0 || >=0.2.9-0 <0.3.0-0",
+      "category": "host-sdk",
+      "prerelease": true,
+      "purpose": "插件调用的宿主SDK接口，随dsh预览版本校验兼容",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "dsh",
+      "managedReason": "随dsh宿主版本交付的内部插件、SDK或UI模块"
+    },
+    {
+      "id": "npm:@deepseek-ai/dsh-ptc-runtime@0.2.1-rc.2",
+      "name": "@deepseek-ai/dsh-ptc-runtime",
+      "kind": "npm",
+      "target": "@deepseek-ai/dsh-ptc-runtime",
+      "current": "0.2.1-rc.2",
+      "category": "transitive-package",
+      "prerelease": true,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "dsh",
+      "managedReason": "随dsh宿主版本交付的内部插件、SDK或UI模块"
+    },
+    {
+      "id": "npm:@deepseek-ai/dsh-sandbox-policy@0.2.1-rc.2",
+      "name": "@deepseek-ai/dsh-sandbox-policy",
+      "kind": "npm",
+      "target": "@deepseek-ai/dsh-sandbox-policy",
+      "current": "0.2.1-rc.2",
+      "category": "transitive-package",
+      "prerelease": true,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "dsh",
+      "managedReason": "随dsh宿主版本交付的内部插件、SDK或UI模块"
+    },
+    {
+      "id": "npm:@deepseek-ai/dsh-sandbox@0.2.1-rc.2",
+      "name": "@deepseek-ai/dsh-sandbox",
+      "kind": "npm",
+      "target": "@deepseek-ai/dsh-sandbox",
+      "current": "0.2.1-rc.2",
+      "category": "transitive-package",
+      "prerelease": true,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "dsh",
+      "managedReason": "随dsh宿主版本交付的内部插件、SDK或UI模块"
+    },
+    {
+      "id": "npm:@deepseek-ai/dsh-scope@0.2.1-rc.2",
+      "name": "@deepseek-ai/dsh-scope",
+      "kind": "npm",
+      "target": "@deepseek-ai/dsh-scope",
+      "current": "0.2.1-rc.2",
+      "category": "transitive-package",
+      "prerelease": true,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "dsh",
+      "managedReason": "随dsh宿主版本交付的内部插件、SDK或UI模块"
+    },
+    {
+      "id": "npm:@deepseek-ai/dsh-session-projection@0.2.1-rc.2",
+      "name": "@deepseek-ai/dsh-session-projection",
+      "kind": "npm",
+      "target": "@deepseek-ai/dsh-session-projection",
+      "current": "0.2.1-rc.2",
+      "category": "transitive-package",
+      "prerelease": true,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "dsh",
+      "managedReason": "随dsh宿主版本交付的内部插件、SDK或UI模块"
+    },
+    {
+      "id": "npm:@deepseek-ai/dsh-session@0.2.1-rc.2",
+      "name": "@deepseek-ai/dsh-session",
+      "kind": "npm",
+      "target": "@deepseek-ai/dsh-session",
+      "current": "0.2.1-rc.2",
+      "range": ">=0.2.0-0 <0.2.1-0 || >=0.2.1-0 <0.2.2-0 || >=0.2.2-0 <0.2.3-0 || >=0.2.3-0 <0.2.4-0 || >=0.2.4-0 <0.2.5-0 || >=0.2.5-0 <0.2.6-0 || >=0.2.6-0 <0.2.7-0 || >=0.2.7-0 <0.2.8-0 || >=0.2.8-0 <0.2.9-0 || >=0.2.9-0 <0.3.0-0",
+      "category": "host-sdk",
+      "prerelease": true,
+      "purpose": "插件调用的宿主SDK接口，随dsh预览版本校验兼容",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "dsh",
+      "managedReason": "随dsh宿主版本交付的内部插件、SDK或UI模块"
+    },
+    {
+      "id": "npm:@deepseek-ai/dsh-system-prompt@0.2.1-rc.2",
+      "name": "@deepseek-ai/dsh-system-prompt",
+      "kind": "npm",
+      "target": "@deepseek-ai/dsh-system-prompt",
+      "current": "0.2.1-rc.2",
+      "range": ">=0.2.0-0 <0.2.1-0 || >=0.2.1-0 <0.2.2-0 || >=0.2.2-0 <0.2.3-0 || >=0.2.3-0 <0.2.4-0 || >=0.2.4-0 <0.2.5-0 || >=0.2.5-0 <0.2.6-0 || >=0.2.6-0 <0.2.7-0 || >=0.2.7-0 <0.2.8-0 || >=0.2.8-0 <0.2.9-0 || >=0.2.9-0 <0.3.0-0",
+      "category": "host-sdk",
+      "prerelease": true,
+      "purpose": "插件调用的宿主SDK接口，随dsh预览版本校验兼容",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "dsh",
+      "managedReason": "随dsh宿主版本交付的内部插件、SDK或UI模块"
+    },
+    {
+      "id": "npm:@deepseek-ai/dsh-timeout@0.2.1-rc.2",
+      "name": "@deepseek-ai/dsh-timeout",
+      "kind": "npm",
+      "target": "@deepseek-ai/dsh-timeout",
+      "current": "0.2.1-rc.2",
+      "category": "transitive-package",
+      "prerelease": true,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "dsh",
+      "managedReason": "随dsh宿主版本交付的内部插件、SDK或UI模块"
+    },
+    {
+      "id": "npm:@deepseek-ai/dsh-token-meter@0.2.1-rc.2",
+      "name": "@deepseek-ai/dsh-token-meter",
+      "kind": "npm",
+      "target": "@deepseek-ai/dsh-token-meter",
+      "current": "0.2.1-rc.2",
+      "category": "transitive-package",
+      "prerelease": true,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "dsh",
+      "managedReason": "随dsh宿主版本交付的内部插件、SDK或UI模块"
+    },
+    {
+      "id": "npm:@deepseek-ai/dsh-tools@0.2.1-rc.2",
+      "name": "@deepseek-ai/dsh-tools",
+      "kind": "npm",
+      "target": "@deepseek-ai/dsh-tools",
+      "current": "0.2.1-rc.2",
+      "range": ">=0.2.0-0 <0.2.1-0 || >=0.2.1-0 <0.2.2-0 || >=0.2.2-0 <0.2.3-0 || >=0.2.3-0 <0.2.4-0 || >=0.2.4-0 <0.2.5-0 || >=0.2.5-0 <0.2.6-0 || >=0.2.6-0 <0.2.7-0 || >=0.2.7-0 <0.2.8-0 || >=0.2.8-0 <0.2.9-0 || >=0.2.9-0 <0.3.0-0",
+      "category": "host-sdk",
+      "prerelease": true,
+      "purpose": "插件调用的宿主SDK接口，随dsh预览版本校验兼容",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "dsh",
+      "managedReason": "随dsh宿主版本交付的内部插件、SDK或UI模块"
+    },
+    {
+      "id": "npm:@deepseek-ai/dsh-typert-protocol@0.2.1-rc.2",
+      "name": "@deepseek-ai/dsh-typert-protocol",
+      "kind": "npm",
+      "target": "@deepseek-ai/dsh-typert-protocol",
+      "current": "0.2.1-rc.2",
+      "category": "transitive-package",
+      "prerelease": true,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "dsh",
+      "managedReason": "随dsh宿主版本交付的内部插件、SDK或UI模块"
+    },
+    {
+      "id": "npm:@deepseek-ai/dsh-user-approval@0.2.1-rc.2",
+      "name": "@deepseek-ai/dsh-user-approval",
+      "kind": "npm",
+      "target": "@deepseek-ai/dsh-user-approval",
+      "current": "0.2.1-rc.2",
+      "category": "transitive-package",
+      "prerelease": true,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "dsh",
+      "managedReason": "随dsh宿主版本交付的内部插件、SDK或UI模块"
+    },
+    {
+      "id": "npm:@deepseek-ai/dsh-util-crypto@0.2.1-rc.2",
+      "name": "@deepseek-ai/dsh-util-crypto",
+      "kind": "npm",
+      "target": "@deepseek-ai/dsh-util-crypto",
+      "current": "0.2.1-rc.2",
+      "category": "transitive-package",
+      "prerelease": true,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "dsh",
+      "managedReason": "随dsh宿主版本交付的内部插件、SDK或UI模块"
+    },
+    {
+      "id": "npm:@deepseek-ai/dsh-util-values@0.2.1-rc.2",
+      "name": "@deepseek-ai/dsh-util-values",
+      "kind": "npm",
+      "target": "@deepseek-ai/dsh-util-values",
+      "current": "0.2.1-rc.2",
+      "category": "transitive-package",
+      "prerelease": true,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "dsh",
+      "managedReason": "随dsh宿主版本交付的内部插件、SDK或UI模块"
+    },
+    {
+      "id": "npm:@deepseek-ai/dsh-working-directory@0.2.1-rc.2",
+      "name": "@deepseek-ai/dsh-working-directory",
+      "kind": "npm",
+      "target": "@deepseek-ai/dsh-working-directory",
+      "current": "0.2.1-rc.2",
+      "category": "transitive-package",
+      "prerelease": true,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "dsh",
+      "managedReason": "随dsh宿主版本交付的内部插件、SDK或UI模块"
+    },
+    {
+      "id": "npm:@typescript/typescript-aix-ppc64@7.0.2",
+      "name": "@typescript/typescript-aix-ppc64",
+      "kind": "npm",
+      "target": "@typescript/typescript-aix-ppc64",
+      "current": "7.0.2",
+      "category": "transitive-package",
+      "prerelease": false,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "npm:typescript@7.0.2",
+      "managedReason": "TypeScript同版本平台编译器二进制"
+    },
+    {
+      "id": "npm:@typescript/typescript-darwin-arm64@7.0.2",
+      "name": "@typescript/typescript-darwin-arm64",
+      "kind": "npm",
+      "target": "@typescript/typescript-darwin-arm64",
+      "current": "7.0.2",
+      "category": "transitive-package",
+      "prerelease": false,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "npm:typescript@7.0.2",
+      "managedReason": "TypeScript同版本平台编译器二进制"
+    },
+    {
+      "id": "npm:@typescript/typescript-darwin-x64@7.0.2",
+      "name": "@typescript/typescript-darwin-x64",
+      "kind": "npm",
+      "target": "@typescript/typescript-darwin-x64",
+      "current": "7.0.2",
+      "category": "transitive-package",
+      "prerelease": false,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "npm:typescript@7.0.2",
+      "managedReason": "TypeScript同版本平台编译器二进制"
+    },
+    {
+      "id": "npm:@typescript/typescript-freebsd-arm64@7.0.2",
+      "name": "@typescript/typescript-freebsd-arm64",
+      "kind": "npm",
+      "target": "@typescript/typescript-freebsd-arm64",
+      "current": "7.0.2",
+      "category": "transitive-package",
+      "prerelease": false,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "npm:typescript@7.0.2",
+      "managedReason": "TypeScript同版本平台编译器二进制"
+    },
+    {
+      "id": "npm:@typescript/typescript-freebsd-x64@7.0.2",
+      "name": "@typescript/typescript-freebsd-x64",
+      "kind": "npm",
+      "target": "@typescript/typescript-freebsd-x64",
+      "current": "7.0.2",
+      "category": "transitive-package",
+      "prerelease": false,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "npm:typescript@7.0.2",
+      "managedReason": "TypeScript同版本平台编译器二进制"
+    },
+    {
+      "id": "npm:@typescript/typescript-linux-arm64@7.0.2",
+      "name": "@typescript/typescript-linux-arm64",
+      "kind": "npm",
+      "target": "@typescript/typescript-linux-arm64",
+      "current": "7.0.2",
+      "category": "transitive-package",
+      "prerelease": false,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "npm:typescript@7.0.2",
+      "managedReason": "TypeScript同版本平台编译器二进制"
+    },
+    {
+      "id": "npm:@typescript/typescript-linux-arm@7.0.2",
+      "name": "@typescript/typescript-linux-arm",
+      "kind": "npm",
+      "target": "@typescript/typescript-linux-arm",
+      "current": "7.0.2",
+      "category": "transitive-package",
+      "prerelease": false,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "npm:typescript@7.0.2",
+      "managedReason": "TypeScript同版本平台编译器二进制"
+    },
+    {
+      "id": "npm:@typescript/typescript-linux-loong64@7.0.2",
+      "name": "@typescript/typescript-linux-loong64",
+      "kind": "npm",
+      "target": "@typescript/typescript-linux-loong64",
+      "current": "7.0.2",
+      "category": "transitive-package",
+      "prerelease": false,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "npm:typescript@7.0.2",
+      "managedReason": "TypeScript同版本平台编译器二进制"
+    },
+    {
+      "id": "npm:@typescript/typescript-linux-mips64el@7.0.2",
+      "name": "@typescript/typescript-linux-mips64el",
+      "kind": "npm",
+      "target": "@typescript/typescript-linux-mips64el",
+      "current": "7.0.2",
+      "category": "transitive-package",
+      "prerelease": false,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "npm:typescript@7.0.2",
+      "managedReason": "TypeScript同版本平台编译器二进制"
+    },
+    {
+      "id": "npm:@typescript/typescript-linux-ppc64@7.0.2",
+      "name": "@typescript/typescript-linux-ppc64",
+      "kind": "npm",
+      "target": "@typescript/typescript-linux-ppc64",
+      "current": "7.0.2",
+      "category": "transitive-package",
+      "prerelease": false,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "npm:typescript@7.0.2",
+      "managedReason": "TypeScript同版本平台编译器二进制"
+    },
+    {
+      "id": "npm:@typescript/typescript-linux-riscv64@7.0.2",
+      "name": "@typescript/typescript-linux-riscv64",
+      "kind": "npm",
+      "target": "@typescript/typescript-linux-riscv64",
+      "current": "7.0.2",
+      "category": "transitive-package",
+      "prerelease": false,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "npm:typescript@7.0.2",
+      "managedReason": "TypeScript同版本平台编译器二进制"
+    },
+    {
+      "id": "npm:@typescript/typescript-linux-s390x@7.0.2",
+      "name": "@typescript/typescript-linux-s390x",
+      "kind": "npm",
+      "target": "@typescript/typescript-linux-s390x",
+      "current": "7.0.2",
+      "category": "transitive-package",
+      "prerelease": false,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "npm:typescript@7.0.2",
+      "managedReason": "TypeScript同版本平台编译器二进制"
+    },
+    {
+      "id": "npm:@typescript/typescript-linux-x64@7.0.2",
+      "name": "@typescript/typescript-linux-x64",
+      "kind": "npm",
+      "target": "@typescript/typescript-linux-x64",
+      "current": "7.0.2",
+      "category": "transitive-package",
+      "prerelease": false,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "npm:typescript@7.0.2",
+      "managedReason": "TypeScript同版本平台编译器二进制"
+    },
+    {
+      "id": "npm:@typescript/typescript-netbsd-arm64@7.0.2",
+      "name": "@typescript/typescript-netbsd-arm64",
+      "kind": "npm",
+      "target": "@typescript/typescript-netbsd-arm64",
+      "current": "7.0.2",
+      "category": "transitive-package",
+      "prerelease": false,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "npm:typescript@7.0.2",
+      "managedReason": "TypeScript同版本平台编译器二进制"
+    },
+    {
+      "id": "npm:@typescript/typescript-netbsd-x64@7.0.2",
+      "name": "@typescript/typescript-netbsd-x64",
+      "kind": "npm",
+      "target": "@typescript/typescript-netbsd-x64",
+      "current": "7.0.2",
+      "category": "transitive-package",
+      "prerelease": false,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "npm:typescript@7.0.2",
+      "managedReason": "TypeScript同版本平台编译器二进制"
+    },
+    {
+      "id": "npm:@typescript/typescript-openbsd-arm64@7.0.2",
+      "name": "@typescript/typescript-openbsd-arm64",
+      "kind": "npm",
+      "target": "@typescript/typescript-openbsd-arm64",
+      "current": "7.0.2",
+      "category": "transitive-package",
+      "prerelease": false,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "npm:typescript@7.0.2",
+      "managedReason": "TypeScript同版本平台编译器二进制"
+    },
+    {
+      "id": "npm:@typescript/typescript-openbsd-x64@7.0.2",
+      "name": "@typescript/typescript-openbsd-x64",
+      "kind": "npm",
+      "target": "@typescript/typescript-openbsd-x64",
+      "current": "7.0.2",
+      "category": "transitive-package",
+      "prerelease": false,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "npm:typescript@7.0.2",
+      "managedReason": "TypeScript同版本平台编译器二进制"
+    },
+    {
+      "id": "npm:@typescript/typescript-sunos-x64@7.0.2",
+      "name": "@typescript/typescript-sunos-x64",
+      "kind": "npm",
+      "target": "@typescript/typescript-sunos-x64",
+      "current": "7.0.2",
+      "category": "transitive-package",
+      "prerelease": false,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "npm:typescript@7.0.2",
+      "managedReason": "TypeScript同版本平台编译器二进制"
+    },
+    {
+      "id": "npm:@typescript/typescript-win32-arm64@7.0.2",
+      "name": "@typescript/typescript-win32-arm64",
+      "kind": "npm",
+      "target": "@typescript/typescript-win32-arm64",
+      "current": "7.0.2",
+      "category": "transitive-package",
+      "prerelease": false,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "npm:typescript@7.0.2",
+      "managedReason": "TypeScript同版本平台编译器二进制"
+    },
+    {
+      "id": "npm:@typescript/typescript-win32-x64@7.0.2",
+      "name": "@typescript/typescript-win32-x64",
+      "kind": "npm",
+      "target": "@typescript/typescript-win32-x64",
+      "current": "7.0.2",
+      "category": "transitive-package",
+      "prerelease": false,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "npm:typescript@7.0.2",
+      "managedReason": "TypeScript同版本平台编译器二进制"
+    },
+    {
+      "id": "npm:playwright-core@1.64.1",
+      "name": "playwright-core",
+      "kind": "npm",
+      "target": "playwright-core",
+      "current": "1.64.1",
+      "category": "transitive-package",
+      "prerelease": false,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "npm:playwright@1.64.1",
+      "managedReason": "Playwright同版本核心与绑定浏览器，更新Playwright后执行浏览器安装"
+    },
+    {
+      "id": "npm:undici-types@7.24.6",
+      "name": "undici-types",
+      "kind": "npm",
+      "target": "undici-types",
+      "current": "7.24.6",
+      "category": "transitive-package",
+      "prerelease": false,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "npm:@types/node@24.19.2",
+      "managedReason": "Node类型包配套声明，随上层类型依赖统一维护"
+    },
+    {
+      "id": "npm:zod@4.4.3",
+      "name": "zod",
+      "kind": "npm",
+      "target": "zod",
+      "current": "4.4.3",
+      "category": "transitive-package",
+      "prerelease": false,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "dsh",
+      "managedReason": "本项目未直接使用，由宿主SDK引入并管理的间接依赖"
+    },
+    {
+      "id": "npm:zod@4.6.7",
+      "name": "zod",
+      "kind": "npm",
+      "target": "zod",
+      "current": "4.6.7",
+      "category": "transitive-package",
+      "prerelease": false,
+      "purpose": "锁文件间接依赖，核对引入它的上层包后再更新",
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "managedBy": "dsh",
+      "managedReason": "本项目未直接使用，由宿主SDK引入并管理的间接依赖"
+    },
+    {
+      "id": "import:react",
+      "name": "react",
+      "kind": "npm",
+      "target": "react",
+      "purpose": "源码引用的宿主提供模块；未随本插件锁定的版本仅按公开发行观测，实际兼容需随dsh核对",
+      "files": [
+        "src/client/companion.js",
+        "src/client/layout.js",
+        "src/client/persona-entry.js",
+        "src/client/updates.js"
+      ],
+      "category": "host-provided-module",
+      "prerelease": false,
+      "managedBy": "dsh",
+      "managedReason": "随dsh宿主版本交付的内部插件、SDK或UI模块"
+    },
+    {
+      "id": "import:@deepseek-ai/dsh-client-ui-primitives",
+      "name": "@deepseek-ai/dsh-client-ui-primitives",
+      "kind": "npm",
+      "target": "@deepseek-ai/dsh-client-ui-primitives",
+      "current": "0.2.1-rc.2",
+      "purpose": "源码引用的宿主提供模块；未随本插件锁定的版本仅按公开发行观测，实际兼容需随dsh核对",
+      "files": [
+        "src/client/companion.js",
+        "src/client/persona-entry.js",
+        "src/client/updates.js"
+      ],
+      "category": "host-provided-module",
+      "prerelease": true,
+      "managedBy": "dsh",
+      "managedReason": "随dsh宿主版本交付的内部插件、SDK或UI模块"
+    },
+    {
+      "id": "tool:sqlite",
+      "name": "SQLite（随Node提供）",
+      "kind": "document",
+      "target": "https://www.sqlite.org/changes.html",
+      "purpose": "仅跟踪插件相关工具的公开版本/发布资料，不检查或修改宿主安装；首次观测不是已适配基准",
+      "files": [
+        "src/companion/archive.ts"
+      ],
+      "category": "external-tool-reference",
+      "managedBy": "node-lts",
+      "managedReason": "当前接入使用Node绑定的库，随Node集成更新，不单独替换"
     },
     {
       "id": "node-bundled",
@@ -1429,7 +1540,9 @@
         "package.json"
       ],
       "category": "resource",
-      "path": "deps"
+      "path": "deps",
+      "managedBy": "node-lts",
+      "managedReason": "当前接入使用Node绑定的库，随Node集成更新，不单独替换"
     },
     {
       "id": "openssl",
@@ -1441,7 +1554,9 @@
         "src/updates.ts"
       ],
       "category": "related-project",
-      "ltsProduct": "openssl"
+      "ltsProduct": "openssl",
+      "managedBy": "node-lts",
+      "managedReason": "当前接入使用Node绑定的库，随Node集成更新，不单独替换"
     },
     {
       "id": "openssl-policy",
@@ -1452,7 +1567,9 @@
       "files": [
         "src/updates.ts"
       ],
-      "category": "related-project"
+      "category": "related-project",
+      "managedBy": "node-lts",
+      "managedReason": "当前接入使用Node绑定的库，随Node集成更新，不单独替换"
     },
     {
       "id": "node-ref:zstd",
@@ -1463,7 +1580,9 @@
       "files": [
         "package.json"
       ],
-      "category": "related-project"
+      "category": "related-project",
+      "managedBy": "node-lts",
+      "managedReason": "当前接入使用Node绑定的库，随Node集成更新，不单独替换"
     },
     {
       "id": "node-ref:ICU",
@@ -1474,7 +1593,9 @@
       "files": [
         "package.json"
       ],
-      "category": "related-project"
+      "category": "related-project",
+      "managedBy": "node-lts",
+      "managedReason": "当前接入使用Node绑定的库，随Node集成更新，不单独替换"
     },
     {
       "id": "node-ref:libuv",
@@ -1485,7 +1606,9 @@
       "files": [
         "package.json"
       ],
-      "category": "related-project"
+      "category": "related-project",
+      "managedBy": "node-lts",
+      "managedReason": "当前接入使用Node绑定的库，随Node集成更新，不单独替换"
     },
     {
       "id": "lts-metadata:openssl",
@@ -1497,7 +1620,9 @@
         "src/upstream-policy.ts"
       ],
       "category": "resource",
-      "path": "products/openssl.md"
+      "path": "products/openssl.md",
+      "managedBy": "node-lts",
+      "managedReason": "当前接入使用Node绑定的库，随Node集成更新，不单独替换"
     },
     {
       "id": "host:@deepseek-ai/dsh-base",
@@ -1510,7 +1635,9 @@
         "cordis.patch.yml"
       ],
       "category": "upstream",
-      "prerelease": true
+      "prerelease": true,
+      "managedBy": "dsh",
+      "managedReason": "随dsh宿主版本交付的内部插件、SDK或UI模块"
     },
     {
       "id": "host:@deepseek-ai/dsh-web-app",
@@ -1523,10 +1650,13 @@
         "cordis.patch.yml"
       ],
       "category": "upstream",
-      "prerelease": true
+      "prerelease": true,
+      "managedBy": "dsh",
+      "managedReason": "随dsh宿主版本交付的内部插件、SDK或UI模块"
     }
   ],
   "limitations": [
+    "检查单位按可独立更新的上层项目合并；内部模块保留managedSources归属记录，既不逐个联网检查，也不单独提醒。软件发布、镜像发布和独立工具不是同一升级单位。",
     "清单覆盖本插件锁/声明/源码/脚本/测试导入、资源和接入；QQ另含官方公开镜像声明、SnowLuma公开锁快照。均不扫描宿主，不把公开快照当实际安装证明。",
     "公开资料型服务没有可靠版本API时比较正文摘要，首次只建立基线；页面改版、脚本渲染、缺少历史或访问失败均须人工核实。",
     "自定义HTTP、本地命令、第三方模型/工作流/插件和用户后加的工具无法从私有配置推断；请在补充上游中登记公开来源与适配基准。报告不会读取命令或密钥。",
