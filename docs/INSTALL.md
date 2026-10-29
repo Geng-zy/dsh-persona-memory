@@ -6,7 +6,7 @@
 
 Ubuntu26.04已加入安装器允许列表，Docker官方已支持该版本；尚未完成26.04全新虚拟机整机安装实测。已有的实际dsh/profile、Docker及systemd验证不等于所有Ubuntu版本均已完成整机验证。
 
-适用Ubuntu22.04/24.04/26.04、amd64/arm64、systemd及可用的sudo/root终端。部署当前验证的软件组合：Node24.22.1、dsh0.2.1-rc.2、SnowLuma官方镜像及本插件1.4.3。用于全新环境；不会把开发者的QQ登录、密码、人格、记忆或聊天数据放入公开仓库。
+适用Ubuntu22.04/24.04/26.04、amd64/arm64、systemd及可用的sudo/root终端。部署当前验证的软件组合：Node24.22.1、dsh0.2.1-rc.2、SnowLuma官方镜像及两个插件2.0.0。用于全新环境；不会把开发者的QQ登录、密码、人格、记忆或聊天数据放入公开仓库。
 
 需要目标服务器能够访问GitHub、Node官方站、npm和系统软件源；Docker镜像也需要可下载或事先导入。网络不可达时不能保证在线一条命令完成，不会自动使用未经选择的第三方下载源。
 
@@ -46,7 +46,7 @@ dsh不支持监听0.0.0.0，脚本按官方接口绑定用户填写的具体本�
 
 ## 安装内容及默认行为
 
-需要时通过Docker官方Ubuntu软件源安装Docker Engine及Compose；已有可用Docker/Compose则复用，不自动卸载旧软件包。安装系统依赖、ffmpeg、用户目录内的Node/dsh、统一插件和dsh.service。
+需要时通过Docker官方Ubuntu软件源安装Docker Engine及Compose；已有可用Docker/Compose则复用，不自动卸载旧软件包。安装系统依赖、ffmpeg、用户目录内的Node/dsh、QQ与人格记忆插件和dsh.service。
 
 SnowLuma沿用仓库里的官方默认模板和三个官方命名卷，仅保留host-gateway映射、dsh反向WS客户端，以及本次用户明确填写的端口和凭据。密码通过官方支持的VNC_PASSWD和SNOWLUMA_WEBUI_BOOTSTRAP_PASSWORD环境变量配置，不修改认证源码；没有新增内存上限、日志轮转、VNC补丁或固定QQ账号启动参数。#sl仍保留官方默认回复，独立于插件白名单。
 
@@ -74,7 +74,7 @@ sudo python3 /opt/dsh-snowluma-companion/install.py --show-info /opt/dsh-snowlum
 
 如安装时更改了目录，请使用所选目录。查看命令会输出当前登录链接和保存的初始凭证；用户后来自行改过的SnowLuma密码不会被脚本反向读取或自动覆盖，需要自行更新保存的凭证记录。
 
-软件服务就绪不等于QQ已登录。首次协议确认和QQ扫码需要账号本人在输出的网址操作；群聊/其他私聊白名单默认空，按需在统一设置页配置。人格和记忆等资料可在“备份与迁移→恢复备份”导入自己的备份。
+软件服务就绪不等于QQ已登录。首次协议确认和QQ扫码需要账号本人在输出的网址操作；群聊/其他私聊白名单默认空，按需在QQ插件设置页配置。人格和记忆等资料在“人格与记忆 → 备份与迁移”导入；QQ会话在“QQ 接入助手 → 备份与迁移”导入。
 
 公网可达还需用户在云安全组/防火墙放行所选服务器端口。网页访问需要dsh端口、5099/6081对应端口；3000/3001仅在外部客户端使用时按需放行，6199用于容器到宿主，不需要为本地容器连接另行开公网。脚本不会擅自改变云规则。
 
@@ -97,7 +97,7 @@ sudo python3 /opt/dsh-snowluma-companion/install.py --resume /opt/dsh-snowluma-c
 也支持事先上传文件：
 
 ```sh
-sudo bash install.sh --plugin-archive /绝对路径/dsh-snowluma-companion-1.4.3.tgz --image-archive /绝对路径/snowluma-image.tar
+sudo bash install.sh --plugin-archive /绝对路径/dsh-qq-gateway-2.0.0.tgz --image-archive /绝对路径/snowluma-image.tar
 ```
 
 如果服务器连GitHub raw都不可达，在网络可用的电脑下载本仓库Release的tgz后上传到新服务器，直接运行包内安装器，可绕过在线入口和GitHub插件下载：
@@ -106,8 +106,8 @@ sudo bash install.sh --plugin-archive /绝对路径/dsh-snowluma-companion-1.4.3
 mkdir companion-install
 # 将下载的同版本tgz上传到当前目录后执行
 # 归档来源由你自行核验
-tar -xzf dsh-snowluma-companion-1.4.3.tgz -C companion-install
-sudo python3 companion-install/package/deploy/install.py --plugin-archive "$PWD/dsh-snowluma-companion-1.4.3.tgz"
+tar -xzf dsh-qq-gateway-2.0.0.tgz -C companion-install
+sudo python3 companion-install/package/deploy/install.py --plugin-archive "$PWD/dsh-qq-gateway-2.0.0.tgz"
 ```
 
 本地插件包需由操作者核验来源；本地镜像导入后仍需选择正确的镜像名称。Node/npm及系统软件源仍需要相应网络或缓存，本选项不是完整离线系统安装包。

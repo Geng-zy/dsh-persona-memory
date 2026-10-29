@@ -8,34 +8,28 @@
 //   - 日记和月度总览、主人开新会话时先读日记、存档到期（整理 → 删存档 → 换会话 → 归档/删旧会话）、群消息图片收到时下载；
 //   - 设置页（client.js）和它用的接口 <dsh>/api/companion/…（要先登录 dsh 网页）。
 
-import { ImageGenerator, IMAGE_PROVIDERS, type ImageProvider, imageOptions } from '../image-generation.js'
-import { imageTool } from './image-tool.js'
-import { make } from '../components.js'
-import type { SnowlumaService } from '../index.js'
 import z from '@deepseek-ai/schemastery'
 import type { Context as CordisContext } from '@deepseek-ai/cordis'
 import { join } from 'node:path'
-import { Archive, type ArchivedMessage } from './archive.js'
-import { TextDoc, defaultDataDir, writeAtomic } from './docs.js'
+import { Archive } from './archive.js'
+import { TextDoc, defaultDataDir } from './docs.js'
 import { applyPrompt, coreBlock, personaText, type AssemblyLike } from './prompt.js'
 import { listModels } from '../models.js'
-import { archiveAllowed, archiveRule, contextRule, forgetMode, matchRule, scopeOf, type ArchiveSession, type Category, type ContextMode, type ForgetMode, type SnowlumaLike, type RuleDefaults, type RuleRow, type Scope } from './rules.js'
+import { archiveAllowed, archiveRule, contextRule, forgetMode, scopeOf, type Category, type ContextMode, type ForgetMode, type SnowlumaLike, type RuleDefaults, type RuleRow, type Scope } from './rules.js'
 import type { BeforeCompactPayload, CompanionService, ContextPolicy } from './service.js'
-import { archivedImage } from './archived-image.js'
 import { coreTool, personaTool, type ToolDeps } from './tools.js'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { embed, embedEnabled, Indexer, testEmbed, type EmbedSettings } from './embed.js'
 import { DEFAULT_ALLOWED, DEFAULT_FORBIDDEN, guardPersonaEdit, countChars } from './persona-guard.js'
 import { GraphBuilder, graphScores, GraphStore, type GraphSettings } from './graph.js'
 import { cleanupPrompt, complete, parseCleanup, targetInfo, type LlmLike, type ModelTarget } from './extract.js'
-import { KINDS, MemoryStore, defaultTrust, type MemoryKind } from './memory.js'
+import { KINDS, MemoryStore, defaultTrust, ownScope, type MemoryKind } from './memory.js'
 import { forgetTool, saveTool, searchTool, type MemoryToolDeps } from './memory-tools.js'
 import { Organizer } from './organizer.js'
 import { formatRecall, recall, type RecallSettings } from './recall.js'
 import { countRounds, isHumanTurn, pendingHumanTurn } from './rounds.js'
 import { DiaryStore, diaryBlock, guessDate, localClock, logicalDay } from './diary.js'
 import { Maintenance } from './maintenance.js'
-import { Proactive } from './proactive.js'
 import { Care } from './care.js'
 import type { MasterSessionServices } from './master-sessions.js'
 import { applyPendingImport, cleanItems, configuredItems, createBackup, DEFAULT_ITEMS, inspectBackup, ITEMS, itemsOf, listBackups, readSavedSettings, safeBackupName, restoreContents, SETTINGS_ITEMS, type BackupItem, type Manifest, type RestorePlan, type SavedSettings } from './backup.js'
@@ -57,19 +51,7 @@ export type { BeforeCompactPayload, CompanionService, ContextPolicy } from './se
 export type { RuleRow, Scope } from './rules.js'
 
 export interface Config {
-  imageGenEnabled: boolean
-  imageGenProvider: ImageProvider
-  imageGenApiUrl: string
-  imageGenApiKey: string
-  imageGenModel: string
-  imageGenOptions: string
-  imageGenCommand: string
-  imageGenPrivate: boolean
-  imageGenGroup: boolean
-  imageGenTimeoutSeconds: number
-  imageGenMaxImages: number
-  imageGenMaxMB: number
-  imageGenKeepDays: number
+  sessionScope: 'qq' | 'all'
   excludedPresets: string[]
   personaPresets: string[]
   pluginAccess: 'all' | 'public' | 'off'
@@ -103,10 +85,6 @@ export interface Config {
   summaryApiKey: string
   summaryApiModel: string
   rules: RuleRow[]
-  archiveEnabled: boolean
-  archiveUnwoken: boolean
-  archiveDaysMaster: number
-  archiveDaysOthers: number
   recallEnabled: boolean
   recallTopK: number
   recallTopKMaster: number
@@ -144,7 +122,6 @@ export interface Config {
   graphApiModel: string
   graphBatch: number
   graphHops: number
-  groupContextCount: number
   diaryEnabled: boolean
   diaryTime: string
   dayBoundaryHour: number
@@ -154,22 +131,6 @@ export interface Config {
   diaryDays: number
   overviewMonths: number
   diaryBudgetPercent: number
-  rotateSessions: boolean
-  deleteOldSessions: boolean
-  carryMessages: number
-  archiveImages: boolean
-  proactiveEnabled: boolean
-  proactiveMinMinutes: number
-  proactiveMaxMinutes: number
-  proactiveOthersMinMinutes: number
-  proactiveOthersMaxMinutes: number
-  proactivePrivate: boolean
-  proactiveGroup: boolean
-  quietStart: string
-  quietEnd: string
-  proactiveRecentMinutes: number
-  proactiveGroupContext: number
-  proactiveActiveDays: number
   silenceToken: string
   autoCleanup: boolean
   autoCleanupDays: number
@@ -194,20 +155,8 @@ const mode = (def: ContextMode) => z.union(['truncate', 'llm']).default(def).vol
 
 // 每项都 .volatile()：dsh 的设置服务只在线编辑这种字段，保存后插件直接读到新值
 export const Config: z<LiveConfig> = z.object({
-  imageGenEnabled: z.boolean().default(false).volatile().description('启用图片生成工具；关闭时不调用生图服务'),
-  imageGenProvider: z.union(Object.keys(IMAGE_PROVIDERS) as ImageProvider[]).default('modelscope').volatile().description('图片生成协议；独立于聊天模型提供商'),
-  imageGenApiUrl: z.string().default('https://api-inference.modelscope.cn/v1').volatile().description('生图基础地址；Azure、Vertex和自定义HTTP填写完整端点'),
-  imageGenApiKey: z.string().role('secret').volatile().description('生图服务密钥或Bearer令牌；不回显、不导出到备份'),
-  imageGenModel: z.string().default('Qwen/Qwen-Image-2.1').volatile().description('生图模型或部署ID；使用提供商实际支持的标识'),
-  imageGenOptions: z.string().default('{}').volatile().description('额外JSON参数，ComfyUI工作流或自定义HTTP模板；不要填写密钥，认证模板用{{apiKey}}'),
-  imageGenCommand: z.string().default('').volatile().description('本地程序JSON参数数组，首项为可执行文件绝对路径；不经过Shell，提示词通过stdin JSON传入'),
-  imageGenPrivate: z.boolean().default(false).volatile().description('允许白名单中的其他人私聊使用生图'),
-  imageGenGroup: z.boolean().default(false).volatile().description('允许获准群聊回复使用生图；沿用群聊和管理员权限规则'),
-  imageGenTimeoutSeconds: z.natural().min(10).max(1800).default(180).volatile().description('一次生图总超时秒数，包含提交、轮询、下载；取消不保证远端退款'),
-  imageGenMaxImages: z.natural().min(1).max(4).default(1).volatile().description('每次最多生成图片张数；部分接口会逐张提交，分别计费'),
-  imageGenMaxMB: z.natural().min(1).max(50).default(20).volatile().description('每张生成图片的最大下载大小，单位MB'),
-  imageGenKeepDays: z.natural().min(1).max(365).default(7).volatile().description('本地生成图片保留天数，每次生成后清理，并最多保留100张；不包含在普通插件备份中'),
-  personaPresets: z.array(z.string()).default(['companion']).volatile().description('生效的预设 id（默认只有陪伴模式；* = 所有预设）。别的插件带来的预设不会被套上人格和记忆'),
+  sessionScope: z.union(['qq','all']).default('qq').volatile().description('默认只在QQ会话注入人格、记忆和工具；all也包含网页普通会话'),
+  personaPresets: z.array(z.string()).default(['*']).volatile().description('生效的预设 id（默认只有陪伴模式；* = 所有预设）。别的插件带来的预设不会被套上人格和记忆'),
   excludedPresets: z.array(z.string()).default([]).volatile().description('不生效的预设 id（例如写代码用的预设）'),
   pluginAccess: z.union(['all', 'public', 'off']).default('all').volatile().description('给其他插件用：all = 人格、核心记忆和记忆都能取（含主人的）；public = 只给公开的；off = 不给'),
   personaOnly: z.boolean().default(true).volatile().description('只用人格：去掉 dsh 的编程助手身份句'),
@@ -245,16 +194,9 @@ export const Config: z<LiveConfig> = z.object({
     maxRounds: z.natural(),
     dropRounds: z.natural(),
     mode: z.union(['', 'truncate', 'llm']).default(''),
-    archiveDays: z.natural(),
-    archiveUnwoken: z.union(['', 'on', 'off']).default(''),
     forgetMode: z.union(['', 'normal', 'purge']).default(''),
-    proactive: z.union(['', 'on', 'off']).default(''),
     note: z.string(),
   })).default([]).volatile().description('例外规则：按 QQ 号或群号单独设置'),
-  archiveEnabled: z.boolean().default(true).volatile().description('本插件的消息存档；不控制 SnowLuma 或 QQ 客户端的协议缓存'),
-  archiveUnwoken: z.boolean().default(true).volatile().description('保存没唤醒她的群消息'),
-  archiveDaysMaster: z.natural().min(1).default(365).volatile().description('主人私聊存档保留天数'),
-  archiveDaysOthers: z.natural().min(1).default(5).volatile().description('其他私聊和群聊存档保留天数'),
   // 记忆召回
   recallEnabled: z.boolean().default(true).volatile().description('每轮自动想起相关的记忆'),
   recallTopK: z.natural().default(6).volatile().description('每轮最多想起几条（别人的私聊和群聊）'),
@@ -297,7 +239,6 @@ export const Config: z<LiveConfig> = z.object({
   graphBatch: z.natural().min(1).max(30).default(8).volatile().description('一次让模型看几条记忆'),
   graphHops: z.natural().max(2).default(1).volatile().description('从提到的东西顺着关系走几步（0–2）'),
   // 群聊上下文
-  groupContextCount: z.natural().default(10).volatile().description('参与群话题时附上群里最近几条消息（含她自己说的；图片不限张数；0 = 不附）'),
   // 日记
   diaryEnabled: z.boolean().default(true).volatile().description('每天写日记'),
   diaryTime: z.string().default('01:30').volatile().description('每天几点写日记、处理存档到期（HH:MM）'),
@@ -309,23 +250,7 @@ export const Config: z<LiveConfig> = z.object({
   overviewMonths: z.natural().default(12).volatile().description('开新会话时给她看最近几个月的总览'),
   diaryBudgetPercent: z.natural().min(1).max(60).default(20).volatile().description('这部分最多占模型上限的百分之多少'),
   // 存档到期
-  rotateSessions: z.boolean().default(true).volatile().description('会话用满存档保留期就换新会话'),
-  deleteOldSessions: z.boolean().default(true).volatile().description('其他人的旧会话过期后删除（主人的永不删）'),
-  carryMessages: z.natural().default(10).volatile().description('换会话时带过去最近几条消息'),
-  archiveImages: z.boolean().default(true).volatile().description('收到图片时下载存起来（QQ 图片链接会过期）'),
   // 主动聊天（需要 dsh-snowluma-bridge ≥ 0.7.0）
-  proactiveEnabled: z.boolean().default(true).volatile().description('主动聊天：随机间隔唤醒她，让她决定要不要说话'),
-  proactiveMinMinutes: z.natural().min(10).default(60).volatile().description('主人私聊：最短间隔（分钟）'),
-  proactiveMaxMinutes: z.natural().min(10).default(240).volatile().description('主人私聊：最长间隔（分钟）'),
-  proactiveOthersMinMinutes: z.natural().min(10).default(120).volatile().description('其他私聊和群聊：最短间隔（分钟）'),
-  proactiveOthersMaxMinutes: z.natural().min(10).default(240).volatile().description('其他私聊和群聊：最长间隔（分钟）'),
-  proactivePrivate: z.boolean().default(true).volatile().description('也主动找别人私聊'),
-  proactiveGroup: z.boolean().default(true).volatile().description('也在群里主动说话'),
-  quietStart: z.string().default('01:00').volatile().description('免打扰开始（HH:MM）'),
-  quietEnd: z.string().default('09:00').volatile().description('免打扰结束（HH:MM）'),
-  proactiveRecentMinutes: z.natural().default(30).volatile().description('她这么多分钟内在这个会话里说过话就不触发'),
-  proactiveGroupContext: z.natural().default(15).volatile().description('群里主动说话时带几条上下文（图片不限张数）'),
-  proactiveActiveDays: z.natural().min(1).default(7).volatile().description('别人和群：最近几天里聊过才主动找'),
   silenceToken: z.string().default('[不发]').volatile().description('「不发」暗号，和 dsh-snowluma-bridge 设置里的保持一致'),
   // 记忆保养
   autoCleanup: z.boolean().default(true).volatile().description('自动清理久没想起、不重要的记忆'),
@@ -340,13 +265,13 @@ export const Config: z<LiveConfig> = z.object({
   // 备份
   backupEnabled: z.boolean().default(true).volatile().description('每天自动备份'),
   backupTime: z.string().default('04:00').volatile().description('自动备份时间（HH:MM）'),
-  backupKeep: z.natural().min(1).default(5).volatile().description('所有类型备份合计保留的份数，默认5；成功生成新备份后删除最早的'),
+  backupKeep: z.natural().min(1).max(5).default(5).volatile().description('所有类型备份合计保留的份数，默认5；成功生成新备份后删除最早的'),
   backupItems: z.array(z.string()).default([...DEFAULT_ITEMS]).volatile().description('备份哪些：' + ITEMS.join(' ') + '（默认除了 sessionsMaster 都备份）'),
   selfCheckQueries: z.array(z.string()).default(['主人叫什么名字', '我们约好了什么', '主人喜欢吃什么']).volatile().description('迁移后自检用的问题'),
   logLevel: z.union(['debug', 'info', 'warn', 'error']).default('info').volatile().description('日志级别'),
 }) as never
 
-export const name = 'dsh-companion-core'
+export const name = 'dsh-persona-memory'
 // snowluma（插件一）、agents 都是可选的，用到时 ctx.get
 
 type Context = CordisContext & { snowluma?: SnowlumaLike; agents?: { list(): any[] } }
@@ -378,16 +303,12 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
   const dir = defaultDataDir()
   const keep = (): number => get('historyKeep')
   const persona = new TextDoc(join(dir, 'persona', 'persona.md'), join(dir, 'persona', 'history'), keep)
-  const imageGenerator = new ImageGenerator(join(dir, 'generated-images'), () => ({
-    enabled: get('imageGenEnabled'), provider: get('imageGenProvider'), baseUrl: get('imageGenApiUrl'),
-    apiKey: get('imageGenApiKey') ?? '', model: get('imageGenModel'), options: get('imageGenOptions'), command: get('imageGenCommand'),
-    timeoutSeconds: get('imageGenTimeoutSeconds'), maxImages: get('imageGenMaxImages'), maxMB: get('imageGenMaxMB'), keepDays: get('imageGenKeepDays'),
-  }))
-  ctx.effect(() => () => imageGenerator.dispose(), 'companion: image generation')
   const readPersona = () => personaText(persona.read(), get('personaIgnoreComments'))
   const coreMaster = new TextDoc(join(dir, 'core', 'master.md'), join(dir, 'core', 'history-master'), keep)
   const corePublic = new TextDoc(join(dir, 'core', 'public.md'), join(dir, 'core', 'history-public'), keep)
-  const docs: Record<string, TextDoc> = { persona, 'core-master': coreMaster, 'core-public': corePublic }
+  const coreGroup=new TextDoc(join(dir,'core','group.md'),join(dir,'core','history-group'),keep)
+  const corePrivate=new TextDoc(join(dir,'core','private.md'),join(dir,'core','history-private'),keep)
+  const docs: Record<string, TextDoc> = { persona, 'core-master': coreMaster, 'core-public': corePublic, 'core-group':coreGroup,'core-private':corePrivate }
   // 导入：上一次在设置页确认导入后，插件重新加载时在这里替换数据（数据库还没打开）
   let lastImport: { manifest: Manifest; plan?: RestorePlan; at: number; error?: string } | undefined
   try {
@@ -402,13 +323,22 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
   }
   let archive: Archive | undefined
   try {
-    archive = new Archive(join(dir, 'companion.db'))
+    archive = new Archive(join(dir, 'companion.db'),true)
+    const local = archive
+    const methods = new Set(['recent','since','umos','lastMessages','lastOutTime','lastTime','oldest','currentSession','between','stats','mediaRefs'])
+    archive = new Proxy(local, {get(target, key) {
+      if(get('sessionScope')==='qq' && ['journalBetween','journalSessions','journalSince'].includes(String(key)))return ()=>[]
+      const source = (ctx.get('qqArchive' as never) as {archive?: Archive}|undefined)?.archive
+      if (typeof key === 'string' && methods.has(key) && source) return (source as any)[key].bind(source)
+      const value = Reflect.get(target,key);return typeof value === 'function' ? value.bind(target) : value
+    }})
   } catch (e) {
     log('error', '打不开存档数据库，消息存档暂停：' + errText(e))
   }
 
   const snowluma = (): SnowlumaLike | undefined => ctx.get('snowluma' as never) as SnowlumaLike | undefined
   const scope = (sessionId: string): Scope => scopeOf(sessionId, snowluma())
+  const managed = (id: string): boolean => get('sessionScope') === 'all' || scope(id).qq
   /** 这个预设的会话不归插件二管：不在「生效的预设」里（* 表示全部），或在「不生效的预设」里。不知道预设的会话照常管。 */
   const excluded = (presetId: string | undefined): boolean => {
     if (presetId === undefined || presetId === '') return false
@@ -423,22 +353,22 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
       group: { maxRounds: get('groupMaxRounds'), dropRounds: get('groupDropRounds'), mode: get('groupMode') },
     },
     archive: {
-      master: { days: get('archiveDaysMaster'), unwoken: true },
-      private: { days: get('archiveDaysOthers'), unwoken: true },
-      group: { days: get('archiveDaysOthers'), unwoken: get('archiveUnwoken') },
+      master: { days: 365, unwoken: true },
+      private: { days: 5, unwoken: true },
+      group: { days: 5, unwoken: true },
     },
     forget: { master: get('masterForget'), private: get('privateForget'), group: get('groupForget') },
   })
   const rules = (): RuleRow[] => (get('rules') ?? []).filter(r => r && String(r.target ?? '').trim() !== '')
   const coreFor = (category: Category): string => {
     const pub = corePublic.read().trim()
-    if (category !== 'master') return pub
-    const own = coreMaster.read().trim()
+    const own = (category==='master'?coreMaster:category==='group'?coreGroup:corePrivate).read().trim()
     return [pub, own].filter(s => s !== '').join('\n\n')
   }
 
   /** 别的插件要的「给谁」→ 插件二的范围；受「给其他插件用」限制 */
   const pluginTarget = (target?: { sessionId?: string; audience?: 'master' | 'public' }): { scope: Scope; audience: 'master' | 'public' } => {
+    if(target?.sessionId && !managed(String(target.sessionId)))throw new Error('此会话不在人格与记忆插件的生效范围内')
     const access = get('pluginAccess')
     if (access === 'off') throw new Error('dsh-companion-core：设置里关掉了「给其他插件用」')
     let s: Scope = target?.sessionId ? scope(String(target.sessionId)) : target?.audience === 'master' ? { category: 'master', qq: false } : { category: 'private', qq: true }
@@ -448,8 +378,10 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
 
   //#region 给预设里「上下文管理」行的服务
   const service: CompanionService = {
+    defaultQqPreset: 'companion',
+    async organizeConversation(umo,reason) { return organizer?.organizeUmo(umo,reason) },
     contextPolicy(sessionId: string, presetId?: string): ContextPolicy | undefined {
-      if (excluded(presetId)) return undefined
+      if (!managed(sessionId) || excluded(presetId)) return undefined
       const s = scope(sessionId)
       const summaryModel = taskTarget('summary')
       return { scope: s, rule: contextRule(s, defaults(), rules()), thresholdPercent: get('thresholdPercent'), ...(summaryModel ? { summaryModel } : {}) }
@@ -457,7 +389,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
     identity(target) {
       const t = pluginTarget(target)
       const persona = readPersona()
-      const core = coreFor(t.scope.category).trim()
+      const core = (target?.sessionId || t.audience==='master' ? coreFor(t.scope.category) : corePublic.read()).trim()
       return { persona, core, audience: t.audience, prompt: [persona, core ? coreBlock(core) : ''].filter(Boolean).join('\n\n') }
     },
     async recall(query, options) {
@@ -468,7 +400,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
     async prompt(options) {
       const t = pluginTarget(options)
       const persona = readPersona()
-      const core = coreFor(t.scope.category).trim()
+      const core = (options?.sessionId || t.audience==='master' ? coreFor(t.scope.category) : corePublic.read()).trim()
       const query = String(options?.query ?? '').trim()
       const found = query === '' ? [] : await search(t.scope, query, Math.max(1, Math.min(20, options?.topK ?? 5)))
       return [persona, core ? coreBlock(core) : '', found.length > 0 ? formatRecall(found) : ''].filter(Boolean).join('\n\n')
@@ -477,9 +409,9 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
       if (memories === undefined) return { ok: false, message: '数据库没打开' }
       const by = String(options?.by ?? '').trim()
       if (by === '') return { ok: false, message: '要用 by 写明是哪个插件' }
-      const t = pluginTarget({ audience: options.audience ?? 'public' })
+      const t = pluginTarget(options.sessionId ? options : { audience: options.audience ?? 'public' })
       const kind = (KINDS as readonly string[]).includes(String(options.kind)) ? options.kind as MemoryKind : 'other'
-      const r = memories.add({ scope: t.audience === 'master' ? 'master' : 'public', kind, content: String(content ?? ''), importance: typeof options.importance === 'number' ? options.importance : 0.4, trust: t.audience === 'master' ? 0.7 : 0.4, writer: 'plugin:' + by.slice(0, 40) })
+      const r = memories.add({ scope: options.sessionId ? ownScope(t.scope) : t.audience === 'master' ? 'master' : 'public', kind, content: String(content ?? ''), importance: typeof options.importance === 'number' ? options.importance : 0.4, trust: t.audience === 'master' ? 0.7 : 0.4, writer: 'plugin:' + by.slice(0, 40) })
       if (r.action === 'empty') return { ok: false, message: '内容是空的' }
       if (r.action === 'blocked') return { ok: false, message: '这件事被彻底遗忘过，不再记' }
       afterWrite()
@@ -506,7 +438,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
       const sessionId = String(agent.session?.id ?? '')
       const category = scope(sessionId).category
       const entry = { at: Date.now(), sessionId, preset, category, personaChars: 0, coreChars: 0 }
-      if (excluded(preset)) { recordPrompt({ ...entry, result: 'excluded' }); return assembly }
+      if (!managed(sessionId) || excluded(preset)) { recordPrompt({ ...entry, result: 'excluded' }); return assembly }
       const text = readPersona(), core = coreFor(category)
       const result = applyPrompt(assembly, { persona: text, core, personaOnly: get('personaOnly') })
       recordPrompt({ ...entry, result: text || core.trim() ? 'applied' : 'empty', personaChars: Array.from(text).length,
@@ -590,21 +522,15 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
     ? new Organizer({ archive, store: memories, llm, target: modelTarget, log, afterWrite })
     : undefined
   const diary = new DiaryStore(join(dir, 'diary'))
-  const mediaDir = join(dir, 'media')
-  const carryKey = (umo: string): string => 'carry:' + umo
-  const setCarry = (umo: string, text: string): void => meta.set(carryKey(umo), text)
-  const takeCarry = (umo: string): string => {
-    const text = meta.get(carryKey(umo)) ?? ''
-    if (text !== '') archive?.db.prepare('DELETE FROM meta WHERE key = ?').run(carryKey(umo))
-    return text
-  }
+  const mediaDir = (ctx.get('qqArchive' as never) as {mediaDir?: string}|undefined)?.mediaDir ?? join(dir,'media')
+  const takeCarry = (umo: string): string => (ctx.get('qqArchive' as never) as {takeCarry?(umo:string):string}|undefined)?.takeCarry?.(umo) ?? ''
   const agentsService = (): { get?(id: string): unknown; list?(): any[] } | undefined => ctx.get('agents' as never) as never
   const maintenance = archive !== undefined && memories !== undefined && organizer !== undefined
     ? new Maintenance({
       archive, store: memories, diary, organizer, llm, target: diaryTarget,
       settings: () => ({
         diaryEnabled: get('diaryEnabled'), monthlyEnabled: get('monthlyEnabled'), boundaryHour: get('dayBoundaryHour'), timeZone: get('timezone'),
-        rotateSessions: get('rotateSessions'), deleteOldSessions: get('deleteOldSessions'), carryMessages: get('carryMessages'),
+        rotateSessions: false, deleteOldSessions: false, carryMessages: 0,
         archiveDays: s => archiveRule(s, defaults(), rules()).days,
       }),
       snowluma: () => snowluma() as never,
@@ -613,43 +539,11 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
       isLive: id => (agentsService()?.list?.() ?? []).some(a => String(a?.session?.id) === id),
       sessionsRoot: join(dirname(dir), 'sessions'),
       mediaDir,
-      setCarry,
+      setCarry: () => {},
       log,
     })
     : undefined
   const clockOk = (v: string, fallback: string): string => /^\d{1,2}:\d{2}$/.test(v.trim()) ? v.trim().padStart(5, '0') : fallback
-  const proactive = archive !== undefined && organizer !== undefined
-    ? new Proactive({
-      archive, organizer, mediaDir, meta, log,
-      allowed: umo => {
-        const [platform_name, message_type, session_id, ...extra] = umo.split(':')
-        return extra.length === 0 && (message_type === 'GroupMessage' || message_type === 'FriendMessage')
-          && archiveAllowed(snowluma(), { platform_name, message_type, session_id })
-      },
-      wake: () => (snowluma() as any)?.wake?.bind(snowluma()),
-      settings: () => ({
-        enabled: get('proactiveEnabled'), masterMinMinutes: get('proactiveMinMinutes'), masterMaxMinutes: get('proactiveMaxMinutes'),
-        othersMinMinutes: get('proactiveOthersMinMinutes'), othersMaxMinutes: get('proactiveOthersMaxMinutes'), privateEnabled: get('proactivePrivate'), groupEnabled: get('proactiveGroup'),
-        quietStart: clockOk(get('quietStart'), '01:00'), quietEnd: clockOk(get('quietEnd'), '09:00'), recentMinutes: get('proactiveRecentMinutes'),
-        groupContextMessages: get('proactiveGroupContext'), activeWithinDays: get('proactiveActiveDays'),
-        silenceToken: (snowluma() as any)?.silenceToken?.() ?? (get('silenceToken') || '[不发]'), timeZone: get('timezone'),
-        override: s => {
-          const row = matchRule(s, rules())
-          return row?.proactive === 'on' ? true : row?.proactive === 'off' ? false : undefined
-        },
-      }),
-    })
-    : undefined
-  ctx.effect(() => {
-    let running = false
-    const timer = setInterval(() => {
-      if (proactive === undefined || running) return
-      running = true
-      void proactive.tick().catch(e => log('warn', '主动聊天出错：' + errText(e))).finally(() => { running = false })
-    }, 60_000)
-    return () => clearInterval(timer)
-  }, 'companion: proactive')
-
   // 每分钟看一眼：到了写日记的时间、今天还没跑过就跑（日记 + 存档到期）
   ctx.effect(() => {
     const tick = (): void => {
@@ -664,7 +558,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
       const due = want < boundary ? clock >= want && clock < boundary : clock >= want || clock < boundary
       if (!due) return
       meta.set('maint:day', day)
-      void maintenance.run(now).then(() => runCare(false, now)).catch(e => log('warn', '每日任务失败：' + errText(e)))
+      void maintenance.run(now, 'diary').then(() => runCare(false, now)).catch(e => log('warn', '每日任务失败：' + errText(e)))
     }
     const timer = setInterval(tick, 60_000)
     return () => clearInterval(timer)
@@ -711,16 +605,8 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
     return 'dsh'
   }
   const captureSettings = (): Record<string, unknown> => {
-    const forms = settingsService()?.describe({ redactSecrets: true }) ?? []
-    const out: Record<string, unknown> = {}
-    const dsh: Record<string, SavedSettings> = {}
-    for (const f of forms) {
-      const saved: SavedSettings = { ns: f.ns, user: f.user ?? {} }
-      const kind = formKind(f)
-      if (kind === 'dsh') { if (Object.keys(saved.user).length > 0) dsh[f.ns] = saved } else out[kind] = saved
-    }
-    out.dsh = dsh
-    return out
+    const f=settingsService()?.describe({redactSecrets:true}).find(f=>formKind(f)==='companion-core')
+    return f?{'companion-core':{ns:f.ns,user:f.user??{}}}:{}
   }
   /** 把包里的设置套用到现在的 dsh：改过的字段设成包里的值，包里没改过的恢复默认；Key 不动。返回每一份的结果。 */
   const applySettings = async (saved: Record<string, any>): Promise<string[]> => {
@@ -742,8 +628,8 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
       }
     }
     if (saved['companion-core']) await one('dsh-companion-core 的设置', forms.find(f => formKind(f) === 'companion-core'), saved['companion-core'])
-    if (saved['snowluma-bridge']) await one('dsh-snowluma-bridge 的设置', forms.find(f => formKind(f) === 'snowluma-bridge'), saved['snowluma-bridge'])
-    for (const s of Object.values((saved.dsh ?? {}) as Record<string, SavedSettings>)) await one('dsh 设置 ' + s.ns, forms.find(f => f.ns === s.ns), s)
+
+
     return notes
   }
   const backupNow = async (reason: 'auto' | 'manual' | 'before-import', items?: readonly BackupItem[]) => {
@@ -751,7 +637,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
     const es = embedSettings()
     const dim = Number(meta.get('embed_dim:' + es.model.trim()) ?? NaN)
     // 导入前的备份什么都带上，万一要退回去
-    const chosen = reason === 'before-import' ? ITEMS.filter(i => i !== 'sessionsMaster' || !!(sessionServices().bridge?.masterPrivateBindings && sessionServices().persistence)) : items ?? configuredItems(get('backupItems'))
+    const chosen = reason === 'before-import' ? ITEMS : items ?? configuredItems(get('backupItems'))
     const r = await createBackup({
       dataDir: dir, db: archive.db, outDir: backupsDir, reason, plugin: pluginVersion, schema: SCHEMA_VERSION, settings: settingsSnapshot(),
       embed: { ...(es.model.trim() ? { model: es.model.trim() } : {}), ...(Number.isFinite(dim) ? { dim } : {}) }, keep: get('backupKeep'),
@@ -834,7 +720,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
     try {
       const agent = payload.agent
       if (memories === undefined || agent === undefined || decision?.kind !== 'enter') return decision
-      if (excluded(agent.session?.meta?.agentPreset)) return decision
+      if (!managed(String(agent.session.id)) || excluded(agent.session?.meta?.agentPreset)) return decision
       const human = (payload.messages ?? []).filter(m => isHumanTurn({ type: 'user/message', data: m }))
       if (human.length === 0) return decision
       const s0 = scope(String(agent.session.id))
@@ -884,7 +770,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
   ctx.on('session/event' as never, ((session: any, event: any) => {
     if (organizer === undefined) return
     const id = String(session?.id ?? '')
-    if (id === '' || id.startsWith('snowluma-') || excluded(session?.meta?.agentPreset)) return
+    if (!managed(id) || id === '' || id.startsWith('snowluma-') || excluded(session?.meta?.agentPreset)) return
     if (event?.type !== 'user/message' && event?.type !== 'assistant/message') return
     const msg = event.data
     const human = event.type === 'user/message' && isHumanTurn(event)
@@ -895,60 +781,10 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
     organizer.onDshLine(id, text, human, get('organizeEveryRounds'))
   }) as never)
 
-  // 群聊之前 n 条：她参与群话题时，把群里最近 n 条消息（含她自己说的）一起给她，图片不限张数（原图、语音转文字、视频截图都用插件一的媒体服务）
-  ctx.on('snowluma/prompt' as never, (async (payload: { info: { type: string; umo: string; groupId?: string; sessionId: string }; message: any; content: any[] }) => {
-    try {
-      const info = payload.info
-      if (archive === undefined || info?.type !== 'group' || get('groupContextCount') <= 0) return
-      const s: Scope = { category: 'group', qq: true, umo: info.umo, ...(info.groupId ? { groupId: info.groupId } : {}) }
-      if (!archiveRule(s, defaults(), rules()).unwoken) return
-      const umo = String(info.umo)
-      const rows = archive.lastMessages(umo, get('groupContextCount'), payload.message?.message_id !== undefined ? String(payload.message.message_id) : undefined)
-      if (rows.length === 0) return
-      const media = (snowluma() as any)?.media as { convert?(components: any[], budget?: number): Promise<{ text: string; parts: any[]; used: number }> } | undefined
-      const lines: string[] = []
-      const images: any[] = []
-      for (const r of rows) {
-        let extra = ''
-        if (r.segments) {
-          try {
-            const all = JSON.parse(r.segments)
-            // 收到时已经下载存好的图片直接用（QQ 链接可能已经过期）
-            const local = Array.isArray(all) ? all.filter((c: any) => c?.type === 'Image' && typeof c._local === 'string') : []
-            for (const c of local) {
-              const image = archivedImage(mediaDir, c._local)
-              if (!image) continue
-              images.push(image)
-              extra += ' [图片，见下面]'
-            }
-            const comps = Array.isArray(all) ? all.filter((c: any) => !(c?.type === 'Image' && typeof c._local === 'string')) : []
-            if (media?.convert === undefined) throw new Error('没有 dsh-snowluma-bridge 的媒体服务')
-            if (Array.isArray(comps) && comps.some((c: any) => c?.type === 'Image' || c?.type === 'Record' || c?.type === 'Video')) {
-              const got = await media.convert(comps, Infinity)
-              const imgCount = got.parts.filter((p: any) => p?.type === 'image').length
-              if (imgCount > 0) extra += ' [图片×' + imgCount + '，见下面]'
-              if (got.text) extra += ' ' + got.text
-              images.push(...got.parts)
-            }
-          } catch (e) {
-            log('debug', '群消息里的图片/语音没转出来：' + errText(e))
-          }
-        }
-        lines.push('[' + (r.direction === 'out' ? '我' : (r.senderName || r.senderId) + '(' + r.senderId + ')') + '] ' + ((r.text || '').trim() || (extra ? '' : '[图片/语音等]')) + extra)
-      }
-      const head = { type: 'text', text: '<group_context>\n在这条消息之前，群里最近的消息（按时间顺序，[我] 是你自己说的）：\n' + lines.join('\n') + '\n</group_context>' }
-      const tail = images.length > 0 ? [{ type: 'text', text: '（下面是上面那些群消息里的图片）' }, ...images] : []
-      payload.content.unshift(head, ...tail)
-    } catch (e) {
-      log('warn', '附带群聊之前的消息时出错：' + errText(e))
-    }
-  }) as never)
-  //#endregion
-
   //#region 装工具：主人会话里改人格/核心记忆；所有会话（开了主动记忆时）回忆、记住、遗忘
   const toolDeps: ToolDeps = {
-    persona, coreMaster, corePublic,
-    isMaster: sessionId => get('selfEdit') && scope(sessionId).category === 'master',
+    persona, coreMaster, corePublic, coreGroup, corePrivate,
+    isMaster: sessionId => managed(sessionId) && get('selfEdit') && scope(sessionId).category === 'master',
     coreMaxChars: (which: 'master' | 'public') => which === 'public' ? get('corePublicMaxChars') : get('coreMasterMaxChars'),
     log,
     personaRules: () => ({ allowed: get('personaAllowed'), forbidden: get('personaForbidden') }),
@@ -959,45 +795,23 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
   }
   const memoryToolDeps: MemoryToolDeps | undefined = memories === undefined ? undefined : {
     store: memories,
-    scope,
+    scope: sessionId=>{if(!managed(sessionId)||!get('activeMemory'))throw new Error('当前会话未启用记忆工具');return scope(sessionId)},
     search: async (s, query, limit) => (await search(s, query, limit)).map(f => ({ id: f.memory.id, content: f.memory.content, scope: f.memory.scope, createdAt: f.memory.createdAt })),
     forgetMode: forgetModeOf,
     afterWrite,
     log,
   }
-  const imageAllowed = (sessionId: string): boolean => {
-    if (!get('imageGenEnabled')) return false
-    const agent = (ctx.get('agents' as never) as { list?(): any[] } | undefined)?.list?.().find(a => String(a.session?.id) === sessionId)
-    if (agent && excluded(agent.session?.meta?.agentPreset)) return false
-    const s = scope(sessionId)
-    if (s.category === 'private' && !get('imageGenPrivate') || s.category === 'group' && !get('imageGenGroup')) return false
-    return !s.qq || (snowluma() as SnowlumaService | undefined)?.canSendToolResult?.(sessionId) === true
-  }
-  const imageDefinition = imageTool({ generator: imageGenerator, allowed: imageAllowed,
-    deliver: async (sessionId, images, signal) => {
-      if (!scope(sessionId).qq) return false
-      signal.throwIfAborted()
-      const bridge = snowluma() as SnowlumaService | undefined
-      if (!bridge?.sendToolImages || !imageAllowed(sessionId)) throw new Error('QQ会话已不允许发送')
-      // Base64 is portable across host/container boundaries; never expose host file paths to QQ.
-      const chain = { chain: images.map(image => make('Image', { file: 'base64://' + readFileSync(image.path).toString('base64') })) }
-      await bridge.sendToolImages(sessionId, chain)
-      return true
-    },
-    attach: async image => {
-      const attachments = sessionServices().attachments
-      if (!attachments) throw new Error('dsh附件服务不可用；图片已生成，可在设置页下载')
-      return attachments.saveImage({ data: readFileSync(image.path), mediaType: image.mediaType, name: image.id })
-    },
-  })
-  const equipped = new WeakMap<object, Array<() => void>>()
+  const equipped = new WeakMap<object, {key:string;off:Array<() => void>}>()
   const equip = (agent: any): void => {
-    if (agent === undefined || equipped.has(agent)) return
-    const sessionId = String(agent.session?.id ?? '')
-    if (excluded(agent.session?.meta?.agentPreset)) return
-    const master = scope(sessionId).category === 'master'
+    if (agent === undefined) return
+    const sessionId=String(agent.session?.id??''),allowed=managed(sessionId)&&!excluded(agent.session?.meta?.agentPreset),master=scope(sessionId).category==='master'
+    const key=[allowed,master,get('activeMemory')].join(':'),previous=equipped.get(agent)
+    if(previous?.key===key)return
+    for(const off of previous?.off??[]){try{off()}catch{}}
+    equipped.delete(agent)
+    if(!allowed)return
+
     const defs = [
-      imageDefinition,
       ...(master ? [personaTool(toolDeps), coreTool(toolDeps)] : []),
       ...(get('activeMemory') && memoryToolDeps !== undefined ? [searchTool(memoryToolDeps), saveTool(memoryToolDeps), forgetTool(memoryToolDeps)] : []),
     ]
@@ -1016,10 +830,11 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
         log('warn', '会话 ' + sessionId + ' 装工具 ' + def.name + ' 失败: ' + errText(e))
       }
     }
-    equipped.set(agent, disposers)
+    equipped.set(agent, {key,off:disposers})
     log('debug', '会话 ' + sessionId + ' 装上了工具：' + defs.map(d => d.name).join('、'))
   }
   ctx.on('agent/created' as never, ((payload: { agent: any }) => { equip(payload.agent) }) as never)
+  ctx.on('agent/pre-step' as never,(async(payload:{agent?:unknown},next:()=>Promise<unknown>)=>{equip(payload.agent);return next()}) as never)
   // 插件启动（或重新加载）时，给已经在跑的会话补装
   ctx.effect(() => {
     try {
@@ -1029,7 +844,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
     }
     return () => {
       for (const agent of (ctx.get('agents' as never) as { list?(): any[] } | undefined)?.list?.() ?? []) {
-        for (const off of equipped.get(agent) ?? []) {
+        for (const off of equipped.get(agent)?.off ?? []) {
           try { off() } catch { /* 会话已经结束 */ }
         }
       }
@@ -1037,92 +852,17 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
   }, 'companion: tools')
   //#endregion
 
-  //#region 消息存档（插件一的事件）
-  const EXT: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp' }
-  /** 收到的图片下载存好（按内容的 SHA-256 命名），在存档的消息段里记下文件名。 */
-  const saveImages = async (umo: string, messageId: string, comps: any[], session: ArchiveSession): Promise<void> => {
-    const allowed = (): boolean => get('archiveEnabled') && archiveAllowed(snowluma(), session)
-    const media = (snowluma() as any)?.media as { loadImage?(c: any): Promise<{ mediaType: string; data: string }> } | undefined
-    if (media?.loadImage === undefined || archive === undefined) return
-    let changed = false
-    for (const c of comps) {
-      if (!allowed()) return
-      if (c?.type !== 'Image' || c._local) continue
-      try {
-        const img = await media.loadImage(c)
-        // 本插件新增：下载期间移出名单或关闭存档，不写文件和数据库。
-        if (!allowed()) return
-        const bytes = Buffer.from(img.data, 'base64')
-        if (bytes.length > 10 * 1024 * 1024) continue
-        const name = createHash('sha256').update(bytes).digest('hex') + '.' + (EXT[img.mediaType] ?? 'jpg')
-        mkdirSync(mediaDir, { recursive: true })
-        const path = join(mediaDir, name)
-        if (!existsSync(path)) writeAtomic(path, bytes)
-        c._local = name
-        changed = true
-      } catch (e) {
-        log('debug', '图片没下载下来：' + errText(e))
-      }
-    }
-    if (changed && allowed()) archive.updateSegments(umo, messageId, JSON.stringify(comps))
-  }
-  const store = (m: ArchivedMessage): void => {
-    if (archive === undefined || !get('archiveEnabled')) return
-    try {
-      archive.add(m)
-    } catch (e) {
-      log('warn', '存档失败: ' + errText(e))
-    }
-  }
-  ctx.on('snowluma/message' as never, ((abm: any, event: any, isWake: boolean) => {
-    const umo = String(event?.unified_msg_origin ?? '')
-    if (umo === '' || !archiveAllowed(snowluma(), event?.session)) return
-    const isGroup = abm?.type === 'GroupMessage'
-    const info = (snowluma() as any)?.sessionInfoByUmo?.(umo) as { sessionId?: string; adminPrivate?: boolean } | undefined
-    const s: Scope = isGroup
-      ? { category: 'group', qq: true, groupId: String(abm.raw_message?.group_id ?? abm.group?.group_id ?? abm.session_id ?? '') }
-      : { category: info?.adminPrivate ? 'master' : 'private', qq: true, userId: String(abm.session_id ?? abm.sender?.user_id ?? '') }
-    if (isGroup || info !== undefined) organizer?.rememberCategory(umo, s.category)
-    if (isGroup && !isWake && !archiveRule(s, defaults(), rules()).unwoken) return
-    const notice = abm?.raw_message?.post_type !== 'message'
-    let segments: string | undefined
-    try { segments = JSON.stringify(abm.message ?? []) } catch { segments = undefined }
-    store({
-      umo, kind: isGroup ? 'group' : 'private',
-      ...(isGroup ? { groupId: s.groupId } : { userId: s.userId }),
-      ...(abm.message_id !== undefined && abm.message_id !== '' ? { messageId: String(abm.message_id) } : {}),
-      time: typeof abm.timestamp === 'number' ? abm.timestamp * 1000 : Date.now(),
-      direction: 'in',
-      senderId: String(abm.sender?.user_id ?? ''),
-      senderName: String(abm.sender?.nickname ?? ''),
-      woke: isWake, type: notice ? 'notice' : 'message',
-      text: notice ? String(abm.event_text ?? abm.message_str ?? '') : String(abm.message_str ?? ''),
-      ...(segments !== undefined && !notice ? { segments } : {}),
-      ...(info?.sessionId ? { sessionId: info.sessionId } : {}),
-    })
-    if (get('archiveImages') && get('archiveEnabled') && !notice && abm.message_id !== undefined && Array.isArray(abm.message) && abm.message.some((c: any) => c?.type === 'Image')) {
-      void saveImages(umo, String(abm.message_id), JSON.parse(segments ?? '[]'), event.session)
-    }
+  ctx.on('snowluma/message' as never, ((abm:any,event:any) => {
+    const umo=String(event?.unified_msg_origin??'');if(!umo || !archiveAllowed(snowluma(),event?.session))return
+    const info=(snowluma() as any)?.sessionInfoByUmo?.(umo)
+    organizer?.rememberCategory(umo,abm.type==='GroupMessage'?'group':info?.adminPrivate?'master':'private')
   }) as never)
-  ctx.on('snowluma/sent' as never, ((p: { umo: string; session: ArchiveSession; text: string; time: number }) => {
-    // 本插件新增：回复允许管理员在名单外群发言，但该群的出站消息也不存档。
-    if (!archiveAllowed(snowluma(), p.session)) return
-    const isGroup = p.session?.message_type === 'GroupMessage'
-    const info = (snowluma() as any)?.sessionInfoByUmo?.(p.umo) as { sessionId?: string; selfId?: string; type?: string; adminPrivate?: boolean } | undefined
-    if (info !== undefined) organizer?.rememberCategory(p.umo, info.type === 'group' ? 'group' : info.adminPrivate ? 'master' : 'private')
-    store({
-      umo: p.umo, kind: isGroup ? 'group' : 'private',
-      ...(isGroup ? { groupId: p.session.session_id } : { userId: p.session.session_id }),
-      time: p.time ?? Date.now(), direction: 'out',
-      senderId: String(info?.selfId ?? 'self'), senderName: '她',
-      woke: true, type: 'message', text: String(p.text ?? ''),
-      ...(info?.sessionId ? { sessionId: info.sessionId } : {}),
-    })
-    // 每 N 轮整理一次（只算她一轮说完的回复）
-    if ((p as { source?: string }).source !== 'service') organizer?.onReply(p.umo, get('organizeEveryRounds'))
+  ctx.on('snowluma/sent' as never, ((p:any) => {
+    if(!archiveAllowed(snowluma(),p.session))return
+    const info=(snowluma() as any)?.sessionInfoByUmo?.(p.umo)
+    organizer?.rememberCategory(p.umo,info?.type==='group'?'group':info?.adminPrivate?'master':'private')
+    if(p.source!=='service')organizer?.onReply(p.umo,get('organizeEveryRounds'))
   }) as never)
-  //#endregion
-
   /** 迁移后自检：用几个固定问题在主人的记忆里搜，看能不能想起来。 */
   const selfCheck = async () => {
     const out: Array<{ query: string; found: Array<{ id: number; content: string; relevance: number }> }> = []
@@ -1172,7 +912,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
     dataDir: dir,
     snowluma: snowluma() !== undefined,
     docs: Object.fromEntries(DOC_NAMES.map(n => [n, docs[n].snapshot()])),
-    personaStatus: { chars: Array.from(readPersona()).length, ignoreComments: get('personaIgnoreComments'),
+    personaStatus: { sessionScope:get('sessionScope'), chars: Array.from(readPersona()).length, ignoreComments: get('personaIgnoreComments'),
       presets: get('personaPresets'), excludedPresets: get('excludedPresets'), assemblies: promptAssemblies.slice() },
     archive: archive?.stats() ?? null,
     memory: memories?.stats() ?? null,
@@ -1184,8 +924,6 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
     cleanup: lastCleanup,
     diary: { days: diary.days().length, months: diary.months().length, latest: diary.days()[0] ?? null, nextDay: meta.get('maint:day') ?? null },
     maintenance: maintenance?.last ?? null,
-    retired: archive?.retiredList() ?? [],
-    proactive: { list: proactive?.list() ?? [], wakeAvailable: typeof (snowluma() as any)?.wake === 'function' },
     care: { lastCleanup: Number(meta.get('care:cleanup') ?? 0) || null, lastConsolidate: Number(meta.get('care:consolidate') ?? 0) || null, lastRun: care?.lastRun() ?? null },
     backups: listBackups(backupsDir),
     backupRetention: { keep: get('backupKeep'), scope: 'all' },
@@ -1205,33 +943,6 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
       res.end(JSON.stringify(value))
     }
     try {
-      if (parts[0] === 'images') {
-        if (req.method === 'GET' && parts.length === 1) return json(200, { providers: IMAGE_PROVIDERS, images: imageGenerator.list(), activeTasks: imageGenerator.activeCount })
-        if (req.method === 'GET' && parts.length === 2) {
-          const file = imageGenerator.file(parts[1])
-          if (!file) return json(404, { error: '图片不存在或已清理' })
-          res.writeHead(200, { 'content-type': 'image/' + (file.endsWith('.jpg') ? 'jpeg' : file.split('.').pop()), 'cache-control': 'private, no-store', 'x-content-type-options': 'nosniff' })
-          createReadStream(file).pipe(res)
-          return
-        }
-        if (req.method === 'POST' && parts[1] === 'generate') {
-          if (!String(req.headers['content-type'] ?? '').includes('application/json')) return json(415, { error: '需要 application/json' })
-          const body = await readBody(req)
-          const abort = new AbortController()
-          const onClose = () => { if (!res.writableEnded) abort.abort() }
-          res.on('close', onClose)
-          try {
-            const result = await imageGenerator.run({ prompt: String(body.prompt ?? ''), ...(body.size ? { size: String(body.size) } : {}), count: Number(body.count ?? 1) }, abort.signal)
-            return json(200, { images: result.images.map(({ path: _path, ...image }) => image), warning: result.warning })
-          } finally { res.off('close', onClose) }
-        }
-        if (req.method === 'POST' && parts[1] === 'validate') {
-          if (!String(req.headers['content-type'] ?? '').includes('application/json')) return json(415, { error: '需要 application/json' })
-          imageOptions(get('imageGenOptions'))
-          return json(200, { ok: true, message: '高级参数JSON有效；未请求远端、不消耗额度。实际生成仍需验证模型与账号权限。' })
-        }
-        return json(405, { error: '不支持的图片操作' })
-      }
       if (req.method === 'GET' && parts[0] === 'state') return json(200, state())
       const url = new URL(req.url ?? '/', 'http://localhost')
       if (req.method === 'GET' && parts[0] === 'memory' && parts.length === 1) {
@@ -1278,15 +989,6 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
           rmSync(file, { force: true })
         }
       }
-      if (parts[0] === 'proactive' && parts[1] === 'try') {
-        if (req.method !== 'POST') return json(405, { error: '只支持 POST' })
-        if (!String(req.headers['content-type'] ?? '').includes('application/json')) return json(415, { error: '需要 application/json' })
-        const body = await readBody(req)
-        const target = proactive?.scopeForUmo(String(body?.umo ?? ''))
-        if (proactive === undefined || target === undefined) return json(404, { error: '没有这个会话' })
-        const ok = await proactive.fire(String(body.umo), target)
-        return ok ? json(200, state()) : json(500, { error: '唤醒失败，看日志' })
-      }
       // 测试用：端到端测试调给其他插件的接口（只在测试环境开）
       if (parts[0] === 'test' && parts[1] === 'service' && process.env.COMPANION_TEST_CLOCK === '1') {
         const body = await readBody(req)
@@ -1297,11 +999,6 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
           if (body?.op === 'remember') return json(200, await service.remember(String(body.content ?? ''), body.options))
         } catch (e) { return json(400, { error: errText(e) }) }
         return json(404, { error: 'op?' })
-      }
-      if (parts[0] === 'proactive' && parts[1] === 'tick' && process.env.COMPANION_TEST_CLOCK === '1') {
-        const body = await readBody(req)
-        const woken = await proactive?.tick(typeof body?.now === 'number' ? body.now : Date.now())
-        return json(200, { woken: woken ?? [] })
       }
       if (['backup', 'care', 'selfcheck'].includes(parts[0] ?? '')) {
         if (req.method !== 'POST') return json(405, { error: '只支持 POST' })
@@ -1314,7 +1011,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
           return json(404, { error: 'not found' })
         }
         // backup
-        if (parts[1] === 'create') { const r = await backupNow('manual', Array.isArray(body?.items) ? cleanItems(body.items) : undefined); return json(200, { name: r.name, state: state() }) }
+        if (parts[1] === 'create') { const r = await backupNow('manual', Array.isArray(body?.items) ? cleanItems(body.items) : undefined); return json(200, { name: r.name, manifest:r.manifest, state: state() }) }
         if (parts[1] === 'delete') {
           const name = String(body?.name ?? '')
           if (!safeBackupName(name)) return json(400, { error: '名字不对' })
@@ -1362,7 +1059,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
           if (maintenance === undefined) return json(503, { error: '数据库没打开' })
           // 测试用：环境变量 COMPANION_TEST_CLOCK=1 时可以指定"现在"（模拟过了很多天）
           const now = process.env.COMPANION_TEST_CLOCK === '1' && typeof body?.now === 'number' ? body.now : Date.now()
-          const what = body?.what === 'diary' || body?.what === 'expire' ? body.what : 'all'
+          const what = 'diary' as const
           const report = await maintenance.run(now, what)
           return json(200, { report, state: state() })
         }
@@ -1551,7 +1248,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
           return json(200, { text, chars: Array.from(text).length })
         }
         if (parts[1] !== 'persona') {
-          const max = parts[1] === 'core-public' ? get('corePublicMaxChars') : get('coreMasterMaxChars')
+          const max = parts[1] === 'core-master' ? get('coreMasterMaxChars') : get('corePublicMaxChars')
           if (countChars(body.text) > max) return json(400, { error: '超过核心记忆上限（' + countChars(body.text) + ' 字 > ' + max + ' 字）' })
         }
         doc.write(body.text, { by: 'settings' })

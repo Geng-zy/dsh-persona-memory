@@ -4,7 +4,7 @@
 // 只用 dsh 自带的表单组件和 --dsw-* 颜色变量，外观随 dsh 的主题（深色/浅色）变化。
 // 这个文件不经过打包，构建时原样复制到 lib/client.js。
 window.__ModuleLoader__.load({
-	id: "dsh-snowluma-companion/ui-bridge",
+	id: "dsh-qq-gateway/ui-bridge",
 	factory: (require) => {
 		var exports = {};
 		var reactModule = require("react");
@@ -15,7 +15,7 @@ window.__ModuleLoader__.load({
 		/** 词条命名空间 */
 		var NS = "snowlumaBridge";
 		/** 插件包名（plugins.bundle.config 的 key） */
-		var PACKAGE = "dsh-snowluma-companion";
+		var PACKAGE = "dsh-qq-gateway";
 		/** 设置服务里的配置行 id（cordis.patch.yml 里的 id） */
 
 		var zh = {
@@ -138,7 +138,7 @@ window.__ModuleLoader__.load({
 			maxImagesHint: "限制单条来信提交给模型的图片总数，包含正文图片、引用或转发图片及视频抽帧。0 表示不设数量上限；增加图片可能提高请求体积及模型用量。",
 			session: "会话",
 			workspacePath: "工作目录",
-			workspacePathHint: "QQ 会话在 dsh 中使用的工作目录，应填写运行 dsh 的机器上的绝对路径。留空时使用 dsh 进程的当前目录；现有会话通常需重新创建才能应用。",
+			workspacePathHint: "QQ工作区的绝对路径。留空自动创建 <DSH_HOME>/workspaces/QQ；修改后，旧QQ会话在空闲时复制完整历史迁入，原会话归档保留。",
 			agentPreset: "默认的 Agent 预设",
 			agentPresetHint: "新建 QQ 会话使用的默认预设 ID。留空时跟随 dsh 默认预设；按会话类型设置的专用预设优先。现有会话可通过 /new 应用新的预设选择。",
 			log: "日志",
@@ -509,7 +509,7 @@ window.__ModuleLoader__.load({
 			maxImagesHint: "Limit images submitted per incoming message, including direct, quoted, forwarded, and video-frame images. Set to 0 for no count limit. More images can increase request size and model usage.",
 			session: "Sessions",
 			workspacePath: "Working directory",
-			workspacePathHint: "Absolute workspace path on the machine running dsh. Blank uses the process working directory. Existing sessions generally need to be recreated to adopt a new path.",
+			workspacePathHint: "Absolute QQ workspace path. Blank creates <DSH_HOME>/workspaces/QQ. Idle conversations migrate with complete history; originals remain archived.",
 			agentPreset: "Agent preset",
 			agentPresetHint: "Default preset ID for new QQ sessions. Blank follows the dsh default; per-conversation-type overrides take priority. Use /new to apply a new preset to an existing conversation.",
 			log: "Logging",
@@ -933,18 +933,18 @@ window.__ModuleLoader__.load({
 		//#endregion
 
 		//#region 表单模型
-		function createForm(scope) {
+		function createForm(scope, sharedForm) {
 			var specs = INTS.map(function (x) { return intField(x[0], x[1], x[2] === undefined ? Number.MAX_SAFE_INTEGER : x[2]); }).concat([
 				enumField("logLevel", LOG_LEVELS),
 				enumField("rateLimitStrategy", RATE_STRATEGIES),
 				enumField("sttMode", STT_MODES),
 				enumField("pushService", PUSH_SERVICES),
 				enumField("ttsMode", TTS_MODES)
-			], LISTS.map(listField), BOOLS.map(boolField), TEXTS.map(function (f) { return P.settingsTextField(f); }));
+			], LISTS.map(listField), BOOLS.map(boolField), TEXTS.map(function (f) { var field=P.settingsTextField(f);if(f!=="workspacePath")return field;return Object.assign({},field,{parse:function(text){var v=text.trim();if(v!==""&&!/^(\/|[A-Za-z]:[\\/])/.test(v))return undefined;return field.parse(text)}}); }));
 			var secrets = SECRETS.map(function (field) {
 				return { field: field, write: function (text) { return scope.mutate([{ op: "set", path: [field], value: text }]); } };
 			});
-			var form = new P.SettingsFormModel(scope, specs, secrets);
+			var form = sharedForm || new P.SettingsFormModel(scope, specs, secrets);
 			var all = INTS.map(function (x) { return x[0]; }).concat(["logLevel", "rateLimitStrategy", "sttMode", "pushService", "ttsMode"], LISTS, BOOLS, TEXTS, SECRETS);
 			// 设置服务不把密钥发给浏览器，只告诉它有没有设置；由 refreshSecrets 向服务查询
 			var secretSet = {};
@@ -957,6 +957,7 @@ window.__ModuleLoader__.load({
 			var store = form.bind(compute);
 			return {
 				form: form,
+				specs: specs, secrets: secrets,
 				store: store,
 				setSecrets: function (next) {
 					if (JSON.stringify(next) === JSON.stringify(secretSet)) return;
@@ -981,7 +982,7 @@ window.__ModuleLoader__.load({
 		function G() { return h("div", { className: "snowlumab-grid" }, Array.prototype.slice.call(arguments)); }
 		function Sub(text) { return h("h4", { className: "snowlumab-subtitle" }, text); }
 		function Section(props) {
-			var Layout = require("dsh-snowluma-companion/ui-layout");
+			var Layout = require("dsh-qq-gateway/ui-layout");
 			return h(Layout.Section, props, props.children);
 		}
 		function Toggle(props) {

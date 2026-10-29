@@ -1,132 +1,84 @@
-# SnowLuma Companion · 陪伴助手
+# QQ 接入助手与人格记忆插件
 
-将 SnowLuma 的 QQ 接入、人格与核心记忆、长期记忆、日记、主动聊天和备份整合为一个 dsh 插件。包名及仓库为 **dsh-snowluma-companion**，由原 bridge 仓库继续维护，合入 companion-core 的代码与提交历史。
+本仓库从 2.0.0 起提供两个独立的 dsh 插件。仓库地址保持不变。
 
-## 已有 dsh：只安装插件
+| 插件 | 包名 | 功能 |
+| --- | --- | --- |
+| QQ 接入助手 | `dsh-qq-gateway` | SnowLuma/OneBot 连接、QQ工作区、权限和白名单、回复节奏、群上下文和消息存档、语音/视频/文件/图片生成、主动聊天、掉线提醒、QQ数据备份恢复 |
+| 人格与记忆 | `dsh-persona-memory` | 人格、分域核心记忆、长期记忆与关系图、日记、记忆整理和上下文压缩、人格记忆数据备份恢复 |
 
-适用于 **dsh 0.2.1-rc.2 / Node ≥22.13** 的网页环境。先停止 dsh，再以运行 dsh 的同一系统账号、相同 `DSH_HOME` 执行（`dsh` 和 `pnpm` 须在 PATH 中）：
+## 已有 dsh：安装插件
+
+适用于 dsh **0.2.1-rc.2**、Node **≥22.13**。先等待正在回复或生图的任务完成，停止 dsh；以运行 dsh 的同一系统账号和相同 `DSH_HOME` 执行：
 
 ```sh
-dsh plugin --profile web add "https://github.com/Geng-zy/dsh-snowluma-companion/releases/download/v1.4.3/dsh-snowluma-companion-1.4.3.tgz" --ignore-scripts
+dsh plugin --profile web add "https://github.com/Geng-zy/dsh-snowluma-companion/releases/download/v2.0.0/dsh-qq-gateway-2.0.0.tgz" --ignore-scripts
+dsh plugin --profile web add "https://github.com/Geng-zy/dsh-snowluma-companion/releases/download/v2.0.0/dsh-persona-memory-2.0.0.tgz" --ignore-scripts
 ```
 
-命令向现有 `web` profile 安装插件，首次安装自动加入 bundle。随后重新启动 dsh，进入 **更多 → 设置 → SnowLuma 陪伴助手**。QQ 接入需要已有 SnowLuma 及反向 WS 配置。[命令路径、其他 profile、本地安装包与升级说明](docs/PLUGIN-INSTALL.md)。
+可以只执行其中一条。只装QQ插件使用dsh默认人格；只装人格插件默认等待QQ接入，也可将“会话生效范围”改为全部会话。两者共同安装时QQ新会话采用陪伴预设。插件不会自动修改普通网页会话的全局默认预设。
 
-桌面版也可通过应用内插件管理安装[同一发行包](https://github.com/Geng-zy/dsh-snowluma-companion/releases/tag/v1.4.3)。从两个旧插件合并升级时，使用下方迁移流程。
+重新启动后进入 **更多 → 设置 → QQ 接入助手 / 人格与记忆**；插件管理页也提供相同设置。分类可折叠，同时只展开一个。
 
-## 全新服务器一键部署
+**已有旧版统一插件时不要直接叠加安装。** 请先按[拆分迁移说明](docs/SPLIT-MIGRATION.md)迁移配置和数据；保留原QQ历史，校验复制后才归档原会话。
 
-支持Ubuntu22.04/24.04/26.04。可以选择[一键安装](docs/INSTALL.md)或[手动安装图文教程](docs/MANUAL-INSTALL.md)。
+[插件安装详细说明](docs/PLUGIN-INSTALL.md) · [发行页](https://github.com/Geng-zy/dsh-snowluma-companion/releases/tag/v2.0.0)
 
-![部署结构与端口](docs/images/deployment.svg)
+## 新服务器部署
 
-在服务器执行：
+支持Ubuntu 22.04/24.04/26.04、systemd、amd64/arm64。26.04尚未完成整机虚拟机安装实测。安装器用于全新环境，已有数据时会停止，避免覆盖。
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/Geng-zy/dsh-snowluma-companion/main/install.sh | sudo bash
 ```
 
-交互填写账号、端口、主人QQ、SnowLuma/VNC密码、Token和模型配置，安装dsh、统一插件、官方SnowLuma及系统服务。结束时输出所有访问网址和凭证，并保存为私有文件；已有环境停止以免覆盖。QQ扫码由本人完成。[详细安装、续装与查看凭证](docs/INSTALL.md)。
+交互填写账号、端口、密码、主人QQ、Token及模型接口；部署Node、dsh、两个插件和官方SnowLuma Docker环境。完成后显示网址与凭证，并保存私有凭证文件。QQ扫码须本人完成。
 
-## 安装与升级
+[一键安装](docs/INSTALL.md) · [手动安装图文教程](docs/MANUAL-INSTALL.md) · [部署差异](docs/DEPLOYMENT-DIFFERENCES.md)
 
-要求 dsh **0.2.1-rc.2** 对应 SDK、Node **≥22.13**（使用内置 SQLite）。在 dsh 插件管理页安装本仓库 [v1.4.3](https://github.com/Geng-zy/dsh-snowluma-companion/releases/tag/v1.4.3) 的 `.tgz`。只需安装一个包；QQ 协议端仍由官方 SnowLuma Docker 镜像运行。
+![部署结构与端口](docs/images/deployment.svg)
 
-从两个旧插件升级时，停止 dsh，保留现有数据与 profile 配置，以 profile 所属用户执行：
+## QQ工作区与权限
 
-```sh
-node /解包目录/deploy/migrate-profile.mjs /绝对路径/profiles/web /绝对路径/dsh-snowluma-companion-1.4.3.tgz
-cd /绝对路径/profiles/web
-pnpm install
-```
+启用QQ插件时自动创建并注册 `DSH_HOME/workspaces/QQ`，在“连接与权限”中可填写其他绝对路径。新QQ会话自动进入该工作区；修改路径后，空闲旧会话完整复制到目标工作区，校验后切换映射并归档原会话。运行中的会话延后迁移。
 
-随后启动 dsh。迁移脚本合并 bundle 与包引用，并更新 profile 中显式的旧模块路径。内部 `snowluma-bridge`、`companion-core` 配置行继续使用原命名空间，已保存设置和凭据无需重新填写。平台 ID、QQ 会话绑定、存储目录、SQLite schema 5 和备份格式 3 保持；不要通过清空数据重新安装来合并。
+管理员保持原有最高QQ权限，不受白名单约束。群聊与其他人私聊使用各自白名单；未获准会话不存档、不触发主动聊天。回复打字速度分管理员私聊、其他私聊和群聊，最长等待默认5/8/8秒。[回复规则](docs/CHAT-PACING.md) · [QQ媒体发送](docs/QQ-SENDING.md)
 
-## 魔搭聊天接口
+## 人格与记忆
 
-自定义OpenAI Chat Completions接入魔搭时，如遇`developer is not one of...`的400错误，需要配置dsh提供商的`compat.supportsDeveloperRole: false`。此兼容设置不删除旧会话、不关闭思考或人格记忆。[原因及配置位置](docs/MODELSCOPE.md)。
+默认只作用于QQ会话。人格最新稿在下一次模型请求读取，旧会话也无需/reset。公共核心记忆对所有受管会话可见；管理员私聊、群聊、其他私聊另有各自核心记忆稿。长期记忆按管理员私聊、每个群、每位普通私聊用户分域。管理员可汇总读取全部域，普通会话仅能读取公共域和自己的域。
 
-## 回复节奏
+**隔离边界是记忆接口。** 按当前设计保留原终端、文件等工具权限，没有增加操作系统文件沙箱；这些工具仍可能读取工作区外文件。不能将记忆接口分域描述为文件访问隔离。
 
-管理员私聊、其他人私聊、群聊各自设置模拟打字开关、每分钟字数及最短/最长等待。管理员在群里仍采用群聊打字设置，原有管理员群限频豁免保留。升级沿用现有节奏，修改后分别生效。[设置与兼容说明](docs/CHAT-PACING.md)。
-
-## 图片生成
-
-在“图片、语音与视频 → 图片生成”配置独立生图接口。支持OpenAI Images兼容接口、魔搭、阿里云、Google、OpenRouter、BFL、fal、Replicate、Stability、Ideogram、HF及ComfyUI/A1111；自定义HTTP和本地程序用于扩展其他官方SDK及Diffusers。默认关闭，主人可用范围与其他私聊/群聊开关独立管理。QQ直接发送图片，网页显示工具附件，设置页可试画和下载。[支持范围、配置示例、额度与验证限制](docs/IMAGE-GENERATION.md)。
-
-## 人格编辑与生效
-
-编辑人格后，受管会话的下一次模型请求读取最新稿；主人和公开核心记忆继续按会话权限隔离。新版显示文件来源及真实组装记录，支持Markdown导入导出、正文预览、可选HTML注释过滤和旧稿覆盖保护。[机制、使用步骤及与dsh-agent-md的对比](docs/PERSONA.md)。
+[人格编辑机制](docs/PERSONA.md) · [人格插件说明](packages/dsh-persona-memory/README.md)
 
 ![人格编辑器](docs/images/persona-editor.png)
 
-## 设置入口
+## 各自备份与恢复
 
-打开 **更多 → 设置 → SnowLuma 陪伴助手**。插件管理中的配置入口仍然可用；两处共用同一套表单和保存操作。主设置页使用横向分组导航，以适应设置面板宽度。
+| 插件 | 可选备份项目 |
+| --- | --- |
+| QQ 接入助手 | 管理员私聊消息存档、管理员私聊dsh完整会话、QQ插件设置 |
+| 人格与记忆 | 人格、核心记忆、日记、长期记忆与关系图、人格插件设置 |
 
-![主设置中的插件入口](docs/images/settings-entry.png)
+两个插件各有独立目录、定时计划和保留数量，默认各保留5份；手动、定时、恢复前备份统一计数，新包成功后删除最旧包。设置不包含密钥。人格和核心记忆备份只保留现稿。上传`.tar.gz`只识别内容，勾选一个或多个项目并确认后才恢复；未选数据保留。旧统一包可以分别在两个插件中识别其所属项目，新版包不会跨插件恢复。
 
-## 统一设置界面
+QQ登录状态、SnowLuma程序、Node、dsh运行依赖和生成图库不属于这些备份；没有完整环境备份或电脑自动同步功能。
 
-设置页按用途组织，支持搜索全部设置、单项展开（打开另一项时自动收起前项）、全部收起、浏览器记忆当前展开项，以及跨分组统一保存设置。已打开的编辑器在分组切换和收起后保留草稿；人格、核心记忆、日记正文使用编辑器内的保存按钮。
+## 模型与生图
 
-| 分组 | 内容 |
-|---|---|
-| 运行概览 | QQ 模块与存储状态、常用入口 |
-| 连接与权限 | OneBot 连接、管理员、群/私聊白名单、会话例外规则 |
-| 聊天与回复 | 唤醒、模型/预设、上下文、群上下文、分段、打字节奏、群回复 @ 与引用 |
-| 人格与核心记忆 | 正文编辑、历史版本、预设生效范围、自主修改限制 |
-| 记忆与存档 | 消息存档、召回、向量、关系图、记忆管理 |
-| 日记与主动聊天 | 日记和月度总览、阅读、主动间隔与免打扰 |
-| 图片、语音与视频 | 图片输入、STT、TTS、视频抽帧与 ffmpeg |
-| 备份与迁移 | 九项备份选择、下载、预览、导入和自检 |
-| 维护与通知 | 掉线通知、数据到期、记忆保养、日志 |
+[魔搭聊天兼容设置](docs/MODELSCOPE.md) · [图片生成提供商与本地方法](docs/IMAGE-GENERATION.md) · [SnowLuma接入](docs/SNOWLUMA.md)
 
-## 从备份恢复（可多选）
+图片生成仍由QQ插件提供，保留普通网页会话工具附件与设置页试画。各提供商需要有效接口和自己的密钥/额度，不能保证任意模型与协议均可互换。
 
-打开“备份与迁移”分组，展开独立的“恢复备份”卡片：
-
-1. 上传本插件导出的 `.tar.gz` / `.tgz`，或选择服务器已有备份的“查看并选择恢复项目”。
-2. 系统验证包的格式、路径、文件类型、大小和 SHA256，显示备份时间、数据统计及识别到的实际文件清单。
-3. 勾选要恢复的类别，支持多选、全选、清空。只显示备份包含的类别，默认不勾选。
-4. 确认“恢复所选项目”；系统先备份当前数据，再恢复所选内容并重新加载插件，页面显示结果。
-
-人格、核心记忆、日记、记忆库、主人存档、主人原始会话以及三类设置均可按包内内容选择。未选类别保留当前内容；记忆库与存档共用数据库时也按所选类别恢复表，不会整库覆盖。空日记类别恢复会清空当前日记。人格和核心记忆被替换的现稿进入历史；配置密钥与 Token 不从包中覆盖。
-
-此入口识别本插件的备份格式，也兼容旧格式 1/2；普通任意文件压缩包不能作为插件备份恢复。备份格式不变，仍为 3。
-
-## 保留的能力与权限
-
-- 管理员拥有最高回复权限；普通群聊和普通私聊使用独立白名单。空名单拒绝对应普通会话。主动群聊没有管理员来信豁免。
-- 唤醒关键词只匹配正文，不匹配 @ 他人的昵称；支持直接 @、引用、前缀、只 @ 等待等既有规则。群回复 @ 与引用默认关闭。
-- 名单外群聊的入站、出站与图片均不写入插件存档，包括管理员发言；普通名单外私聊也不存档，管理员私聊允许。
-- 人格和公开/主人核心记忆、按轮数截断或第一人称压缩、长期记忆整理/召回/遗忘、向量和图关系、日记、轮换、主动聊天与 `[不发]` 保留。
-- 图片、引用与嵌套转发、语音识别、双服务商语音合成、视频抽帧、本地文件/视频发送、发言节奏及掉线提醒保留。
-- 普通备份九项：人格现稿、核心现稿、日记、记忆库、主人消息存档、主人 QQ 私聊原始 dsh 会话及引用附件、陪伴设置、QQ 连接与聊天设置、dsh 设置。历史备份可继续导入；不增加完整环境备份或电脑自动同步。
-
-**存储边界**：插件存档、dsh 模型会话日志与 SnowLuma/QQ 协议缓存用途不同。插件白名单不能关闭后两者；`historySync=false` 也不关闭实时协议缓存。详见[集成边界](docs/INTEGRATION.md)。
-
-## 部署与内部接口
-
-[SnowLuma Compose 部署](docs/SNOWLUMA.md)。管理端口 5099/6081 发布到宿主 `0.0.0.0`，可通过服务器地址访问；公网连通还取决于安全组和防火墙；反向 WS 使用 Token。按本次用户要求，SnowLuma 内置 `#sl` 保留官方默认开启，其直接回复独立于插件白名单。
-
-内部模块：包根入口负责 QQ 桥接，`/companion` 负责陪伴服务，`/context` 提供陪伴压缩引擎；只发布一个安装包和一个设置页。`ctx.snowluma`、`ctx.companion` 及已有事件保留，便于宿主集成。原 `/api/snowluma-bridge/*` 与 `/api/companion/*` 接口继续服务同一个包内的两个模块。
-
-部署与官方模板的差异逐项记录在[部署差异清单](docs/DEPLOYMENT-DIFFERENCES.md)，此前额外限制及启动修复已恢复官方默认，仅保留反向 WS 和容器访问宿主的映射。
-
-## 开发验证
+## 开发
 
 ```sh
-scripts/setup-test-env.sh
-scripts/check.sh
+pnpm install
+pnpm run build
+pnpm test
 ```
 
-检查包含构建、统一设置脚本/词典、两部分单元测试、两套真实 dsh + 假模型/SnowLuma e2e 和隐私扫描。测试环境独立于真实 QQ；不需要真实模型 Key。
+服务端源码位于`src/`，人格包位于`packages/dsh-persona-memory/`；构建同时生成两个可独立安装的包。端到端测试使用隔离dsh和假模型、假OneBot，不发送真实QQ消息。
 
-原桥接历史见 [CHANGELOG](CHANGELOG.md)，原核心历史见 [COMPANION-HISTORY](docs/COMPANION-HISTORY.md)。许可为 AGPL-3.0-or-later，移植来源见 [NOTICE](NOTICE.md)。
-
-迁移后自检展示每个查询命中的候选记忆、编号、检索相关度与多行正文节选，保留日期标题下的内容。它用于检查检索情况，结果是记忆原文节选，并非聊天模型生成的答案；完整记录可在“记忆与存档”查看。
-
-备份保留按所有类型合计计数：自动、手动和导入前备份共用“备份总保留份数”，默认5份。只有新备份成功生成后才删除超出数量的最早旧包，保留最新五份；失败不触发清理。
-
-消息组合和失败处理见[QQ发送兼容说明](docs/QQ-SENDING.md)。最长模拟打字等待默认管理员私聊5秒，其他私聊、群聊8秒，可分别调整。
+许可证：[AGPL-3.0-or-later](LICENSE)。

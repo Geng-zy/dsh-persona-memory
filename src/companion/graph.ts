@@ -170,7 +170,7 @@ export class GraphStore {
   /** 这些归属里的实体（召回用）。 */
   entities(scopes: readonly string[], allGroups: boolean): Array<{ id: number; scope: string; name: string; norm: string; embedding?: Uint8Array; model?: string }> {
     const marks = scopes.map(() => '?').join(', ')
-    const where = (scopes.length > 0 ? 'scope IN (' + marks + ')' : '0') + (allGroups ? " OR scope LIKE 'group:%'" : '')
+    const where = (scopes.length > 0 ? 'scope IN (' + marks + ')' : '0') + (allGroups ? " OR scope LIKE 'group:%' OR scope LIKE 'user:%'" : '')
     return (this.db.prepare('SELECT id, scope, name, norm, embedding, embed_model FROM graph_entities WHERE ' + where).all(...scopes) as Array<Record<string, any>>)
       .map(r => ({ id: Number(r.id), scope: r.scope, name: r.name, norm: r.norm, ...(r.embedding ? { embedding: r.embedding as Uint8Array, model: String(r.embed_model) } : {}) }))
   }

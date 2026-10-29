@@ -3,11 +3,12 @@ import { type MasterSessionServices } from './master-sessions.js';
 export declare const BACKUP_FORMAT = "dsh-companion-backup";
 export declare const BACKUP_FORMAT_VERSION = 3;
 /** 能备份的东西，顺序就是设置页里的顺序 */
-export declare const ITEMS: readonly ['persona', 'core', 'diary', 'memory', 'archiveMaster', 'sessionsMaster', 'settingsCompanion', 'settingsBridge', 'settingsDsh'];
-export type BackupItem = typeof ITEMS[number];
+export declare const ITEMS: readonly ['persona', 'core', 'diary', 'memory', 'settingsCompanion'];
+export type BackupItem = 'persona' | 'core' | 'diary' | 'memory' | 'archiveMaster' | 'sessionsMaster' | 'settingsCompanion' | 'settingsBridge' | 'settingsDsh';
 /** 默认勾选：主人原始会话需自行勾选（旧设置中已选其他存档时迁移为此项） */
 export declare const DEFAULT_ITEMS: BackupItem[];
 export declare const SETTINGS_ITEMS: BackupItem[];
+/** 主人的会话：organizer 记的分类是 1 */
 export declare function cleanItems(list: unknown): BackupItem[];
 /** 设置项的旧选择迁移；不用于解释旧备份包的内容。 */
 export declare function configuredItems(list: unknown): BackupItem[];
@@ -28,6 +29,7 @@ export interface SavedSettings {
 }
 export declare const SETTINGS_FILES: Record<string, BackupItem>;
 export interface Manifest {
+    owner?: string;
     format: typeof BACKUP_FORMAT;
     formatVersion: number;
     plugin: string;

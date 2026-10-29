@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// 端到端测试：真实的 dsh web 同时加载插件一（dsh-snowluma-bridge，在旁边的文件夹）和本插件，
+// 端到端测试：真实的 dsh web 同时加载独立QQ接入与人格记忆插件，
 // 假的 DeepSeek 接口回答模型请求，假的 SnowLuma 作为客户端连插件一。
 //
 // 检查：人格和核心记忆替换进系统提示词（主人/群聊看到的核心记忆不同，编程助手身份句去掉）；
@@ -16,7 +16,7 @@
 //
 // 需要：DSH_BIN 指向 dsh；先在两个仓库都 pnpm run build。不联网、不需要真实 API Key。
 import { spawn, execFile } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -24,6 +24,7 @@ import { DatabaseSync } from 'node:sqlite'
 import { fileURLToPath } from 'node:url'
 
 import WebSocket from 'ws'
+import {parseDocument} from 'yaml'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../..')
 const BRIDGE = ROOT
@@ -173,8 +174,9 @@ const imgUrl = 'http://127.0.0.1:' + imgServer.address().port + '/a.png'
 const home = mkdtempSync(join(tmpdir(), 'dsh-companion-e2e-'))
 const profile = join(home, 'profiles', 'web')
 mkdirSync(join(profile, 'node_modules'), { recursive: true })
-symlinkSync(ROOT, join(profile, 'node_modules', 'dsh-snowluma-companion'), 'dir')
-writeFileSync(join(profile, 'package.json'), JSON.stringify({ name: 'dsh-profile-web', private: true, dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', 'dsh-snowluma-companion'] } }, dependencies: { 'dsh-snowluma-companion': 'link:' + ROOT } }, null, 2))
+symlinkSync(ROOT, join(profile, 'node_modules', 'dsh-qq-gateway'), 'dir')
+symlinkSync(join(ROOT,'packages/dsh-persona-memory'),join(profile,'node_modules','dsh-persona-memory'),'dir')
+writeFileSync(join(profile, 'package.json'), JSON.stringify({ name: 'dsh-profile-web', private: true, dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', 'dsh-qq-gateway','dsh-persona-memory'] } }, dependencies: { 'dsh-qq-gateway': 'link:' + ROOT,'dsh-persona-memory':'link:'+join(ROOT,'packages/dsh-persona-memory') } }, null, 2))
 const workspace = join(home, 'workspace')
 mkdirSync(workspace)
 writeFileSync(join(profile, 'cordis.patch.yml'), `- id: snowluma-bridge
@@ -191,18 +193,19 @@ writeFileSync(join(profile, 'cordis.patch.yml'), `- id: snowluma-bridge
     typingCharsPerMinute: 0
     groupMinGapSeconds: 0
     groupMaxPerWindow: 0
+    imageGenEnabled: true
+    imageGenProvider: openai
+    imageGenApiUrl: ${imgUrl.replace('/a.png', '')}/v1
+    imageGenApiKey: image-e2e-secret
+    imageGenModel: test-image
 - id: agent-preset-registry
   config:
     default: companion
     selectedDefault: companion
 - id: companion-core
   config:
+    sessionScope: all
     logLevel: debug
-    imageGenEnabled: true
-    imageGenProvider: openai
-    imageGenApiUrl: ${imgUrl.replace('/a.png', '')}/v1
-    imageGenApiKey: image-e2e-secret
-    imageGenModel: test-image
     embedApiUrl: ${llmUrl.replace('/anthropic', '')}/v1
     embedApiKey: e2e-embed-key
     embedModel: fake-embed
@@ -211,9 +214,9 @@ writeFileSync(join(profile, 'cordis.patch.yml'), `- id: snowluma-bridge
     privateMaxRounds: 50
     groupMaxRounds: 3
     groupDropRounds: 2
-    graphEnabled: true
-`)
-const data = join(home, 'companion')
+    graphEnabled: true`)
+const data = join(home, 'persona-memory')
+const qqData=join(home,'qq-gateway')
 mkdirSync(join(data, 'persona'), { recursive: true })
 mkdirSync(join(data, 'core'), { recursive: true })
 const personaFile = join(data, 'persona', 'persona.md')
@@ -258,7 +261,7 @@ log('已连接')
 
 const sent = []
 let nextMsgId = 1000
-ws.on('message', raw => {
+const answerOnebot = raw => {
   const req = JSON.parse(String(raw))
   if (!req.action) return
   let data = null
@@ -277,7 +280,12 @@ ws.on('message', raw => {
     data = { user_id: BOT, nickname: '测试号' }
   }
   ws.send(JSON.stringify({ status: 'ok', retcode: 0, data, echo: req.echo }))
-})
+}
+function bindSocket(socket){
+ socket.on('message',answerOnebot)
+ socket.on('close',()=>{if(finished)return;void(async()=>{while(!finished&&Date.now()<deadline){await new Promise(r=>setTimeout(r,200));const fresh=await new Promise(resolve=>{const connection=new WebSocket(url,{headers:{'X-Self-ID':String(BOT),'X-Client-Role':'Universal',Authorization:'Bearer '+TOKEN}});connection.once('open',()=>resolve(connection));connection.once('error',()=>resolve(undefined))});if(fresh){ws=fresh;bindSocket(ws);return}}})()})
+}
+bindSocket(ws)
 const event = e => ws.send(JSON.stringify({ time: Math.floor(Date.now() / 1000), self_id: BOT, ...e }))
 const text = t => ({ type: 'text', data: { text: t } })
 const at = qq => ({ type: 'at', data: { qq: String(qq) } })
@@ -335,7 +343,7 @@ const webBase0 = tokenUrl0.slice(0, tokenUrl0.indexOf('?'))
 const login0 = await fetch(tokenUrl0, { redirect: 'manual' })
 const cookie0 = (login0.headers.getSetCookie?.() ?? []).map(c => c.split(';')[0]).join('; ')
 const api = async (method, path, body) => {
-  const res = await fetch(webBase0 + 'api/companion/' + path, { method, headers: { cookie: cookie0, ...(body ? { 'content-type': 'application/json' } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) })
+  const res = await fetch(webBase0 + 'api/'+((path.startsWith('qq:')||/^(images|proactive)/.test(path)||(path==='maintenance'&&body?.what==='expire'))?'qq-gateway/':'companion/') + path.replace(/^qq:/,''), { method, headers: { cookie: cookie0, ...(body ? { 'content-type': 'application/json' } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) })
   return { status: res.status, json: await res.json().catch(() => null) }
 }
 
@@ -460,7 +468,7 @@ groupMsg([text('/help BLOCKED-ARCHIVE-command')], GROUP + 10)
 privateMsg([text('BLOCKED-ARCHIVE-private'), blockedImage], OTHER + 10)
 await say(() => groupMsg([at(BOT), text('BLOCKED-ARCHIVE-admin')], GROUP + 10, MASTER), '管理员仍能在名单外群回复')
 await new Promise(r => setTimeout(r, 700))
-const blockedDb = new DatabaseSync(join(data, 'companion.db'))
+const blockedDb = new DatabaseSync(join(qqData, 'companion.db'))
 const blockedRows = blockedDb.prepare('SELECT count(*) AS n FROM messages WHERE text LIKE ? OR group_id = ? OR user_id = ?').get('%BLOCKED-ARCHIVE%', String(GROUP + 10), String(OTHER + 10))
 blockedDb.close()
 if (blockedRows.n !== 0) await fail('名单外群或普通私聊被存档：' + blockedRows.n)
@@ -470,7 +478,7 @@ log('存档白名单 OK（名单外群含管理员收发、普通私聊、图片
 // 8. 白名单内没唤醒的群消息也存档；收到、发出都存
 groupMsg([text('没有 @ 她的群消息')])
 await new Promise(r => setTimeout(r, 1500))
-const db = new DatabaseSync(join(data, 'companion.db'))
+const db = new DatabaseSync(join(qqData, 'companion.db'))
 const rows = db.prepare('SELECT direction, woke, text, kind FROM messages').all()
 db.close()
 if (!rows.some(x => x.text.includes('没有 @ 她的群消息') && x.woke === 0)) await fail('没唤醒的群消息没存档')
@@ -509,7 +517,7 @@ log('写日记、导入旧日记 OK（' + diaryList.days[0].date + '）')
 
 // 11. 群消息图片收到时下载；群聊上下文用下载好的图
 groupMsg([text('看图'), { type: 'image', data: { file: 'a.png', url: imgUrl, summary: '[图片]' } }])
-const mediaDir = join(data, 'media')
+const mediaDir = join(qqData, 'media')
 await waitFor(() => existsSync(mediaDir) && readdirSync(mediaDir).length > 0, '群消息图片下载好')
 await say(() => groupMsg([at(BOT), text(' 图里是什么 g9')]), '带图片的群聊上下文')
 r = reqWith('g9')
@@ -581,7 +589,7 @@ log('定期整合、撤销 OK')
 
 // 17. 备份：手动备份、下载；改掉人格后从备份还原（插件自动重新加载），还原后自检
 await say(() => privateMsg([text('MASTER-SESSION-IMAGE'), { type: 'image', data: { file: 'master.png', url: imgUrl, summary: '[图片]' } }]), '主人私聊持久化附件')
-const ALL_ITEMS = ['persona', 'core', 'diary', 'memory', 'archiveMaster', 'sessionsMaster', 'settingsCompanion', 'settingsBridge', 'settingsDsh']
+const ALL_ITEMS = ['persona','core','diary','memory','settingsCompanion']
 const made = await api('POST', 'backup/create', { items: ALL_ITEMS })
 if (!made.json?.name) await fail('手动备份失败：' + JSON.stringify(made.json))
 const dl = await fetch(webBase0 + 'api/companion/backup/file/' + made.json.name, { headers: { cookie: cookie0 } })
@@ -589,13 +597,12 @@ const bytes = Buffer.from(await dl.arrayBuffer())
 if (!dl.ok || bytes[0] !== 0x1f || bytes[1] !== 0x8b) await fail('下载备份不对：' + dl.status)
 // 包里有两个插件的设置，但没有 Key 和 Token
 const tarText = (await import('node:zlib')).gunzipSync(bytes).toString('utf-8')
-if (!tarText.includes('typingCharsPerMinute') || !tarText.includes('masterMaxRounds') || !tarText.includes('selectedDefault')) await fail('备份包里没有插件设置或 dsh 设置')
+if(!tarText.includes('masterMaxRounds')||tarText.includes('typingCharsPerMinute')||tarText.includes('selectedDefault'))await fail('人格备份越界包含QQ或dsh全局设置')
 if (tarText.includes(TOKEN) || tarText.includes('e2e-embed-key')) await fail('备份包里有 Key 或 Token')
 // 只包含主人原始会话（包括之前轮换保留的）；普通私聊、群聊及活动文件不混入。
-if (made.json.manifest?.counts?.masterSessions < 2) await fail('主人原始会话和历史会话未备份')
-const sessionText = (await new Promise((resolve, reject) => {
-  execFile('tar', ['-xOzf', join(data, 'backups', made.json.name), './master-sessions.json'], (e, out) => e ? reject(e) : resolve(out))
-}))
+const qqMade=await api('POST','qq:backup/create',{items:['archiveMaster','sessionsMaster','settingsBridge']})
+if(qqMade.json.manifest?.owner!=='dsh-qq-gateway'||qqMade.json.manifest.counts.masterSessions<2)await fail('QQ插件未独立备份主人当前/历史会话')
+const sessionText=await new Promise((resolve,reject)=>{execFile('tar',['-xOzf',join(qqData,'backups',qqMade.json.name),'./master-sessions.json'],(e,out)=>e?reject(e):resolve(out))})
 const sessionBundle = JSON.parse(sessionText)
 if (!sessionBundle.attachments.length) await fail('主人原始会话缺少引用的持久化附件')
 if (sessionBundle.sessions.some(s => s.ownerId !== String(MASTER) || !s.header.id.startsWith('snowluma-snowluma-FriendMessage-' + MASTER))) await fail('主人原始会话混入其他聊天')
@@ -618,11 +625,18 @@ for (let i = 0; i < 40; i++) {
 if (!after?.json?.lastImport || after.json.lastImport.error) await fail('还原后状态不对：' + JSON.stringify(after?.json?.lastImport))
 if (!readFileSync(personaFile, 'utf-8').includes('PERSONA-V3')) await fail('还原后人格不对：' + readFileSync(personaFile, 'utf-8'))
 if (!after.json.backups.some(b => b.reason === 'before-import')) await fail('还原前没有自动备份当前数据')
-if (after.json.lastImport.plan?.items?.includes('memory') || !['dsh-snowluma-bridge 的设置：已套用', 'dsh-companion-core 的设置：已套用', 'dsh 设置 agent-preset-registry：已套用'].every(x => (after.json.lastImport.plan?.notes ?? []).includes(x))) await fail('还原勾选或设置套用不对：' + JSON.stringify(after.json.lastImport.plan))
+if (after.json.lastImport.plan?.items?.includes('memory') || !['dsh-companion-core 的设置：已套用'].every(x => (after.json.lastImport.plan?.notes ?? []).includes(x)) || (after.json.lastImport.plan?.items??[]).some(x=>['settingsBridge','settingsDsh','sessionsMaster'].includes(x))) await fail('还原勾选或设置套用不对：' + JSON.stringify(after.json.lastImport.plan))
 if (!(await api('GET', 'memory?q=AFTER-BACKUP-MEM')).json.items.some(m => m.content.includes('AFTER-BACKUP-MEM'))) await fail('没勾记忆库，记忆却被换掉了')
 if (!Array.isArray(after.json.selfCheck?.results) || after.json.selfCheck.results.length !== 3) await fail('还原后没自检：' + JSON.stringify(after.json.selfCheck))
-const restoredBinding = JSON.parse(readFileSync(join(home, 'snowluma-bridge', 'sessions.json'), 'utf8'))['snowluma:FriendMessage:' + MASTER]
-if (!restoredBinding.includes('-import-') || sessionDirs(oldMaster).length !== 1) await fail('恢复映射没有切换或旧会话被删除')
+const qqPreview=await api('POST','qq:backup/restore',{name:qqMade.json.name})
+const qqRestore=await api('POST','qq:backup/confirm',{id:qqPreview.json.importing.id,items:['sessionsMaster','settingsBridge','archiveMaster']})
+if(!qqRestore.json.restarting)await fail('QQ独立恢复未重启')
+let qqReady=false,qqLastState
+for(let i=0;i<80;i++){await new Promise(r=>setTimeout(r,250));const st=await api('GET','qq:state').catch(()=>null);qqLastState=st;if(st?.json?.lastImport&&!st.json.lastImport.error&&ws.readyState===WebSocket.OPEN){qqReady=true;break}}
+if(!qqReady)await fail('QQ恢复或反向WS重连未完成：'+JSON.stringify(qqLastState?.json?.lastImport)+' socket='+ws.readyState+' '+dshLog.slice(-6000))
+if(!readFileSync(personaFile,'utf8').includes('PERSONA-V3')||!(await api('GET','memory?q=AFTER-BACKUP-MEM')).json.items.length)await fail('QQ恢复改动了人格或长期记忆')
+const restoredBinding=JSON.parse(readFileSync(join(qqData,'sessions.json'),'utf8'))['snowluma:FriendMessage:'+MASTER]
+if(!restoredBinding.includes('-import-')||sessionDirs(oldMaster).length!==1)await fail('QQ恢复映射未切换或删除了原始会话')
 await say(() => privateMsg([text('还原以后还在吗 m200')]), '还原以后的回复')
 if (sessionDirs(restoredBinding).length !== 1) await fail('恢复的会话不存在')
 log('主人原始会话导出、隔离、历史保留及恢复后私聊接续 OK')
@@ -682,7 +696,7 @@ log('备份、下载、还原（插件重新加载）、自检 OK')
   log('设置页选模型：dsh 模型列表、思考等级、测试模型、写日记的模型 OK')
 }
 
-if (process.env.E2E_UI === '1') { try { const { runUi } = await import('../ui.mjs'); await runUi({ url: webBase0, cookie: cookie0 }) } catch (e) { await fail('浏览器 UI 检查失败：' + e.message) } }
+if (process.env.E2E_UI === '1') { try { const { runUi } = await import('../ui.mjs'); await runUi({ url: webBase0, cookie: cookie0 }) } catch (e) { await fail('浏览器 UI 检查失败：' + e.stack) } }
 if (process.env.E2E_UI === '1') {
   await say(() => privateMsg([text('验证人格注释过滤 persona-filter-check')]), '注释过滤后的真实请求')
   const filtered = reqWith('persona-filter-check')
@@ -703,9 +717,9 @@ await say(() => groupMsg([at(BOT), text(' IMAGE-GENERATE denied')]), '未开放�
 if (generatedImages !== beforeGroupImages) await fail('未开放群生图却请求了付费接口')
 const gallery = await api('GET', 'images')
 if (!gallery.json.images.length || gallery.json.images[0].path) await fail('生成图片列表不正确或泄漏本地路径')
-const generatedFile = await fetch(webBase0 + 'api/companion/images/' + gallery.json.images[0].id, { headers: { cookie: cookie0 } })
+const generatedFile = await fetch(webBase0 + 'api/qq-gateway/images/' + gallery.json.images[0].id, { headers: { cookie: cookie0 } })
 if (!generatedFile.ok || !Buffer.from(await generatedFile.arrayBuffer()).equals(PNG)) await fail('无法读取生成图片')
-const unauthImages = await fetch(webBase0 + 'api/companion/images', { redirect: 'manual' })
+const unauthImages = await fetch(webBase0 + 'api/qq-gateway/images', { redirect: 'manual' })
 if (unauthImages.status === 200) await fail('未登录可读取生图列表')
 const trial = await api('POST', 'images/generate', { prompt: 'web settings trial' })
 if (trial.status !== 200 || !trial.json.images.length) await fail('设置页试画失败')
@@ -714,6 +728,11 @@ log('生图：真实dsh工具 → 主人QQ图片、群聊拒绝、网页试画/�
 
 // 14. 删过会话以后重启 dsh：能正常起来、不报错、设置页接口照常
 if (!process.env.E2E_HOLD) {
+  const migrationBackup=await api('POST','qq:backup/create',{items:['sessionsMaster']})
+  const beforeMigration=JSON.parse(await new Promise((resolve,reject)=>execFile('tar',['-xOzf',join(qqData,'backups',migrationBackup.json.name),'./master-sessions.json'],(e,out)=>e?reject(e):resolve(out))))
+  const newWorkspace=join(home,'migrated-QQ')
+  const patchFile=join(profile,'cordis.patch.yml')
+  const changedWorkspace=parseDocument(readFileSync(patchFile,'utf8'));changedWorkspace.contents.items.find(row=>row.get('id')==='snowluma-bridge').get('config',true).set('workspacePath',newWorkspace);writeFileSync(patchFile,String(changedWorkspace))
   finished = true
   const exited = new Promise(resolve => dsh.once('exit', resolve))
   dsh.kill('SIGTERM')
@@ -733,8 +752,20 @@ if (!process.env.E2E_HOLD) {
     const base2 = url2.slice(0, url2.indexOf('?'))
     const login2 = await fetch(url2, { redirect: 'manual' })
     const cookie2 = (login2.headers.getSetCookie?.() ?? []).map(c => c.split(';')[0]).join('; ')
-    const st2 = await fetch(base2 + 'api/companion/state', { headers: { cookie: cookie2 } })
+    const st2 = await fetch(base2 + 'api/qq-gateway/state', { headers: { cookie: cookie2 } })
     ok2 = st2.ok && (await st2.json()).retired?.some(x => x.sessionId === oldGroup && x.state === 'deleted')
+    const qs=await fetch(base2+'api/snowluma-bridge/status',{headers:{cookie:cookie2}}).then(r=>r.json())
+    if(qs.workspace.path!==realpathSync(newWorkspace))await fail('真实SDK未切换QQ工作区：'+JSON.stringify(qs.workspace)+' 日志：'+log2.slice(-2000))
+    const afterMade=await fetch(base2+'api/qq-gateway/backup/create',{method:'POST',headers:{cookie:cookie2,'content-type':'application/json'},body:JSON.stringify({items:['sessionsMaster']})}).then(r=>r.json())
+    const afterMigration=JSON.parse(await new Promise((resolve,reject)=>execFile('tar',['-xOzf',join(qqData,'backups',afterMade.name),'./master-sessions.json'],(e,out)=>e?reject(e):resolve(out))))
+    for(const original of beforeMigration.sessions){
+     const retained=afterMigration.sessions.find(x=>x.header.id===original.header.id),copy=afterMigration.sessions.find(x=>x.header.id.startsWith(original.header.id+'-ws-')&&x.header.cwd===realpathSync(newWorkspace))
+     if(!retained?.archived||!copy)await fail('真实SDK迁移缺少归档原稿或新工作区副本')
+     const normalize=events=>events.map(e=>e.type==='session-log-deepseek/delivery-accepted'?{...e,data:{...e.data,sessionId:'OWNER'}}:e)
+     if(JSON.stringify(normalize(original.events))!==JSON.stringify(normalize(copy.events))||copy.inheritedEventCount!==original.inheritedEventCount)await fail('真实SDK工作区副本历史不一致')
+     if(copy.archived!==original.archived)await fail('真实SDK副本归档状态错误')
+    }
+    log('真实SDK迁移工作区：管理员完整历史逐事件相同、原会话归档、副本状态保留 OK')
   }
   dsh2.kill('SIGTERM')
   await new Promise(r => setTimeout(r, 1500))

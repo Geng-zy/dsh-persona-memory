@@ -56,6 +56,8 @@ export interface CompanionMemory {
 }
 
 export interface CompanionService {
+  readonly defaultQqPreset: string
+  organizeConversation(umo: string, reason: string): Promise<unknown>
   /** 这个会话该怎么管上下文；返回 undefined 表示这个会话不归插件二管（不生效的预设），按 dsh 自带的方式压缩 */
   contextPolicy(sessionId: string, presetId?: string): ContextPolicy | undefined
   /** 处理之前先通知（出错不影响处理） */
@@ -69,7 +71,7 @@ export interface CompanionService {
   /** 给其他插件：一整段可以直接当系统提示词用的文字：人格 + 核心记忆 + （给了 query 时）相关记忆。 */
   prompt(options?: CompanionTarget & { query?: string; topK?: number }): Promise<string>
   /** 给其他插件：替她记一件事（比如「看了某个视频」）。写进 public 或 master 的记忆，可信度比她自己记的低一档。 */
-  remember(content: string, options: { by: string; audience?: 'master' | 'public'; kind?: string; importance?: number }): Promise<{ ok: boolean; id?: number; message: string }>
+  remember(content: string, options: { by: string; sessionId?: string; audience?: 'master' | 'public'; kind?: string; importance?: number }): Promise<{ ok: boolean; id?: number; message: string }>
 }
 
 declare module '@deepseek-ai/cordis' {

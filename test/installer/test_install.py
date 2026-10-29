@@ -79,7 +79,7 @@ class Tests(unittest.TestCase):
         self.assertNotIn(c['web_password'],unit);self.assertNotIn(c['api_key'],unit)
     def test_releases_must_provide_verified_digest(self):
         class MissingDigest(installer.Downloads):
-            def get(self,url,destination):Path(destination).write_text(json.dumps({'assets':[{'name':'dsh-snowluma-companion-'+installer.VERSION+'.tgz'}]}))
+            def get(self,url,destination):Path(destination).write_text(json.dumps({'assets':[{'name':'dsh-qq-gateway-'+installer.VERSION+'.tgz'}]}))
         with tempfile.TemporaryDirectory() as temp:
             with self.assertRaises(installer.InstallError):MissingDigest().package(temp)
     def test_resume_keeps_finished_steps_and_does_not_reinstall(self):

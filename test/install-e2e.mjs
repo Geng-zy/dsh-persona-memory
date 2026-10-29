@@ -3,22 +3,26 @@ import assert from 'node:assert/strict'
 import { mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath,pathToFileURL } from 'node:url'
 import { spawn,execFileSync } from 'node:child_process'
 import { createServer } from 'node:net'
 const root=fileURLToPath(new URL('../',import.meta.url)), temp=mkdtempSync(join(tmpdir(),'dsh-install-e2e-'))
 const freePort=async()=>{const server=createServer();await new Promise(r=>server.listen(0,'127.0.0.1',r));const p=server.address().port;await new Promise(r=>server.close(r));return p}
+const mode=process.env.INSTALL_E2E_MODE??'both',hasQq=mode!=='persona',hasPersona=mode!=='qq'
 const webPort=await freePort(), wsPort=await freePort(), home=join(temp,'home'), profile=join(home,'profiles/web'), workspace=join(home,'workspace')
 let child, logs=''
 try {
- const archive=join(temp,'plugin.tgz')
+ const archive=join(temp,'plugin.tgz'),personaArchive=join(temp,'persona.tgz')
  execFileSync('npx',['--offline','--yes','pnpm@11.28.5','pack','--out',archive],{cwd:root,stdio:'pipe'})
+ execFileSync('npx',['--offline','--yes','pnpm@11.28.5','pack','--out',personaArchive],{cwd:join(root,'packages/dsh-persona-memory'),stdio:'pipe'})
  mkdirSync(profile,{recursive:true});mkdirSync(workspace)
- writeFileSync(join(profile,'package.json'),JSON.stringify({name:'installer-profile',private:true,dsh:{profile:{bundles:['@deepseek-ai/dsh-base','@deepseek-ai/dsh-web-app','dsh-snowluma-companion']}},dependencies:{'dsh-snowluma-companion':'file:'+archive}}))
+ writeFileSync(join(profile,'package.json'),JSON.stringify({name:'installer-profile',private:true,dsh:{profile:{bundles:['@deepseek-ai/dsh-base','@deepseek-ai/dsh-web-app',...(hasQq?['dsh-qq-gateway']:[]),...(hasPersona?['dsh-persona-memory']:[])]}},dependencies:{...(hasQq?{'dsh-qq-gateway':'file:'+archive}:{}),...(hasPersona?{'dsh-persona-memory':'file:'+personaArchive}:{})}}))
  writeFileSync(join(profile,'pnpm-workspace.yaml'),'packages:\n  - .\nnodeLinker: hoisted\nautoInstallPeers: false\n')
  const generated=execFileSync('python3',['-c',`import sys,json;sys.path.insert(0,'test/installer');from test_install import config,installer;c=config();c['bridge_port']=int(sys.argv[1]);print(json.dumps(installer.profile_patch(c,sys.argv[2])))`,String(wsPort),workspace],{cwd:root,encoding:'utf8'})
- writeFileSync(join(profile,'cordis.patch.yml'),generated)
+ const patch=JSON.parse(generated).filter(row=>(hasQq||row.id!=='snowluma-bridge')&&(hasPersona||row.id!=='companion-core'));if(!hasPersona){const presets=patch.find(row=>row.id==='agent-preset-registry');if(presets)presets.config={...presets.config,default:'standard',selectedDefault:'standard'}}
+ writeFileSync(join(profile,'cordis.patch.yml'),JSON.stringify(patch))
  execFileSync('npx',['--offline','--yes','pnpm@11.28.5','install',...(process.env.INSTALL_E2E_ONLINE==='1'?[]:['--offline']),'--ignore-scripts'],{cwd:profile,stdio:'pipe'})
+ if(hasQq&&hasPersona)execFileSync(process.execPath,['--input-type=module','-e','await import(process.argv[1])',pathToFileURL(join(profile,'node_modules/dsh-qq-gateway/deploy/migrate-data.mjs')).href],{cwd:profile,stdio:'pipe'})
  child=spawn(process.env.DSH_BIN??join(root,'.cache/test-env/dsh/node_modules/.bin/dsh'),['web','--host','127.0.0.1','--port',String(webPort),'--public-url',`http://example.test:${webPort}/`,'--trusted-host',`example.test:${webPort}`,'--no-open'],{cwd:workspace,env:{...process.env,DSH_HOME:home,DSH_TELEMETRY_DISABLED:'1',DEEPSEEK_API_KEY:'fake-install-api-key'},stdio:['ignore','pipe','pipe']})
  for(const stream of [child.stdout,child.stderr])stream.on('data',b=>{logs+=b})
  const end=Date.now()+90000
@@ -31,13 +35,15 @@ try {
  headers.cookie=login.headers.getSetCookie().map(c=>c.split(';')[0]).join('; ')
  const get=async p=>{const r=await fetch(physical+'api/'+p,{headers});assert.equal(r.status,200,p);return r.json()}
  // The web login URL can be ready before the reverse-WS server finishes binding.
- let bridge=await get('snowluma-bridge/status')
- const listeningDeadline=Date.now()+10000
+ if(hasQq){let bridge=await get('snowluma-bridge/status');const listeningDeadline=Date.now()+10000
  while(!bridge.listening&&Date.now()<listeningDeadline){await new Promise(r=>setTimeout(r,100));bridge=await get('snowluma-bridge/status')}
- const core=await get('companion/state'),models=await get('snowluma-bridge/llm/dsh-models')
- assert.equal(bridge.listening,true,'reverse WS must become ready: '+JSON.stringify(bridge));assert.ok(core.archive);assert.equal(core.snowluma,true);assert.equal(core.backupItemsAll.length,9)
- assert.equal(models.default.provider,'deepseek-official');assert.equal(models.default.model,'deepseek-flash')
- console.log('[install-e2e] Packed fresh profile, official peer resolution, custom model configuration, public Host/Origin trust, login and plugin/database endpoints passed')
+ assert.equal(bridge.listening,true);assert.ok(bridge.workspace.id);assert.ok(bridge.workspace.path.endsWith('/QQ'))
+ const qq=await get('qq-gateway/state');assert.deepEqual(qq.backupItemsAll,['archiveMaster','sessionsMaster','settingsBridge'])}
+ if(hasPersona){const core=await get('companion/state');assert.ok(core.archive);assert.equal(core.snowluma,hasQq);assert.equal(core.backupItemsAll.length,5);assert.equal(core.personaStatus.sessionScope,'qq')}
+ const models=hasQq?await get('snowluma-bridge/llm/dsh-models'):null
+ if(models){ assert.equal(models.default.provider,'deepseek-official');assert.equal(models.default.model,'deepseek-flash')
+ }
+ console.log('[install-e2e '+mode+'] Packed fresh profile, official peer resolution, custom model configuration, public Host/Origin trust, login and plugin/database endpoints passed')
 } finally {
  if(child&&child.exitCode===null){child.kill('SIGTERM');await new Promise(r=>{child.once('exit',r);setTimeout(r,8000)})}
  rmSync(temp,{recursive:true,force:true})

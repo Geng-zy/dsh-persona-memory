@@ -88,11 +88,11 @@ const llmUrl = 'http://127.0.0.1:' + llm.address().port + '/anthropic'
 const home = mkdtempSync(join(tmpdir(), 'dsh-snowluma-e2e-'))
 const profile = join(home, 'profiles', 'web')
 mkdirSync(join(profile, 'node_modules'), { recursive: true })
-symlinkSync(ROOT, join(profile, 'node_modules', 'dsh-snowluma-companion'), 'dir')
+symlinkSync(ROOT, join(profile, 'node_modules', 'dsh-qq-gateway'), 'dir')
 writeFileSync(join(profile, 'package.json'), JSON.stringify({
   name: 'dsh-profile-web', private: true,
-  dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', 'dsh-snowluma-companion'] } },
-  dependencies: { 'dsh-snowluma-companion': 'link:' + ROOT },
+  dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', 'dsh-qq-gateway'] } },
+  dependencies: { 'dsh-qq-gateway': 'link:' + ROOT },
 }, null, 2))
 const workspace = join(home, 'workspace')
 mkdirSync(workspace)
@@ -107,6 +107,8 @@ writeFileSync(join(profile, 'cordis.patch.yml'), `- id: snowluma-bridge
     whitelistIgnoreAdminOnGroup: false
     whitelistIgnoreAdminOnFriend: false
     logLevel: debug
+    groupContextCount: 0
+    proactiveEnabled: false
     typingCharsPerMinute: 6000
     typingMinSeconds: 1
     typingMaxSeconds: 1

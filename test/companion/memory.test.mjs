@@ -68,7 +68,7 @@ test('召回：主人能想起群里的（打折），群里想不起主人的�
   store.add({ scope: 'group:555', content: '群友小王也爱吃红烧肉', importance: 0.5, writer: 'organize' })
   store.add({ scope: 'user:8', content: '这个人不吃红烧肉', importance: 0.5, writer: 'organize' })
   const q = '红烧肉'
-  assert.deepEqual(recall(store, master, q, S).map(r => r.memory.scope).sort(), ['group:555', 'master', 'public'])
+  assert.deepEqual(recall(store, master, q, S).map(r => r.memory.scope).sort(), ['group:555', 'master', 'public','user:8'])
   assert.deepEqual(recall(store, group, q, S).map(r => r.memory.scope).sort(), ['group:555', 'public'])
   assert.deepEqual(recall(store, other, q, S).map(r => r.memory.scope).sort(), ['public', 'user:8'])
   assert.equal(recall(store, master, q, S)[0].memory.scope, 'master')
@@ -226,4 +226,10 @@ test('向量接口的测试按钮：通了报模型和维度；Key 不对、没�
   const bad = await testEmbed({ ...s, apiKey: 'wrong-key-123' }, fake)
   assert.equal(bad.ok, false); assert.match(bad.error, /HTTP 401/); assert.doesNotMatch(bad.error, /wrong-key-123/)
   assert.deepEqual(await testEmbed({ ...s, apiKey: '' }, fake), { ok: false, error: '还没填 Key' })
+})
+
+test('停用会话回退分类识别群内独立会话的实际群号',async()=>{
+ const {scopeOf}=await import('../../lib/companion/rules.js')
+ assert.deepEqual(scopeOf('snowluma-snowluma-GroupMessage-12345-67890-ws-abcdef'),{category:'group',qq:true,groupId:'67890',userId:'12345'})
+ assert.deepEqual(scopeOf('snowluma-snowluma-GroupMessage-67890-ws-abcdef'),{category:'group',qq:true,groupId:'67890'})
 })

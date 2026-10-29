@@ -10,10 +10,10 @@ import { inspectBackup, restoreContents, BACKUP_FORMAT } from '../../lib/compani
 const manifest = files => ({format:BACKUP_FORMAT, formatVersion:3, items:['persona','core','memory','archiveMaster'], files})
 test('restore inventory groups actual files and keeps shared database categories independent', () => {
  const entries=restoreContents(manifest(['persona/persona.md','core/master.md','core/public.md','companion.db','media/a.png'].map(path=>({path,size:12}))))
- assert.deepEqual(entries.map(e=>e.item),['persona','core','memory','archiveMaster'])
+ assert.deepEqual(entries.map(e=>e.item),['persona','core','memory'])
  assert.deepEqual(entries.find(e=>e.item==='core').files.map(f=>f.path),['core/master.md','core/public.md'])
  assert.deepEqual(entries.find(e=>e.item==='memory').files,[{path:'companion.db',size:12}])
- assert.equal(entries.find(e=>e.item==='archiveMaster').files.length,2)
+ assert.equal(entries.some(e=>e.item==='archiveMaster'),false,'人格插件不提供QQ存档恢复')
  const legacy=restoreContents({files:[{path:'settings.json',size:2}]})
  assert.deepEqual(legacy.find(e=>e.item==='settingsCompanion').files,[{path:'settings.json',size:2}])
 })

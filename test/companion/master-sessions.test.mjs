@@ -4,7 +4,7 @@ import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { exportMasterSessions, importMasterSessions } from '../../lib/companion/master-sessions.js'
-import { cleanItems, configuredItems, itemsOf } from '../../lib/companion/backup.js'
+import { cleanItems, configuredItems, itemsOf } from '../../lib/qq/backup.js'
 
 const prefix = 'snowluma-snowluma-FriendMessage-42'
 const binding = { ownerId: '42', prefix, sessionId: prefix + '-rotated', cwd: '/new/workspace' }

@@ -1,10 +1,12 @@
+> 2.0.0：本教程同时安装QQ与人格记忆插件。旧环境请用[拆分迁移](SPLIT-MIGRATION.md)，避免覆盖原数据。
+
 # 手动安装图文教程
 
-本教程逐步安装Docker、官方SnowLuma、Node、dsh和统一插件，不执行一键安装器。适用于**全新Ubuntu22.04、24.04、26.04服务器**（amd64/arm64，systemd）；已有服务或数据时，应先备份并阅读[迁移说明](../README.md)，不要覆盖已有配置或数据卷。
+本教程逐步安装Docker、官方SnowLuma、Node、dsh和QQ与人格记忆插件，不执行一键安装器。适用于**全新Ubuntu22.04、24.04、26.04服务器**（amd64/arm64，systemd）；已有服务或数据时，应先备份并阅读[迁移说明](../README.md)，不要覆盖已有配置或数据卷。
 
 Docker官方已将[Ubuntu26.04列为支持系统](https://docs.docker.com/engine/install/ubuntu/)。本项目安装器现已允许26.04，Docker源使用系统实际代号；**尚未完成26.04全新虚拟机整机安装实测**。已验证的范围为安装器回归、真实dsh全新profile启动及既有Linux环境上的Docker/systemd配置。SnowLuma在官方Docker镜像中运行，宿主机不另装QQ或Node来运行它。
 
-固定应用组合：Node24.22.1、pnpm11.28.5、dsh0.2.1-rc.2、插件1.4.3；SnowLuma使用官方`motricseven7/snowluma:latest`。镜像latest会随官方更新，不能理解为永久固定的版本。
+固定应用组合：Node24.22.1、pnpm11.28.5、dsh0.2.1-rc.2、两个插件2.0.0；SnowLuma使用官方`motricseven7/snowluma:latest`。镜像latest会随官方更新，不能理解为永久固定的版本。
 
 ## 1. 理解安装位置与访问端口
 
@@ -87,33 +89,33 @@ printf '{"name":"dsh-companion-runtime","private":true}\n' > package.json
 npx --yes pnpm@11.28.5 add @deepseek-ai/dsh@0.2.1-rc.2 --dangerously-allow-all-builds
 ```
 
-## 4. 安装统一插件和web profile
+## 4. 安装QQ与人格记忆插件和web profile
 
 仍在**dsh账号**下执行。下载发行包并用GitHub返回的资产摘要校验，不执行下载的安装脚本。
 
 ```bash
 mkdir -p /home/dsh/.dsh/packages /home/dsh/.dsh/profiles/web /home/dsh/.dsh/workspace
 cd /home/dsh/.dsh/packages
-curl -fsSL https://api.github.com/repos/Geng-zy/dsh-snowluma-companion/releases/tags/v1.4.3 -o release.json
+curl -fsSL https://api.github.com/repos/Geng-zy/dsh-snowluma-companion/releases/tags/v2.0.0 -o release.json
 python3 - <<'PY'
 import hashlib, json, urllib.request
 from pathlib import Path
-name = 'dsh-snowluma-companion-1.4.3.tgz'
-asset = next(a for a in json.loads(Path('release.json').read_text())['assets'] if a['name'] == name)
-digest = asset.get('digest', '')
-assert digest.startswith('sha256:') and len(digest) == 71, '发行包摘要缺失'
-with urllib.request.urlopen(asset['browser_download_url'], timeout=60) as response:
-    data = response.read()
-assert hashlib.sha256(data).hexdigest() == digest[7:], '发行包校验失败'
-Path(name).write_bytes(data)
+for name in ['dsh-qq-gateway-2.0.0.tgz', 'dsh-persona-memory-2.0.0.tgz']:
+    asset = next(a for a in json.loads(Path('release.json').read_text())['assets'] if a['name'] == name)
+    digest = asset.get('digest', '')
+    assert digest.startswith('sha256:') and len(digest) == 71, '发行包摘要缺失'
+    with urllib.request.urlopen(asset['browser_download_url'], timeout=60) as response:
+        data = response.read()
+    assert hashlib.sha256(data).hexdigest() == digest[7:], '发行包校验失败'
+    Path(name).write_bytes(data)
 PY
 cd /home/dsh/.dsh/profiles/web
 cat > package.json <<'JSON'
 {
   "name": "dsh-profile-web",
   "private": true,
-  "dsh": {"profile": {"bundles": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "dsh-snowluma-companion"]}},
-  "dependencies": {"dsh-snowluma-companion": "file:/home/dsh/.dsh/packages/dsh-snowluma-companion-1.4.3.tgz"}
+  "dsh": {"profile": {"bundles": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "dsh-qq-gateway", "dsh-persona-memory"]}},
+  "dependencies": {"dsh-qq-gateway": "file:/home/dsh/.dsh/packages/dsh-qq-gateway-2.0.0.tgz", "dsh-persona-memory": "file:/home/dsh/.dsh/packages/dsh-persona-memory-2.0.0.tgz"}
 }
 JSON
 cat > pnpm-workspace.yaml <<'YAML'
@@ -132,7 +134,7 @@ npx --yes pnpm@11.28.5 install --ignore-scripts
   {"id":"snowluma-bridge","config":{
     "ws_reverse_host":"0.0.0.0","ws_reverse_port":6199,
     "ws_reverse_token":"YOUR_ONEBOT_TOKEN","admins":["YOUR_OWNER_QQ"],
-    "workspacePath":"/home/dsh/.dsh/workspace","agentPreset":"companion",
+    "workspacePath":"/home/dsh/.dsh/workspaces/QQ","agentPreset":"companion",
     "privateModel":"deepseek-official/deepseek-flash",
     "groupModel":"deepseek-official/deepseek-flash",
     "adminPrivateModel":"deepseek-official/deepseek-flash"
@@ -201,7 +203,7 @@ sudo journalctl -u dsh -n 100 --no-pager -o cat
 
 ```bash
 sudo install -d -m 700 /opt/dsh-snowluma-companion
-sudo curl -fsSL https://raw.githubusercontent.com/Geng-zy/dsh-snowluma-companion/v1.4.3/deploy/snowluma.compose.yml \
+sudo curl -fsSL https://raw.githubusercontent.com/Geng-zy/dsh-snowluma-companion/v2.0.0/deploy/snowluma.compose.yml \
   -o /opt/dsh-snowluma-companion/snowluma.compose.yml
 sudo chmod 600 /opt/dsh-snowluma-companion/snowluma.compose.yml
 sudo nano /opt/dsh-snowluma-companion/.env
@@ -247,7 +249,7 @@ sudo docker ps --filter name=snowluma
 
 保存并按页面提示应用。官方默认的HTTP API和正向WS可保留，它们不是本插件创建的反向连接，也不需要再增加第二个dsh反向客户端。
 
-打开dsh登录链接，进入**更多 → 设置 → SnowLuma陪伴助手 → 连接与权限**，展开“连接”和“访问控制”，核对6199端口、主人QQ与白名单。主人在私聊中具有管理权限；普通私聊和群聊分别由各自白名单约束，群内管理员发言也不能绕过群白名单与存档边界。
+打开dsh登录链接，进入**更多 → 设置 → QQ 接入助手 → 连接与权限**，展开“连接”和“访问控制”，核对6199端口、主人QQ与白名单。主人在私聊中具有管理权限；普通私聊和群聊分别由各自白名单约束，群内管理员发言也不能绕过群白名单与存档边界。
 
 ![插件设置：连接与权限](images/settings.png)
 
@@ -282,7 +284,7 @@ sudo docker ps --filter name=snowluma
 
 ## 下载或连接失败时
 
-- **GitHub不可达**：在能访问GitHub的电脑从[发行页](https://github.com/Geng-zy/dsh-snowluma-companion/releases/tag/v1.4.3)下载`.tgz`，核对发行资产摘要后上传到`/home/dsh/.dsh/packages`并归属dsh账号；Compose文件也可以下载后上传。其余步骤相同。
+- **GitHub不可达**：在能访问GitHub的电脑从[发行页](https://github.com/Geng-zy/dsh-snowluma-companion/releases/tag/v2.0.0)下载`.tgz`，核对发行资产摘要后上传到`/home/dsh/.dsh/packages`并归属dsh账号；Compose文件也可以下载后上传。其余步骤相同。
 - **Docker Hub不可达**：在可访问的同架构机器拉取官方镜像并`docker save`导出，上传后`sudo docker load -i 文件.tar`。不自动改镜像源或关闭TLS校验。
 - **Node/npm/APT不可达**：仍需要可用的下载链路、缓存或可信软件源；上传插件与Docker镜像不等于整套离线安装。
 - **公网拒绝连接**：先检查服务和服务器实际端口，再核对安全组。这里是5099/6081，不是曾经SSH转发使用的本机15099/16081。

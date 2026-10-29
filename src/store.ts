@@ -7,7 +7,7 @@ import { dirname, join } from 'node:path'
 
 export function defaultDataDir(): string {
   const home = process.env.DSH_HOME && process.env.DSH_HOME !== '' ? process.env.DSH_HOME : join(homedir(), '.dsh')
-  return join(home, 'snowluma-bridge')
+  return join(home, 'qq-gateway')
 }
 
 export class SessionStore {
@@ -21,6 +21,8 @@ export class SessionStore {
       this.map = {}
     }
   }
+
+  entries(): Array<[string, string]> { return Object.entries(this.map) }
 
   get(umo: string): string | undefined {
     return this.map[umo]

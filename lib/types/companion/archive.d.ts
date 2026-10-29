@@ -32,9 +32,10 @@ export interface ArchiveStats {
 }
 export declare class Archive {
     readonly path: string;
+    readonly memoryOnly: boolean;
     /** 同一个数据库文件里还有记忆表（memory.ts 共用这个连接） */
     readonly db: DatabaseSync;
-    constructor(path: string);
+    constructor(path: string, memoryOnly?: boolean);
     private migrate;
     /** 存一条；同一会话同一 QQ 消息 id 只存一次。返回是否新存了。 */
     add(m: ArchivedMessage): boolean;

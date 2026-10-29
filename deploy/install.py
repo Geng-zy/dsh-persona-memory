@@ -22,7 +22,7 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-VERSION = '1.4.3'
+VERSION = '2.0.0'
 DSH_VERSION = '0.2.1-rc.2'
 NODE_VERSION = '24.22.1'
 PNPM_VERSION = '11.28.5'
@@ -154,7 +154,7 @@ def collect(terminal):
 def profile_patch(c, workspace):
     selection = 'deepseek-official/' + c['model']
     return [
-        {'id': 'snowluma-bridge', 'config': {'ws_reverse_host': '0.0.0.0', 'ws_reverse_port': c['bridge_port'], 'ws_reverse_token': c['token'], 'admins': [c['admin_qq']], 'workspacePath': str(workspace), 'agentPreset': 'companion', 'privateModel': selection, 'groupModel': selection, 'adminPrivateModel': selection}},
+        {'id': 'snowluma-bridge', 'config': {'ws_reverse_host': '0.0.0.0', 'ws_reverse_port': c['bridge_port'], 'ws_reverse_token': c['token'], 'admins': [c['admin_qq']], 'workspacePath': str(Path(workspace).parent/'workspaces/QQ'), 'agentPreset': 'companion', 'privateModel': selection, 'groupModel': selection, 'adminPrivateModel': selection}},
         {'id': 'agent-default-model', 'config': {'provider': 'deepseek-official', 'model': c['model']}},
         {'id': 'llm-deepseek', 'config': {'baseURL': c['model_url'], 'models': [{'id': c['model'], 'name': c['model'], 'inputModalities': ['text', 'image']}]}},
     ]
@@ -198,8 +198,8 @@ class Downloads:
     def get(self, url, destination):
         with urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'dsh-snowluma-companion-installer/' + VERSION}), timeout=60) as response, Path(destination).open('wb') as out:
             shutil.copyfileobj(response, out)
-    def package(self, directory, local=None):
-        archive = Path(directory) / ('dsh-snowluma-companion-' + VERSION + '.tgz')
+    def package(self, directory, local=None, name='dsh-qq-gateway'):
+        archive = Path(directory) / (name + '-' + VERSION + '.tgz')
         if local:
             shutil.copyfile(local, archive)
         else:
@@ -211,18 +211,18 @@ class Downloads:
             self.get(asset['browser_download_url'], archive)
             if hashlib.sha256(archive.read_bytes()).hexdigest() != asset['digest'][7:]:
                 raise InstallError('插件发行包SHA256校验失败。')
-        unpacked = Path(directory) / 'unpacked'; unpacked.mkdir()
+        unpacked = Path(directory) / ('unpacked-' + name); unpacked.mkdir()
         safe_extract(archive, unpacked)
         package = unpacked / 'package'
         meta = json.loads((package / 'package.json').read_text())
-        if meta.get('name') != 'dsh-snowluma-companion' or meta.get('version') != VERSION:
+        if meta.get('name') != name or meta.get('version') != VERSION:
             raise InstallError('安装包名称或版本不匹配。')
         return archive, package
 
 class Installer:
-    def __init__(self, c, terminal, *, plugin_archive=None, image_archive=None, resume=False):
+    def __init__(self, c, terminal, *, plugin_archive=None, persona_archive=None, image_archive=None, resume=False):
         self.c = validate(c); self.terminal = terminal; self.root = Path(c['directory'])
-        self.plugin_archive = plugin_archive; self.image_archive = image_archive
+        self.plugin_archive = plugin_archive; self.persona_archive = persona_archive; self.image_archive = image_archive
         self.downloads = Downloads(); self.home = None; self.uid = self.gid = None
         self.resuming = resume; self.state = {}
     def preflight(self):
@@ -314,12 +314,13 @@ class Installer:
         write_private(app / 'package.json', json.dumps({'name': 'dsh-companion-runtime', 'private': True}), uid=self.uid, gid=self.gid)
         for owned in [self.home / '.local', app]: os.chown(owned, self.uid, self.gid)
         self.as_user([node / 'bin/npx', '--yes', 'pnpm@' + PNPM_VERSION, 'add', '@deepseek-ai/dsh@' + DSH_VERSION, '--dangerously-allow-all-builds'], cwd=app)
-    def configure_dsh(self, archive):
+    def configure_dsh(self, archive, persona_archive):
         c = self.c; home = self.home; profile = home / '.dsh/profiles/web'; profile.mkdir(parents=True, exist_ok=True)
         packages = home / '.dsh/packages'; packages.mkdir(exist_ok=True)
         target = packages / Path(archive).name; shutil.copyfile(archive, target); os.chown(target, self.uid, self.gid); os.chmod(target, 0o600)
+        persona_target=packages/Path(persona_archive).name;shutil.copyfile(persona_archive,persona_target);os.chown(persona_target,self.uid,self.gid);os.chmod(persona_target,0o600)
         workspace = home / '.dsh/workspace'; workspace.mkdir(exist_ok=True)
-        pkg = {'name': 'dsh-profile-web', 'private': True, 'dsh': {'profile': {'bundles': ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', 'dsh-snowluma-companion']}}, 'dependencies': {'dsh-snowluma-companion': 'file:' + str(target)}}
+        pkg = {'name': 'dsh-profile-web', 'private': True, 'dsh': {'profile': {'bundles': ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', 'dsh-qq-gateway','dsh-persona-memory']}}, 'dependencies': {'dsh-qq-gateway': 'file:' + str(target), 'dsh-persona-memory':'file:'+str(persona_target)}}
         write_private(profile / 'pnpm-workspace.yaml', 'packages:\n  - .\nnodeLinker: hoisted\nautoInstallPeers: false\n', uid=self.uid, gid=self.gid)
         write_private(profile / 'package.json', json.dumps(pkg, indent=2) + '\n', uid=self.uid, gid=self.gid)
         write_private(profile / 'cordis.patch.yml', json.dumps(profile_patch(c, workspace), ensure_ascii=False, indent=2) + '\n', uid=self.uid, gid=self.gid)
@@ -371,20 +372,28 @@ class Installer:
         self.preflight()
         with tempfile.TemporaryDirectory(prefix='dsh-companion-') as temp:
             local = self.plugin_archive
-            cached = self.root / ('dsh-snowluma-companion-' + VERSION + '.tgz')
+            cached = self.root / ('dsh-qq-gateway-' + VERSION + '.tgz')
             if self.resuming and not local and cached.exists():
                 if hashlib.sha256(cached.read_bytes()).hexdigest() != self.state.get('package_sha256'):
                     raise InstallError('续装缓存包校验失败。')
                 local = cached
             archive, package = self.downloads.package(temp, local)
+            persona_cached=self.root/('dsh-persona-memory-'+VERSION+'.tgz')
+            persona_local=self.persona_archive
+            if self.resuming and not persona_local and persona_cached.exists():
+                if hashlib.sha256(persona_cached.read_bytes()).hexdigest()!=self.state.get('persona_sha256'):raise InstallError('人格插件续装缓存校验失败')
+                persona_local=persona_cached
+            persona_archive,_=self.downloads.package(temp,persona_local,name='dsh-persona-memory')
             if not self.resuming:
                 self.dependencies(); self.account()
                 self.state = {'version': VERSION, 'status': 'installing', 'home': str(self.home), 'completed': []}
                 shutil.copyfile(archive, cached)
+                shutil.copyfile(persona_archive,persona_cached)
+                self.state['persona_sha256']=hashlib.sha256(persona_cached.read_bytes()).hexdigest()
                 self.state['package_sha256'] = hashlib.sha256(cached.read_bytes()).hexdigest(); self.save_state()
             self.step('runtime', lambda: self.runtime(temp))
             self.step('snowluma', lambda: self.configure_snowluma(package))
-            self.step('dsh', lambda: self.configure_dsh(archive))
+            self.step('dsh', lambda: self.configure_dsh(archive, persona_archive))
         self.state['status'] = 'verifying'; self.save_state()
         show_info(self.root, wait=True)
         self.state['status'] = 'installed'; self.save_state()
@@ -467,8 +476,8 @@ SnowLuma状态：sudo docker ps --filter name=snowluma
 软件本机连通已检测，公网是否可达取决于你的安全组/防火墙。
 需要浏览器访问的入站TCP端口：{c['dsh_port']}、{c['webui_port']}、{c['vnc_port']}；HTTP/正向WS仅在使用时放行{c['http_port']}、{c['ws_port']}。
 QQ操作：先在管理页本人确认协议，再在远程桌面扫码；扫码无法由脚本代替。
-没有发出QQ测试消息或收费模型请求；群/普通私聊白名单默认空，可在统一设置页配置。
-人格与记忆：新环境使用默认资料，已有数据可在“备份与迁移→恢复备份”导入，不包含原服务器私有资料。
+没有发出QQ测试消息或收费模型请求；群/普通私聊白名单默认空，可在QQ接入助手设置页配置。
+人格与记忆：新环境使用默认资料，已有数据可在两个插件各自的“备份与迁移→恢复备份”导入，不包含原服务器私有资料。
 '''
     write_private(root / '访问地址与凭证.txt', text)
     print(text)
@@ -479,6 +488,7 @@ def main():
     parser.add_argument('--dry-run', action='store_true', help='交互收集配置并显示脱敏计划，不安装')
     parser.add_argument('--resume', metavar='DIRECTORY', help='根据本安装器私有记录继续中断的安装，不接管其他已有环境')
     parser.add_argument('--show-info', metavar='DIRECTORY', help='查看已安装环境的最新登录链接与保存凭证')
+    parser.add_argument('--persona-archive',help='本地同版本人格与记忆插件tgz')
     parser.add_argument('--plugin-archive', help='使用本地同版本插件tgz；信任由操作者自行核验')
     parser.add_argument('--image-archive', help='使用本地Docker镜像归档，避免从Docker Hub下载')
     args = parser.parse_args()
@@ -489,7 +499,7 @@ def main():
         root = Path(args.resume)
         c = json.loads((root / 'credentials.json').read_text())
         if Path(c['directory']).resolve() != root.resolve(): raise InstallError('续装目录与凭证记录不一致。')
-        Installer(c, Terminal(), plugin_archive=args.plugin_archive, image_archive=args.image_archive, resume=True).install(); return
+        Installer(c, Terminal(), plugin_archive=args.plugin_archive, persona_archive=args.persona_archive, image_archive=args.image_archive, resume=True).install(); return
     terminal = Terminal()
     print('部署dsh + SnowLuma + 陪伴助手。保留官方Docker默认，按你的输入配置密码/端口/模型；不覆盖已有环境。')
     c = collect(terminal)
@@ -498,7 +508,7 @@ def main():
         print(json.dumps(plan, ensure_ascii=False, indent=2)); return
     if terminal.ask('按以上配置开始全新安装？输入yes继续') != 'yes':
         print('已取消，未开始安装。'); return
-    Installer(c, terminal, plugin_archive=args.plugin_archive, image_archive=args.image_archive).install()
+    Installer(c, terminal, plugin_archive=args.plugin_archive, persona_archive=args.persona_archive, image_archive=args.image_archive).install()
 
 if __name__ == '__main__':
     try: main()

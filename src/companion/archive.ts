@@ -46,7 +46,7 @@ export class Archive {
   /** 同一个数据库文件里还有记忆表（memory.ts 共用这个连接） */
   readonly db: DatabaseSync
 
-  constructor(readonly path: string) {
+  constructor(readonly path: string, readonly memoryOnly = false) {
     if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true })
     this.db = new DatabaseSync(path)
     this.db.exec('PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;')
@@ -58,7 +58,7 @@ export class Archive {
     const row = this.db.prepare("SELECT value FROM meta WHERE key = 'schema'").get() as { value: string } | undefined
     const current = row === undefined ? 0 : Number(row.value)
     if (current > SCHEMA_VERSION) throw new Error('数据库版本 ' + current + ' 比插件支持的 ' + SCHEMA_VERSION + ' 新，请升级插件')
-    if (current < 1) {
+    if (current < 1 && !this.memoryOnly) {
       this.db.exec(`
         CREATE TABLE IF NOT EXISTS messages (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -126,17 +126,9 @@ export class Archive {
         );
         CREATE INDEX IF NOT EXISTS journal_session ON journal (session_id, id);
         CREATE INDEX IF NOT EXISTS journal_time ON journal (time);
-        CREATE TABLE IF NOT EXISTS retired (
-          session_id TEXT PRIMARY KEY,
-          umo TEXT NOT NULL,
-          category TEXT NOT NULL,
-          retired_at INTEGER NOT NULL,
-          last_time INTEGER NOT NULL,
-          state TEXT NOT NULL,
-          note TEXT
-        );
       `)
     }
+    if(current < 3 && !this.memoryOnly)this.db.exec(`CREATE TABLE IF NOT EXISTS retired(session_id TEXT PRIMARY KEY,umo TEXT NOT NULL,category TEXT NOT NULL,retired_at INTEGER NOT NULL,last_time INTEGER NOT NULL,state TEXT NOT NULL,note TEXT)`)
     if (current < 4) {
       // 版本 4：定期整合的记录（能撤销最近一次）
       this.db.exec(`
@@ -196,6 +188,7 @@ export class Archive {
 
   /** 某个会话最近的几条（新的在后）。 */
   recent(umo: string, limit: number, before?: number): ArchivedMessage[] {
+    if(this.memoryOnly)return []
     const rows = this.db.prepare(`SELECT * FROM messages WHERE umo = ? AND time < ? ORDER BY time DESC, id DESC LIMIT ?`)
       .all(umo, before ?? Number.MAX_SAFE_INTEGER, limit) as Array<Record<string, any>>
     return rows.reverse().map(fromRow)
@@ -203,18 +196,21 @@ export class Archive {
 
   /** 某个会话 id 大于 afterId 的消息（按时间顺序），用来整理「还没整理过的部分」。返回带存档 id。 */
   since(umo: string, afterId: number, limit = 500): Array<ArchivedMessage & { id: number }> {
+    if(this.memoryOnly)return []
     const rows = this.db.prepare('SELECT * FROM messages WHERE umo = ? AND id > ? ORDER BY id LIMIT ?').all(umo, afterId, limit) as Array<Record<string, any>>
     return rows.map(r => ({ ...fromRow(r), id: Number(r.id) }))
   }
 
   /** 有消息的会话（umo）和各自最大的存档 id。 */
   umos(): Array<{ umo: string; maxId: number; kind: string }> {
+    if(this.memoryOnly)return []
     return (this.db.prepare('SELECT umo, MAX(id) AS maxId, MAX(kind) AS kind FROM messages GROUP BY umo').all() as Array<{ umo: string; maxId: number; kind: string }>)
       .map(r => ({ umo: r.umo, maxId: Number(r.maxId), kind: r.kind }))
   }
 
   /** 这条消息之前，会话里最近的 limit 条（收到的和她发出的都算，按存进来的先后，不按时间：QQ 消息时间只精确到秒）。 */
   lastMessages(umo: string, limit: number, excludeMessageId?: string): ArchivedMessage[] {
+    if(this.memoryOnly)return []
     if (limit <= 0) return []
     const rows = this.db.prepare(`SELECT * FROM messages WHERE umo = ? AND type = 'message' AND (message_id IS NULL OR message_id != ?)
       ORDER BY id DESC LIMIT ?`).all(umo, excludeMessageId ?? '', limit) as Array<Record<string, any>>
@@ -225,18 +221,21 @@ export class Archive {
   //#region 到期、换会话
   /** 她在某个会话里最后一次说话的时间。 */
   lastOutTime(umo: string): number | undefined {
+    if(this.memoryOnly)return undefined
     const r = this.db.prepare("SELECT MAX(time) AS t FROM messages WHERE umo = ? AND direction = 'out'").get(umo) as { t: number | null }
     return r.t === null ? undefined : Number(r.t)
   }
 
   /** 某个会话最后一条（收到或发出）的时间。 */
   lastTime(umo: string): number | undefined {
+    if(this.memoryOnly)return undefined
     const r = this.db.prepare('SELECT MAX(time) AS t FROM messages WHERE umo = ?').get(umo) as { t: number | null }
     return r.t === null ? undefined : Number(r.t)
   }
 
   /** 某个会话最早一条的时间。 */
   oldest(umo: string): number | undefined {
+    if(this.memoryOnly)return undefined
     const r = this.db.prepare('SELECT MIN(time) AS t FROM messages WHERE umo = ?').get(umo) as { t: number | null }
     return r.t === null ? undefined : Number(r.t)
   }
@@ -248,6 +247,7 @@ export class Archive {
 
   /** 这个 QQ 会话现在对应的 dsh 会话（存档里最近一条带会话 id 的），以及这个 dsh 会话最早一条消息的时间。 */
   currentSession(umo: string): { sessionId: string; firstTime: number; lastTime: number } | undefined {
+    if(this.memoryOnly)return undefined
     const r = this.db.prepare('SELECT session_id FROM messages WHERE umo = ? AND session_id IS NOT NULL ORDER BY id DESC LIMIT 1').get(umo) as { session_id: string } | undefined
     if (r === undefined) return undefined
     const t = this.db.prepare('SELECT MIN(time) AS a, MAX(time) AS b FROM messages WHERE session_id = ?').get(r.session_id) as { a: number; b: number }
@@ -256,6 +256,7 @@ export class Archive {
 
   /** 一段时间里几个会话的消息（写日记用），按时间顺序。 */
   between(umos: readonly string[], from: number, to: number): ArchivedMessage[] {
+    if(this.memoryOnly)return []
     if (umos.length === 0) return []
     const rows = this.db.prepare('SELECT * FROM messages WHERE umo IN (' + umos.map(() => '?').join(', ') + ") AND time > ? AND time <= ? AND type = 'message' ORDER BY time, id")
       .all(...umos, from, to) as Array<Record<string, any>>
@@ -269,6 +270,7 @@ export class Archive {
 
   /** 存档里还引用着的本地图片文件名。 */
   mediaRefs(): Set<string> {
+    if(this.memoryOnly)return new Set()
     const out = new Set<string>()
     for (const r of this.db.prepare("SELECT segments FROM messages WHERE segments LIKE '%\"_local\"%'").all() as Array<{ segments: string }>) {
       for (const m of r.segments.matchAll(/"_local":"([0-9a-f]{64}\.[a-z0-9]+)"/g)) out.add(m[1])
@@ -328,6 +330,7 @@ export class Archive {
   }
 
   stats(): ArchiveStats {
+    if(this.memoryOnly)return {total:0,byKind:{}}
     // 同一次扫描取得总数和时间范围，返回值与空库行为不变。
     const range = this.db.prepare('SELECT COUNT(*) AS n, MIN(time) AS a, MAX(time) AS b FROM messages').get() as { n: number; a: number | null; b: number | null }
     const byKind: Record<string, number> = {}

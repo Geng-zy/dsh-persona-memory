@@ -9,7 +9,7 @@ import { createHash } from 'node:crypto'
 /** 插件数据目录：<DSH_HOME>/companion */
 export function defaultDataDir(): string {
   const home = process.env.DSH_HOME && process.env.DSH_HOME !== '' ? process.env.DSH_HOME : join(homedir(), '.dsh')
-  return join(home, 'companion')
+  return join(home, 'persona-memory')
 }
 
 /** 先写临时文件再改名，写到一半断电也不会把原文件弄坏。 */

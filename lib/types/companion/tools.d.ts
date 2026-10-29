@@ -3,6 +3,8 @@ export interface ToolDeps {
     persona: TextDoc;
     coreMaster: TextDoc;
     corePublic: TextDoc;
+    coreGroup?: TextDoc;
+    corePrivate?: TextDoc;
     /** 这个会话现在还算不算主人的（执行时再查一次） */
     isMaster(sessionId: string): boolean;
     /** 每份核心记忆最多几个字（不算空白） */

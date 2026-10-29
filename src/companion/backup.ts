@@ -19,10 +19,10 @@ export const BACKUP_FORMAT = 'dsh-companion-backup'
 export const BACKUP_FORMAT_VERSION = 3
 
 /** 能备份的东西，顺序就是设置页里的顺序 */
-export const ITEMS = ['persona', 'core', 'diary', 'memory', 'archiveMaster', 'sessionsMaster', 'settingsCompanion', 'settingsBridge', 'settingsDsh'] as const
-export type BackupItem = typeof ITEMS[number]
+export const ITEMS = ['persona', 'core', 'diary', 'memory', 'settingsCompanion'] as const
+export type BackupItem = 'persona'|'core'|'diary'|'memory'|'archiveMaster'|'sessionsMaster'|'settingsCompanion'|'settingsBridge'|'settingsDsh'
 /** 默认勾选：主人原始会话需自行勾选（旧设置中已选其他存档时迁移为此项） */
-export const DEFAULT_ITEMS: BackupItem[] = ITEMS.filter(i => i !== 'sessionsMaster')
+export const DEFAULT_ITEMS: BackupItem[] = [...ITEMS]
 /** 旧版（格式 1）的包里固定有的 */
 const LEGACY_ITEMS: BackupItem[] = ['persona', 'core', 'diary', 'memory', 'archiveMaster', 'settingsCompanion']
 export const SETTINGS_ITEMS: BackupItem[] = ['settingsCompanion', 'settingsBridge', 'settingsDsh']
@@ -30,13 +30,12 @@ const DIR_ITEMS: BackupItem[] = ['persona', 'core', 'diary']
 /** 人格和核心记忆只带现在的文件，不带历史版本；还原时照常写入（被换掉的那版进历史） */
 const DOC_FILES: Record<string, Array<[file: string, history: string]>> = {
   persona: [['persona/persona.md', 'persona/history']],
-  core: [['core/master.md', 'core/history-master'], ['core/public.md', 'core/history-public']],
+  core: [['core/master.md', 'core/history-master'], ['core/public.md', 'core/history-public'], ['core/group.md','core/history-group'], ['core/private.md','core/history-private']],
 }
-const DB_ITEMS: BackupItem[] = ['memory', 'archiveMaster']
+const DB_ITEMS: BackupItem[] = ['memory']
 /** 记忆库的表（换「记忆库」时整表换） */
 const MEMORY_TABLES = ['memories', 'tombstones', 'consolidations', 'graph_entities', 'graph_edges', 'graph_mentions', 'graph_done']
 /** 主人的会话：organizer 记的分类是 1 */
-const MASTER_UMOS = "SELECT substr(key, 5) FROM cursors WHERE key LIKE 'cat:%' AND value = 1"
 
 export function cleanItems(list: unknown): BackupItem[] {
   const want = new Set(Array.isArray(list) ? list.map(String) : [])
@@ -48,6 +47,7 @@ export function configuredItems(list: unknown): BackupItem[] {
 }
 /** 包里有哪些（旧包没写就按旧版固定内容算） */
 export function itemsOf(m: Manifest): BackupItem[] {
+  if(m.owner && m.owner!=='dsh-persona-memory')return []
   return Array.isArray(m.items) ? cleanItems(m.items) : LEGACY_ITEMS
 }
 
@@ -68,6 +68,7 @@ export interface SavedSettings { ns: string; user: Record<string, unknown> }
 export const SETTINGS_FILES: Record<string, BackupItem> = { 'companion-core': 'settingsCompanion', 'snowluma-bridge': 'settingsBridge', dsh: 'settingsDsh' }
 
 export interface Manifest {
+  owner?: string
   format: typeof BACKUP_FORMAT
   formatVersion: number
   plugin: string
@@ -141,8 +142,9 @@ export async function createBackup(o: CreateOptions): Promise<{ name: string; ma
   mkdirSync(o.outDir, { recursive: true })
   const staging = join(o.outDir, '.tmp-' + now.toString(36) + Math.random().toString(36).slice(2, 6))
   mkdirSync(staging, { recursive: true })
-  const items = new Set<BackupItem>(o.items ?? DEFAULT_ITEMS)
+  const items = new Set<BackupItem>(cleanItems(o.items ?? DEFAULT_ITEMS))
   try {
+    if(!items.size)throw new Error('至少选择一项属于当前插件的备份内容')
     for (const d of DIR_ITEMS) {
       if (!items.has(d)) continue
       const files = DOC_FILES[d]
@@ -164,23 +166,10 @@ export async function createBackup(o: CreateOptions): Promise<{ name: string; ma
       o.db.exec("VACUUM INTO '" + dbPath.replace(/'/g, "''") + "'")
       const copy = new DatabaseSync(dbPath)
       try {
-        if (!items.has('memory')) {
-          for (const t of MEMORY_TABLES) copy.exec('DELETE FROM ' + t)
-          copy.exec("DELETE FROM meta WHERE key LIKE 'embed_dim:%' OR key LIKE 'care:%'")
-        }
-        if (!items.has('archiveMaster')) {
-          copy.exec('DELETE FROM messages WHERE umo IN (' + MASTER_UMOS + ')')
-          copy.exec('DELETE FROM journal')
-        }
-        copy.exec('DELETE FROM messages WHERE umo NOT IN (' + MASTER_UMOS + ')')
+        copy.exec('DROP TABLE IF EXISTS messages; DROP TABLE IF EXISTS retired;')
+        copy.exec('DELETE FROM journal')
         copy.exec("DELETE FROM meta WHERE key LIKE 'carry:%' OR key LIKE 'proactive:%'")
-        archiveMessages = Number((copy.prepare('SELECT COUNT(*) AS n FROM messages WHERE umo IN (' + MASTER_UMOS + ')').get() as { n: number }).n)
-        const r = copy.prepare('SELECT MIN(time) AS a, MAX(time) AS b FROM messages').get() as { a: number | null; b: number | null }
-        range = { ...(r.a !== null ? { from: Number(r.a) } : {}), ...(r.b !== null ? { to: Number(r.b) } : {}) }
-        memories = Number((copy.prepare('SELECT COUNT(*) AS n FROM memories').get() as { n: number }).n)
-        for (const row of copy.prepare("SELECT segments FROM messages WHERE segments LIKE '%_local%'").all() as Array<{ segments: string }>) {
-          for (const m of row.segments.matchAll(/"_local":"([0-9a-f]{64}\.[a-z0-9]+)"/g)) media.add(m[1])
-        }
+        memories=Number((copy.prepare('SELECT COUNT(*) AS n FROM memories').get() as {n:number}).n)
         copy.exec('VACUUM')
       } finally {
         copy.close()
@@ -201,13 +190,13 @@ export async function createBackup(o: CreateOptions): Promise<{ name: string; ma
     const diaryFiles = walk(join(staging, 'diary'))
     const files = walk(staging).map(path => ({ path, sha256: sha256(join(staging, path)), size: statSync(join(staging, path)).size }))
     const manifest: Manifest = {
-      format: BACKUP_FORMAT, formatVersion: BACKUP_FORMAT_VERSION, plugin: o.plugin, schema: o.schema, createdAt: now, reason: o.reason,
+      owner: 'dsh-persona-memory', format: BACKUP_FORMAT, formatVersion: BACKUP_FORMAT_VERSION, plugin: o.plugin, schema: o.schema, createdAt: now, reason: o.reason,
       items: ITEMS.filter(i => items.has(i)),
       counts: { memories, diaryDays: diaryFiles.filter(f => !f.startsWith('monthly/')).length, months: diaryFiles.filter(f => f.startsWith('monthly/')).length, archiveMessages, media: media.size, masterSessions },
       range, embed: o.embed, settings: items.has('settingsCompanion') ? o.settings : {}, files,
     }
     writeFileSync(join(staging, 'manifest.json'), JSON.stringify(manifest, null, 2))
-    const name = 'companion-' + (o.reason === 'auto' ? 'auto' : o.reason === 'before-import' ? 'before-import' : 'manual') + '-' + stamp(now) + '.tar.gz'
+    const name = 'persona-memory-' + (o.reason === 'auto' ? 'auto' : o.reason === 'before-import' ? 'before-import' : 'manual') + '-' + stamp(now) + '.tar.gz'
     const tmp = join(o.outDir, name + '.part')
     await run('tar', ['-czf', tmp, '-C', staging, '.'])
     renameSync(tmp, join(o.outDir, name))
@@ -221,20 +210,20 @@ export async function createBackup(o: CreateOptions): Promise<{ name: string; ma
 /** 备份文件列表，新的在前。 */
 export function listBackups(outDir: string): BackupInfo[] {
   if (!existsSync(outDir)) return []
-  return readdirSync(outDir).filter(n => /^companion-[a-z-]+-\d{8}-\d{6}\.tar\.gz$/.test(n)).map(name => {
+  return readdirSync(outDir).filter(n => /^(?:companion|persona-memory|qq-gateway)-[a-z-]+-\d{8}-\d{6}\.tar\.gz$/.test(n)).map(name => {
     const st = statSync(join(outDir, name))
-    const reason = /^companion-(auto|manual|before-import)-/.exec(name)?.[1]
+    const reason = /^(?:companion|persona-memory|qq-gateway)-(auto|manual|before-import)-/.exec(name)?.[1]
     return { name, size: st.size, createdAt: st.mtimeMs, ...(reason ? { reason } : {}) }
   }).sort((a, b) => b.name.slice(-22).localeCompare(a.name.slice(-22)))
 }
 
 /** 自动、手动、导入前备份合计保留最新 keep 份；只处理列表中的正式备份包。 */
 export function prune(outDir: string, keep: number): void {
-  for (const b of listBackups(outDir).slice(Math.max(1, keep))) rmSync(join(outDir, b.name), { force: true })
+  for (const b of listBackups(outDir).slice(Math.max(1, Math.min(5, keep)))) rmSync(join(outDir, b.name), { force: true })
 }
 
 export function safeBackupName(name: string): boolean {
-  return /^companion-[a-z-]+-\d{8}-\d{6}\.tar\.gz$/.test(name)
+  return /^(?:companion|persona-memory|qq-gateway)-[a-z-]+-\d{8}-\d{6}\.tar\.gz$/.test(name)
 }
 
 /** 解开一个备份包、核对清单和校验值。返回解开的目录和清单。 */
@@ -273,6 +262,7 @@ export async function inspectBackup(file: string, workDir: string): Promise<{ di
 
 /** 包里的设置文件（只读勾选了的）。 */
 export function readSavedSettings(dir: string, items: readonly BackupItem[]): Record<string, SavedSettings | Record<string, SavedSettings>> {
+  items=cleanItems(items)
   const out: Record<string, any> = {}
   for (const [name, item] of Object.entries(SETTINGS_FILES)) {
     const p = join(dir, 'settings', name + '.json')
@@ -299,6 +289,8 @@ export async function applyPendingImport(dataDir: string, historyKeep: () => num
   const manifest = JSON.parse(readFileSync(join(pending, 'manifest.json'), 'utf-8')) as Manifest
   const planPath = join(pending, 'restore.json')
   const plan: RestorePlan = existsSync(planPath) ? JSON.parse(readFileSync(planPath, 'utf-8')) as RestorePlan : { items: itemsOf(manifest) }
+  plan.items = cleanItems(plan.items).filter(item=>itemsOf(manifest).includes(item))
+  if(!plan.items.length)throw new Error('备份中没有属于当前插件的可恢复内容')
   const items = new Set(cleanItems(plan.items).filter(i => itemsOf(manifest).includes(i)))
   if (items.has('sessionsMaster')) await importMasterSessions(pending, sessionServices)
   if (DB_ITEMS.some(i => items.has(i)) && existsSync(join(pending, 'companion.db'))) mergeDb(join(dataDir, 'companion.db'), join(pending, 'companion.db'), items)
@@ -349,37 +341,6 @@ function mergeDb(currentPath: string, backupPath: string, items: Set<BackupItem>
     if (items.has('memory')) {
       for (const t of MEMORY_TABLES) copyAll(t)
       copyAll('meta', "key LIKE 'embed_dim:%' OR key LIKE 'care:%'")
-    }
-    if (items.has('archiveMaster')) {
-      // 谁是主人的会话：两边的分类记录合起来
-      db.exec('CREATE TEMP TABLE restore_master (umo TEXT PRIMARY KEY)')
-      db.exec('INSERT OR IGNORE INTO temp.restore_master ' + MASTER_UMOS.replace('cursors', 'main.cursors') + ' UNION ' + MASTER_UMOS.replace('cursors', 'bk.cursors'))
-      const msgCols = cols('messages').filter(c => c !== 'id')
-      const insert = db.prepare('INSERT INTO main.messages (' + msgCols.join(', ') + ') VALUES (' + msgCols.map(() => '?').join(', ') + ')')
-      const setCursor = db.prepare('INSERT INTO main.cursors (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value')
-      const cursorOf = (key: string): number | undefined => (db.prepare('SELECT value FROM bk.cursors WHERE key = ?').get(key) as { value: number } | undefined)?.value
-      {
-        const cond = 'umo IN (SELECT umo FROM temp.restore_master)'
-        db.exec('DELETE FROM main.messages WHERE ' + cond)
-        // 换进来的消息 id 会变，「已整理到哪条」跟着换算（按 org:<会话> 在备份里指到的位置）
-        const umos = (db.prepare('SELECT DISTINCT umo FROM bk.messages WHERE ' + cond).all() as Array<{ umo: string }>).map(r => r.umo)
-        for (const umo of umos) {
-          const done = cursorOf('org:' + umo) ?? 0
-          let mapped = 0
-          for (const row of db.prepare('SELECT * FROM bk.messages WHERE umo = ? ORDER BY id').all(umo) as Array<Record<string, any>>) {
-            const r = insert.run(...msgCols.map(c => row[c] ?? null))
-            if (Number(row.id) <= done) mapped = Number(r.lastInsertRowid)
-          }
-          setCursor.run('org:' + umo, mapped)
-          const cat = cursorOf('cat:' + umo)
-          if (cat !== undefined) setCursor.run('cat:' + umo, cat)
-        }
-        {
-          // dsh 里直接聊的流水也算主人的
-          copyAll('journal')
-          copyAll('cursors', "key LIKE 'orgdsh:%'")
-        }
-      }
     }
     db.exec('COMMIT')
   } catch (e) {

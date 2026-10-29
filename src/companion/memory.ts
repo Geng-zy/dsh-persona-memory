@@ -130,7 +130,7 @@ export class MemoryStore {
   /** 正常状态（没遗忘、没被取代）的记忆，按归属。 */
   active(scopes: readonly string[], allGroups = false): Memory[] {
     const marks = scopes.map(() => '?').join(', ')
-    const where = (scopes.length > 0 ? 'scope IN (' + marks + ')' : '0') + (allGroups ? " OR scope LIKE 'group:%'" : '')
+    const where = (scopes.length > 0 ? 'scope IN (' + marks + ')' : '0') + (allGroups ? " OR scope LIKE 'group:%' OR scope LIKE 'user:%'" : '')
     const rows = this.db.prepare('SELECT ' + COLS + " FROM memories WHERE status = 'active' AND superseded_by IS NULL AND (" + where + ')').all(...scopes) as Array<Record<string, any>>
     return rows.map(fromRow)
   }

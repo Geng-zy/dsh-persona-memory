@@ -12,7 +12,9 @@ export * from './components.js';
 export type { PromptPayload, SentPayload, SessionChange, SessionInfo } from './bridge.js';
 export type { Converted, Media, ModelPart } from './media.js';
 export { ActionFailed, ApiNotAvailable, NetworkError } from './onebot/errors.js';
-export interface Config {
+import { type QqFeatureConfig } from './qq/config.js';
+export interface Config extends QqFeatureConfig {
+    qqRules: import('./qq/rules.js').RuleRow[];
     id: string;
     ws_reverse_host: string;
     ws_reverse_port: number;
@@ -136,7 +138,7 @@ export type LiveConfig = {
     };
 };
 export declare const Config: z<LiveConfig>;
-export declare const name = "dsh-snowluma-companion";
+export declare const name = "dsh-qq-gateway";
 export declare const inject: string[];
 /** 给其他插件（如记忆插件）用的服务：ctx.snowluma */
 export interface SnowlumaService {
@@ -212,5 +214,5 @@ type Context = CordisContext & {
         stat(id: string): Promise<object | undefined>;
     };
 };
-export declare function apply(ctx: Context, live: LiveConfig): void;
+export declare function apply(ctx: Context, live: LiveConfig): Promise<void>;
 export { MessageType };

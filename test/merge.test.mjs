@@ -6,31 +6,31 @@ import { join } from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
-test('合并迁移只保留一个 bundle，保留设置标识、凭据和预设覆盖，重复执行不重复插入', () => {
- const dir=mkdtempSync(join(tmpdir(),'companion-merge-'))
- try {
-  const tgz=join(dir,'plugin.tgz');writeFileSync(tgz,'fixture')
-  const original={name:'web',dsh:{profile:{bundles:['base','dsh-snowluma-bridge','custom','dsh-companion-core']}},dependencies:{'dsh-snowluma-bridge':'old','dsh-companion-core':'old','custom':'1'}}
-  writeFileSync(join(dir,'package.json'),JSON.stringify(original))
-  const patch="- id: snowluma-bridge\n  name: 'dsh-snowluma-bridge'\n  config:\n    ws_reverse_token: 'private-fixture-value'\n    groupWhitelist: ['555']\n- id: companion-core\n  name: dsh-companion-core\n  config:\n    backupItems: [persona, sessionsMaster]\n- id: companion-context\n  name: 'dsh-companion-core/context'\n"
+test('拆分迁移保留凭据和配置标识，按归属迁移设置，重复执行不重复插入', () => {
+ const dir=mkdtempSync(join(tmpdir(),'companion-split-'))
+ try{
+  const archives=['dsh-qq-gateway','dsh-persona-memory'].map(name=>{
+   const source=join(dir,name);execFileSync('mkdir',['-p',join(source,'package')]);writeFileSync(join(source,'package/package.json'),JSON.stringify({name,version:'2.0.0'}));const file=join(dir,name+'.tgz');execFileSync('tar',['-czf',file,'-C',source,'package']);return file
+  })
+  writeFileSync(join(dir,'package.json'),JSON.stringify({dsh:{profile:{bundles:['base','dsh-snowluma-companion','custom']}},dependencies:{'dsh-snowluma-companion':'old',custom:'1'}}))
+  const patch="- id: snowluma-bridge\n  name: dsh-snowluma-companion\n  config:\n    ws_reverse_token: 'private-fixture-value'\n    groupWhitelist: ['555']\n- id: companion-core\n  name: dsh-snowluma-companion/companion\n  config:\n    imageGenEnabled: true\n    recallTopK: 7\n    backupItems: [persona, sessionsMaster, settingsBridge]\n    rules: [{kind: group, target: '555', maxRounds: 8, proactive: 'on'}]\n- id: companion-context\n  name: dsh-snowluma-companion/context\n"
   writeFileSync(join(dir,'cordis.patch.yml'),patch)
-  const run=()=>execFileSync(process.execPath,[fileURLToPath(new URL('../deploy/migrate-profile.mjs',import.meta.url)),dir,tgz])
-  run();run()
-  const pkg=JSON.parse(readFileSync(join(dir,'package.json'),'utf8'))
-  assert.deepEqual(pkg.dsh.profile.bundles,['base','dsh-snowluma-companion','custom'])
-  assert.deepEqual(Object.keys(pkg.dependencies).sort(),['custom','dsh-snowluma-companion'])
-  const updated=readFileSync(join(dir,'cordis.patch.yml'),'utf8')
-  assert.equal(updated,patch.replace("name: 'dsh-snowluma-bridge'","name: 'dsh-snowluma-companion'").replace('name: dsh-companion-core','name: dsh-snowluma-companion/companion').replace("name: 'dsh-companion-core/context'","name: 'dsh-snowluma-companion/context'"))
- } finally {rmSync(dir,{recursive:true,force:true})}
+  const run=()=>execFileSync(process.execPath,[fileURLToPath(new URL('../deploy/migrate-profile.mjs',import.meta.url)),dir,...archives])
+  run();const once=readFileSync(join(dir,'cordis.patch.yml'),'utf8');run();assert.equal(readFileSync(join(dir,'cordis.patch.yml'),'utf8'),once)
+  const pkg=JSON.parse(readFileSync(join(dir,'package.json'),'utf8'));assert.deepEqual(pkg.dsh.profile.bundles,['base','dsh-qq-gateway','dsh-persona-memory','custom'])
+  assert.ok(once.includes("'private-fixture-value'"));assert.ok(once.includes('sessionScope: qq'));assert.ok(once.includes('qqRules:'));assert.ok(once.includes('dsh-persona-memory/context'))
+ }finally{rmSync(dir,{recursive:true,force:true})}
 })
 
-test('统一包包含桥接、陪伴服务与上下文模块，预设只替换一次压缩引擎', () => {
- const pkg=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8'))
- assert.equal(pkg.name,'dsh-snowluma-companion')
- assert.ok(pkg.exports['./companion']);assert.ok(pkg.exports['./context'])
- const patch=readFileSync(new URL('../cordis.patch.yml',import.meta.url),'utf8')
- assert.equal((patch.match(/name: 'dsh-snowluma-companion'/g)||[]).length,1)
- assert.equal((patch.match(/name: 'dsh-snowluma-companion\/companion'/g)||[]).length,1)
- assert.equal((patch.match(/name: 'dsh-snowluma-companion\/context'/g)||[]).length,1)
- assert.ok(!patch.includes("name: '@deepseek-ai/dsh-compaction-basic'"))
+test('两个插件有独立入口、配置与预设，QQ不接管全局人格或上下文', () => {
+ const qq=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8'))
+ const persona=JSON.parse(readFileSync(new URL('../packages/dsh-persona-memory/package.json',import.meta.url),'utf8'))
+ assert.equal(qq.name,'dsh-qq-gateway');assert.equal(persona.name,'dsh-persona-memory')
+ assert.equal(qq.exports['./companion'],undefined);assert.equal(qq.exports['./context'],undefined)
+ assert.ok(persona.exports['./context'])
+ const bridgePatch=readFileSync(new URL('../cordis.patch.yml',import.meta.url),'utf8')
+ const personaPatch=readFileSync(new URL('../packages/dsh-persona-memory/cordis.patch.yml',import.meta.url),'utf8')
+ assert.ok(!bridgePatch.includes('companion-core'))
+ assert.equal((personaPatch.match(/dsh-persona-memory\/context/g)||[]).length,1)
+ assert.ok(!personaPatch.includes('default: companion'))
 })

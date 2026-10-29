@@ -5,7 +5,7 @@ import type { Context as CordisContext } from '@deepseek-ai/cordis'
 import type { AgentRegistry } from '@deepseek-ai/dsh-agent'
 import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
 import { AiocqhttpAdapter, AiocqhttpMessageEvent, MessageType, sessionToString, type AstrBotMessage, type MessageSession } from './adapter.js'
-import { Bridge, legacyWhitelistFor, type PromptPayload, type SentPayload, type SessionChange, type SessionInfo } from './bridge.js'
+import { Bridge, dshSessionId, legacyWhitelistFor, type PromptPayload, type SentPayload, type SessionChange, type SessionInfo } from './bridge.js'
 import type { MessageChain } from './components.js'
 import { listModels } from './models.js'
 import { findFfmpeg, installFfmpeg, platformTag, type InstallState } from './ffmpeg.js'
@@ -17,6 +17,7 @@ import { sendMail, sendPush, type AlertMessage, type PushService } from './alert
 import { Watchdog, type WatchStatus } from './watch.js'
 import { Tts, testSpeak, type TtsMode, type TtsSettings } from './tts.js'
 import { join } from 'node:path'
+import { QqWorkspaceManager } from './qq-workspace.js'
 
 export * from './adapter.js'
 export * from './components.js'
@@ -24,7 +25,10 @@ export type { PromptPayload, SentPayload, SessionChange, SessionInfo } from './b
 export type { Converted, Media, ModelPart } from './media.js'
 export { ActionFailed, ApiNotAvailable, NetworkError } from './onebot/errors.js'
 
-export interface Config {
+import { qqFeatureSchema, type QqFeatureConfig } from './qq/config.js'
+import { applyQqFeatures } from './qq/features.js'
+export interface Config extends QqFeatureConfig {
+  qqRules: import('./qq/rules.js').RuleRow[]
   id: string
   ws_reverse_host: string
   ws_reverse_port: number
@@ -147,6 +151,8 @@ export type LiveConfig = { [K in keyof Config]: { get(): Config[K] } }
 
 // 每项都标 .volatile()：dsh 的设置服务只对这种字段提供在线编辑，保存后插件不重启、直接读到新值。
 export const Config: z<LiveConfig> = z.object({
+  ...qqFeatureSchema,
+  qqRules: z.array(z.any()).default([]).volatile().description('QQ存档及主动聊天的会话例外规则'),
   id: z.string().default('snowluma').volatile().description('平台 ID，会话标识的第一段；实例迁移时保持不变，以沿用会话、规则和记忆'),
   ws_reverse_host: z.string().default('0.0.0.0').volatile().description('反向 WebSocket 监听地址（AstrBot 默认 0.0.0.0）'),
   ws_reverse_port: z.natural().max(65535).default(6199).volatile().description('反向 WebSocket 端口（AstrBot 默认 6199）'),
@@ -155,7 +161,7 @@ export const Config: z<LiveConfig> = z.object({
   wakeKeywords: z.array(z.string()).default(['大肥鱼', '肥鱼']).volatile().description('唤醒词：群消息正文里出现这些词（不用 @）也唤醒她；不匹配 @对象昵称'),
   friend_message_needs_wake_prefix: z.boolean().default(false).volatile().description('私聊是否也需要唤醒前缀'),
   ignore_bot_self_message: z.boolean().default(false).volatile().description('是否忽略机器人自己发出的消息'),
-  workspacePath: z.string().default('').volatile().description('QQ 会话的工作目录（绝对路径）；留空用 dsh 进程当前目录'),
+  workspacePath: z.string().default('').volatile().description('QQ工作区绝对路径；留空自动创建 <DSH_HOME>/workspaces/QQ。旧会话空闲后完整复制历史迁入，原会话归档保留'),
   agentPreset: z.string().default('').volatile().description('QQ 会话使用的 agent 预设 id；留空用默认预设'),
   identifier: z.boolean().default(true).volatile().description('群消息交给模型时前面加 [昵称(QQ号)]'),
   imageToModel: z.boolean().default(true).volatile().description('图片（含商城表情、引用消息里的图片）作为附件交给模型；模型要支持看图（如 deepseek-flash）'),
@@ -274,9 +280,9 @@ export const Config: z<LiveConfig> = z.object({
   logLevel: z.union(['debug', 'info', 'warn', 'error']).default('info').volatile().description('日志级别'),
 }) as never
 
-export const name = 'dsh-snowluma-companion'
+export const name = 'dsh-qq-gateway'
 // agentDefaultModel / agentPresets / sessionPersistence 是可选的，用到时再 ctx.get
-export const inject = ['agents']
+export const inject = ['agents','workspaceRegistry','sessionPersistence']
 
 /** 给其他插件（如记忆插件）用的服务：ctx.snowluma */
 export interface SnowlumaService {
@@ -336,7 +342,7 @@ const RANK = { debug: 0, info: 1, warn: 2, error: 3 } as const
 /** 多久检查一次监听地址/端口有没有被设置页改过。 */
 const ADDRESS_POLL_MS = 1000
 
-export function apply(ctx: Context, live: LiveConfig): void {
+export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
   // 密钥字段不设默认值（设置页才能分清"没设置"和"设成空"），读不到时当空字符串
   const get = <K extends keyof Config>(key: K): Config[K] => (live[key]?.get() ?? (key === 'ws_reverse_token' || key === 'sttApiKey' ? '' : undefined)) as Config[K]
   const log: Logger = (level, message) => {
@@ -375,6 +381,26 @@ export function apply(ctx: Context, live: LiveConfig): void {
     log,
   })
 
+  const sessionStore = new SessionStore(join(defaultDataDir(), 'sessions.json'))
+  const workspace = new QqWorkspaceManager({
+    registry: ctx.get('workspaceRegistry' as never) as never,
+    persistence: ctx.get('sessionPersistence' as never) as never,
+    configuredPath: () => get('workspacePath'),
+    memo: new SessionStore(join(defaultDataDir(),'workspace-migrations.json')),
+    busy: id => (ctx.agents.list() as any[]).some(a=>String(a.session?.id)===id && a.status==='running'),
+    owned: id => id.startsWith(dshSessionId(get('id')+':')),
+    replace: (oldId,newId) => {
+      for(const [umo,id] of sessionStore.entries()) if(id===oldId)sessionStore.set(umo,newId)
+      const prefix=dshSessionId(get('id')+':')
+      if(oldId.startsWith(prefix)) {
+        const match=/^(FriendMessage|GroupMessage)-(\d+)(?:-(\d+))?$/.exec(oldId.slice(prefix.length))
+        if(match) { const target=match[3]?match[2]+'_'+match[3]:match[2],umo=get('id')+':'+match[1]+':'+target;if(!sessionStore.get(umo)||sessionStore.get(umo)===oldId)sessionStore.set(umo,newId) }
+      }
+    },
+  })
+  await workspace.initialize()
+  const migrated = await workspace.migrateAll()
+  log('info','QQ工作区就绪：已迁移'+migrated.migrated+'个会话，延后'+migrated.deferred+'个活动会话')
   const bridge: Bridge = new Bridge({
     agents: ctx.agents,
     defaultModel: () => ctx.get('agentDefaultModel' as never) as Context['agentDefaultModel'],
@@ -389,9 +415,11 @@ export function apply(ctx: Context, live: LiveConfig): void {
     sessionChanged: change => ctx.emit('snowluma/session-changed', change),
     sendBySession: (session, chain) => adapter.sendBySession(session, chain),
     selfId: () => adapter.bot.connections()[0]?.selfId as string | undefined,
-    store: new SessionStore(join(defaultDataDir(), 'sessions.json')),
+    store: sessionStore,
+    workspace,
+    platformId:()=>get('id'),
     settings: () => ({
-      cwd: get('workspacePath') || process.cwd(),
+      cwd: workspace.path,
       wake: {
         wakePrefix: [...get('wake_prefix')],
         wakeKeywords: [...get('wakeKeywords')],
@@ -413,7 +441,7 @@ export function apply(ctx: Context, live: LiveConfig): void {
       uniqueSession: get('uniqueSession'),
       reminder: { datetime: get('datetimeReminder'), timezone: get('timezone'), groupName: get('groupNameDisplay'), markAdmin: get('markAdmin'), markWake: get('markWake') ?? true },
       commands: { enabled: get('commandsEnabled'), noPermissionReply: get('noPermissionReply') },
-      presets: { default: get('agentPreset'), private: get('privateAgentPreset'), group: get('groupAgentPreset'), adminPrivate: get('adminPrivateAgentPreset') },
+      presets: { default: get('agentPreset') || (ctx.get('companion' as never) as {defaultQqPreset?:string}|undefined)?.defaultQqPreset || '', private: get('privateAgentPreset'), group: get('groupAgentPreset'), adminPrivate: get('adminPrivateAgentPreset') },
       models: { private: get('privateModel'), group: get('groupModel'), adminPrivate: get('adminPrivateModel') },
       reasoning: { private: get('privateReasoning'), group: get('groupReasoning'), adminPrivate: get('adminPrivateReasoning') },
       stt: sttSettings(),
@@ -515,6 +543,7 @@ export function apply(ctx: Context, live: LiveConfig): void {
     }
     const rejected = bot.lastRejected !== undefined && Date.now() - bot.lastRejected.at < 10 * 60_000 ? bot.lastRejected : undefined
     return {
+      workspace: {...workspace.snapshot(),configuredPath:get('workspacePath')},
       listening: bot.listening,
       activeAgents: ctx.agents.list().filter(agent => agent.status === 'running').length,
       pendingReplies: bridge.pendingReplies,
@@ -639,6 +668,15 @@ export function apply(ctx: Context, live: LiveConfig): void {
   }) as never)
 
   // 本插件自带设置页（client.js），告诉 dsh 不用按 schema 自动生成表单
+  await applyQqFeatures(ctx, get, log, service)
+  ctx.effect(()=>{
+    let pending=false,lastPath=workspace.path,retry=migrated.deferred>0
+    const timer=setInterval(()=>{if(pending)return;pending=true;void(async()=>{
+      await workspace.initialize()
+      if(lastPath!==workspace.path||retry){const result=await workspace.migrateAll();lastPath=workspace.path;retry=result.deferred>0}
+    })().catch(e=>log('error','QQ工作区迁移未完成：'+String(e))).finally(()=>{pending=false})},1000)
+    return()=>clearInterval(timer)
+  },'qq: workspace path')
   ctx.inject(['settings'], child => {
     child.effect(() => (child as any).settings.configure({ auto: false }, ctx.fiber), 'snowluma-bridge: settings policy')
   })

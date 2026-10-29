@@ -92,6 +92,12 @@ export interface BridgeDeps {
     tts?: {
         speak(text: string): Promise<Speech>;
     };
+    platformId?(): string;
+    workspace?: {
+        readonly path?: string;
+        prepare(id: string): Promise<string>;
+        attach(id: string): Promise<void>;
+    };
 }
 export interface BridgeSettings {
     cwd: string;

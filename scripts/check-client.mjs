@@ -1,6 +1,6 @@
 import { parse } from 'acorn'
 import { readFileSync } from 'node:fs'
-for (const file of ['bridge','companion','client']) {
+for (const file of ['bridge','qq-extra','companion','qq-entry','persona-entry']) {
  const source=readFileSync(new URL('../src/client/'+file+'.js',import.meta.url),'utf8')
  const tree=parse(source,{ecmaVersion:'latest',sourceType:'script'})
  function visit(node) {
@@ -13,4 +13,4 @@ for (const file of ['bridge','companion','client']) {
  }
  visit(tree)
 }
-console.log('All unified client dictionaries checked')
+console.log('Both plugin client dictionaries checked')

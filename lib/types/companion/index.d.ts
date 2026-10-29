@@ -1,4 +1,3 @@
-import { type ImageProvider } from '../image-generation.js';
 import z from '@deepseek-ai/schemastery';
 import type { Context as CordisContext } from '@deepseek-ai/cordis';
 import { type ContextMode, type ForgetMode, type SnowlumaLike, type RuleRow } from './rules.js';
@@ -13,19 +12,7 @@ declare module '@deepseek-ai/dsh-llm' {
 export type { BeforeCompactPayload, CompanionService, ContextPolicy } from './service.js';
 export type { RuleRow, Scope } from './rules.js';
 export interface Config {
-    imageGenEnabled: boolean;
-    imageGenProvider: ImageProvider;
-    imageGenApiUrl: string;
-    imageGenApiKey: string;
-    imageGenModel: string;
-    imageGenOptions: string;
-    imageGenCommand: string;
-    imageGenPrivate: boolean;
-    imageGenGroup: boolean;
-    imageGenTimeoutSeconds: number;
-    imageGenMaxImages: number;
-    imageGenMaxMB: number;
-    imageGenKeepDays: number;
+    sessionScope: 'qq' | 'all';
     excludedPresets: string[];
     personaPresets: string[];
     pluginAccess: 'all' | 'public' | 'off';
@@ -59,10 +46,6 @@ export interface Config {
     summaryApiKey: string;
     summaryApiModel: string;
     rules: RuleRow[];
-    archiveEnabled: boolean;
-    archiveUnwoken: boolean;
-    archiveDaysMaster: number;
-    archiveDaysOthers: number;
     recallEnabled: boolean;
     recallTopK: number;
     recallTopKMaster: number;
@@ -100,7 +83,6 @@ export interface Config {
     graphApiModel: string;
     graphBatch: number;
     graphHops: number;
-    groupContextCount: number;
     diaryEnabled: boolean;
     diaryTime: string;
     dayBoundaryHour: number;
@@ -110,22 +92,6 @@ export interface Config {
     diaryDays: number;
     overviewMonths: number;
     diaryBudgetPercent: number;
-    rotateSessions: boolean;
-    deleteOldSessions: boolean;
-    carryMessages: number;
-    archiveImages: boolean;
-    proactiveEnabled: boolean;
-    proactiveMinMinutes: number;
-    proactiveMaxMinutes: number;
-    proactiveOthersMinMinutes: number;
-    proactiveOthersMaxMinutes: number;
-    proactivePrivate: boolean;
-    proactiveGroup: boolean;
-    quietStart: string;
-    quietEnd: string;
-    proactiveRecentMinutes: number;
-    proactiveGroupContext: number;
-    proactiveActiveDays: number;
     silenceToken: string;
     autoCleanup: boolean;
     autoCleanupDays: number;
@@ -149,7 +115,7 @@ export type LiveConfig = {
     };
 };
 export declare const Config: z<LiveConfig>;
-export declare const name = "dsh-companion-core";
+export declare const name = "dsh-persona-memory";
 type Context = CordisContext & {
     snowluma?: SnowlumaLike;
     agents?: {

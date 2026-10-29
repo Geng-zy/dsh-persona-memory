@@ -5,7 +5,7 @@
 // 不用 window.confirm/alert（桌面端可能不显示），确认都放在页面里；窄窗口下自动换行。
 // 这个文件不经过打包，构建时原样复制到 lib/client.js。
 window.__ModuleLoader__.load({
-	id: "dsh-snowluma-companion/ui-companion",
+	id: "dsh-persona-memory/ui-companion",
 	factory: (require) => {
 		var exports = {};
 		var reactModule = require("react");
@@ -14,7 +14,7 @@ window.__ModuleLoader__.load({
 		var h = React.createElement;
 
 		var NS = "companionCore";
-		var PACKAGE = "dsh-snowluma-companion";
+		var PACKAGE = "dsh-persona-memory";
 
 		var zh = {
             imageGenConnection: "服务配置",
@@ -175,9 +175,9 @@ window.__ModuleLoader__.load({
 			modelPickList: "从列表选",
 			modelNoteArk: "火山方舟的模型可以填模型名，也可以填控制台里建的推理接入点 ID（ep- 开头）。",
 			modelNoteLocal: "本机服务：先在服务器上装好并下载模型；Key 随便填一个（比如 local）。",
-			summary: "人格和核心记忆对所有会话即时生效，按轮数截断或用中文回忆压缩上下文，消息存档。",
+			summary: "人格、分类核心记忆、长期记忆、日记和上下文管理，备份与恢复独立处理。",
 			status: "状态",
-			statusHint: "显示插件数据目录及运行状态。人格、核心记忆、日记、历史版本、消息存档和记忆数据库均由此目录管理；迁移时可使用备份功能，或在停止写入后复制完整目录。",
+			statusHint: "显示人格与记忆插件的数据目录和运行状态。此目录保存人格、核心记忆、日记、版本历史及记忆数据库；QQ原始消息由QQ插件管理。",
 			dataDir: "数据目录：{dir}",
 			snowlumaOn: "QQ 接入模块已就绪：QQ 会话按主人 / 其他私聊 / 群聊分规则。",
 			snowlumaOff: "QQ 接入模块暂未就绪，QQ 会话分类与消息存档不可用。",
@@ -185,14 +185,14 @@ window.__ModuleLoader__.load({
 			loading: "正在读取…",
 			loadFailed: "读取失败：{error}",
 			scope: "生效范围",
-			scopeHint: "本插件按预设筛选会话，再应用人格、核心记忆、召回和上下文管理。默认允许 companion 陪伴预设；dsh 内直接创建的受管会话按主人范围处理，QQ 会话由 bridge 区分主人私聊、其他私聊与群聊。",
+			scopeHint: "默认只作用于QQ会话；可选择同时作用于网页普通会话。预设范围与排除项同时生效。",
 			pluginAccess: "给其他插件用",
 			pluginAccessHint: "控制其他插件通过本插件服务接口读取人格和记忆、写入记忆的范围。“全部”允许按目标访问主人资料；“只给公开的”将访问限制为公开范围；“不给”拒绝接口调用。此项不替代各会话内部的工具权限。",
 			pluginAccessAll: "全部（含主人的）",
 			pluginAccessPublic: "只给公开的",
 			pluginAccessOff: "不给",
 			personaPresets: "生效的预设",
-			personaPresetsHint: "允许应用本插件人格、核心记忆、召回和上下文管理的预设 ID，默认 companion。多个值用空格或逗号分隔；* 表示全部，列表为空时也不按允许名单限制。仍会排除“不生效的预设”。",
+			personaPresetsHint: "在所选会话范围内，允许应用人格与记忆的预设ID；默认*表示全部预设，可用排除列表单独关闭。",
 			excludedPresets: "不生效的预设",
 			excludedPresetsHint: "明确排除的预设 ID，多个值用空格或逗号分隔。排除规则优先于“生效的预设”，对应会话保留原预设的人格、工具和上下文管理方式。",
 			personaOnly: "只用人格",
@@ -215,13 +215,13 @@ window.__ModuleLoader__.load({
 			historyKeep: "保留几份历史版本",
 			historyKeepHint: "人格、主人核心记忆和公开核心记忆分别保留的历史版本数量，默认各 5 份。0 表示不保留历史版本，不会清空当前正文。",
 			core: "核心记忆",
-			coreHint: "每次模型请求持续附带的关键事实，不参与普通长期记忆的自动遗忘。主人核心记忆仅用于主人范围；公开核心记忆可用于群聊及其他私聊，应仅包含可公开信息。",
-			coreMaster: "主人的核心记忆",
-			corePublic: "公开的核心记忆",
+			coreHint: "通用公开核心记忆与当前会话类别的核心记忆共同生效。管理员私聊、群聊和其他私聊各有独立稿；管理员私密核心不会进入其他会话。",
+			coreMaster: "管理员私聊核心记忆",
+			corePublic: "通用公开核心记忆",
 			saveCore: "保存",
-			coreMasterMaxChars: "主人的核心记忆最多几个字",
+			coreMasterMaxChars: "管理员私聊核心记忆最多几个字",
 			coreMasterMaxCharsHint: "主人核心记忆的非空白字符上限，默认 5000。模型修改和设置页保存均检查此上限；现有内容超限时仅允许缩短。此上限为固定配置，不随人格上限自动调整。",
-			corePublicMaxChars: "公开的核心记忆最多几个字",
+			corePublicMaxChars: "公开、群聊及其他私聊核心每份字数上限",
 			corePublicMaxCharsHint: "公开核心记忆的非空白字符上限，默认 1500。保存和模型修改均检查上限；内容将用于所有相应受管会话，请勿填写仅限主人可见的资料。",
 			chars: "{n} 字",
 			saved: "已保存。",
@@ -255,7 +255,7 @@ window.__ModuleLoader__.load({
 			summaryModel: "压缩用的模型",
 			summaryModelHint: "上下文处理选择“模型压缩”时，用此模型将旧对话整理为第一人称回忆。默认跟随当前会话模型；也可选择 dsh 已配置模型或独立服务商，压缩会产生额外模型请求。",
 			rules: "例外规则",
-			rulesHint: "按对方 QQ 号或群号覆盖该类会话的默认设置，留空的字段继承默认值。规则可调整上下文、存档、遗忘及主动聊天，但不能绕过 bridge 的白名单和存档权限边界。",
+			rulesHint: "按QQ号或群号覆盖上下文轮数、压缩方式及遗忘方式，留空继承类别默认值。记忆仍按每个群、每位普通私聊用户分域。",
 			rulesEmpty: "还没有例外规则。",
 			addRule: "加一条",
 			removeRule: "删除",
@@ -292,7 +292,7 @@ window.__ModuleLoader__.load({
 			saving: "保存中…",
 			saveFailed: "没有保存成功，修改已保留，请检查后重试。",
 			memRecall: "记忆召回",
-			memRecallHint: "每轮自动从当前会话可见的长期记忆中检索相关内容，并附加到该轮输入。关键词检索为基础；配置可用向量接口后增加语义检索。主人范围可检索群记忆，群聊和其他私聊不得召回主人私密记忆。",
+			memRecallHint: "每轮自动从当前会话可见的长期记忆中检索相关内容，并附加到该轮输入。关键词检索为基础；配置可用向量接口后增加语义检索。管理员可检索所有群聊和其他私聊记忆；各群和各普通私聊仅检索自己的及通用公开记忆，不能读取管理员私密记忆。",
 			recallEnabled: "自动想起相关记忆",
 			recallTopK: "每轮最多几条（别人私聊、群聊）",
 			recallTopKHint: "其他私聊和群聊每轮自动召回的条数上限，默认 6；0 表示不附加自动召回结果。群聊仅检索本群和公开记忆，实际数量取决于符合条件的结果。",
@@ -558,9 +558,9 @@ window.__ModuleLoader__.load({
 			restoreVerified: "文件校验通过，共识别 {count} 个数据文件。",
 			restorePending: "暂未确认恢复结果，请刷新页面查看；请勿重复提交恢复。",
 			backupSec: "备份计划与导出",
-			backupSecHint: "设置自动备份时间、保留数量与备份类别，也可立即导出所选内容。配置密钥和 Token 不导出。需要还原时，请使用下方独立的“恢复备份”卡片。",
+			backupSecHint: "仅备份人格、核心记忆、日记、长期记忆与关系图及人格插件设置。密钥不导出；本插件所有备份合计最多五份。",
 			backupItemsLabel: "备份哪些内容",
-			backupItemsHint: "自动备份和“现在备份并下载”使用这些选项；手动备份直接采用当前勾选，无需先保存。主人原始会话默认关闭，旧配置选中的其他存档会替换为此项。配置凭据不导出；导入时仍可缩小恢复范围。",
+			backupItemsHint: "仅备份本插件负责的人格、核心记忆、日记、长期记忆及设置；QQ数据和dsh全局设置由相应组件处理。",
 			bi_persona: "人格",
 			bi_personaDesc: "现在的人格稿（不含历史版本）",
 			bi_core: "核心记忆",
@@ -831,9 +831,9 @@ window.__ModuleLoader__.load({
 			modelPickList: "Pick from list",
 			modelNoteArk: "Ark accepts a model name or an endpoint ID (ep-…).",
 			modelNoteLocal: "Local service: install it and pull the model on the server first; any key works (e.g. local).",
-			summary: "A live persona and core memory for every session, round-based truncation or first-person summaries, and a message archive.",
+			summary: "Persona, scoped core and long-term memory, diaries, context and independent backups.",
 			status: "Status",
-			statusHint: "Shows the data directory and runtime state. It contains persona, core memory, diaries, document history, archives, and memory data. Use backups for migration or copy the full directory after stopping writes.",
+			statusHint: "Persona, core memory, diaries, document history and memory data. Raw QQ archives belong to QQ Gateway.",
 			dataDir: "Data directory: {dir}",
 			snowlumaOn: "QQ connection module is ready: QQ sessions follow master / other private / group rules.",
 			snowlumaOff: "QQ connection module unavailable: QQ classification and archives are unavailable.",
@@ -841,14 +841,14 @@ window.__ModuleLoader__.load({
 			loading: "Loading…",
 			loadFailed: "Failed to load: {error}",
 			scope: "Scope",
-			scopeHint: "Sessions are filtered by preset before persona, core memory, recall, and context management apply. Companion is allowed by default. Managed sessions created directly in dsh use master scope; bridge classifies QQ sessions.",
+			scopeHint: "QQ conversations only by default. Optionally include ordinary web sessions; preset selection and exclusions also apply.",
 			pluginAccess: "Share with other plugins",
 			pluginAccessHint: "Control access through this plugin's service API. All permits target-appropriate master access; public restricts calls to public scope; off rejects calls. This does not replace tool permissions inside sessions.",
 			pluginAccessAll: "All (incl. master's)",
 			pluginAccessPublic: "Public only",
 			pluginAccessOff: "Off",
 			personaPresets: "Presets it applies to",
-			personaPresetsHint: "Preset IDs eligible for this plugin's persona, core memory, recall, and context management, default companion. Separate with spaces or commas. Asterisk or an empty list allows all, except explicitly excluded presets.",
+			personaPresetsHint: "Preset IDs within the selected session scope. * allows all presets; exclusions remain available.",
 			excludedPresets: "Excluded presets",
 			excludedPresetsHint: "Preset IDs explicitly excluded, separated by spaces or commas. Exclusions override the allowed list; affected sessions retain their preset's persona, tools, and context behavior.",
 			personaOnly: "Persona only",
@@ -871,13 +871,13 @@ window.__ModuleLoader__.load({
 			historyKeep: "History versions to keep",
 			historyKeepHint: "History versions retained separately for persona, master core memory, and public core memory, default 5 each. Zero disables history retention without clearing current documents.",
 			core: "Core memory",
-			coreHint: "Key facts continuously included in model requests, outside ordinary long-term-memory forgetting. Master core memory is master-only; public core memory is available to groups and other private chats and should contain public information only.",
+			coreHint: "Public core memory is combined with the core for this conversation category. Administrator private, group and other private cores remain separate.",
 			coreMaster: "Master's core memory",
 			corePublic: "Public core memory",
 			saveCore: "Save",
 			coreMasterMaxChars: "Master core memory limit (characters)",
 			coreMasterMaxCharsHint: "Non-whitespace character limit for master core memory, default 5000. Checked for model edits and UI saves; over-limit content may only be shortened. This limit does not automatically track the persona limit.",
-			corePublicMaxChars: "Public core memory limit (characters)",
+			corePublicMaxChars: "Maximum characters per public, group or other-private core",
 			corePublicMaxCharsHint: "Non-whitespace character limit for public core memory, default 1500. Enforced for UI saves and model edits. This content is shared with applicable managed sessions; do not include master-private information.",
 			chars: "{n} chars",
 			saved: "Saved.",
@@ -911,7 +911,7 @@ window.__ModuleLoader__.load({
 			summaryModel: "Compression model",
 			summaryModelHint: "Model used to compress older conversation into a first-person recollection. Defaults to the current session model; a configured dsh model or external provider may be selected. Summarization adds model requests.",
 			rules: "Exceptions",
-			rulesHint: "Override category defaults by peer QQ ID or group ID; blank fields inherit defaults. Rules can adjust context, archiving, forgetting, and proactive chat, but cannot bypass bridge access or archive permissions.",
+			rulesHint: "Override context rounds, compaction and forgetting per QQ/group ID. Each group and ordinary private user retains a separate memory scope.",
 			rulesEmpty: "No exceptions yet.",
 			addRule: "Add",
 			removeRule: "Remove",
@@ -948,7 +948,7 @@ window.__ModuleLoader__.load({
 			saving: "Saving…",
 			saveFailed: "Not saved; your edits are kept for you to correct.",
 			memRecall: "Recall",
-			memRecallHint: "Retrieve relevant visible long-term memories and attach them to each turn. Keyword search is the baseline; a configured embedding service adds semantic retrieval. Master scope can retrieve group memories; groups and other private chats cannot retrieve master-private memories.",
+			memRecallHint: "Retrieve relevant visible long-term memories and attach them to each turn. Keyword search is the baseline; a configured embedding service adds semantic retrieval. Administrators can retrieve all group and other-private memories. Each group and ordinary private chat can retrieve only its own and public memories.",
 			recallEnabled: "Recall related memories",
 			recallTopK: "Max per round (others, groups)",
 			recallTopKHint: "Maximum automatic recalls per turn in other private and group chats, default 6. Zero attaches none. Groups search only their own and public memories; the actual count depends on eligible matches.",
@@ -1214,9 +1214,9 @@ window.__ModuleLoader__.load({
 			restoreVerified: "Verification passed: {count} data files detected.",
 			restorePending: "Restoration has not been confirmed yet. Refresh to check the result; do not submit the same restore again.",
 			backupSec: "Backup schedule & export",
-			backupSecHint: "Export selected documents, memories, diaries, archives, and plugin/dsh settings for recovery or migration. Configuration credentials are excluded; master QQ private dsh sessions are a separate selection. Import supports selective restoration; model changes may require embedding-index rebuilds.",
+			backupSecHint: "Export persona, core memory, diaries, long-term memory/graph and this plugin settings. Credentials are excluded; keep at most five backups.",
 			backupItemsLabel: "What to back up",
-			backupItemsHint: "Applies to automatic and manual backups. Manual backup uses the current selection without requiring a save. Master raw sessions are off by default; a selected legacy others-archive setting migrates to this item. Configuration credentials are omitted, and import can restore a smaller subset.",
+			backupItemsHint: "Back up this plugin’s persona, core memory, diary, long-term memory and settings only. QQ data and global dsh settings are outside this backup.",
 			bi_persona: "Persona",
 			bi_personaDesc: "Current persona (no history)",
 			bi_core: "Core memory",
@@ -1538,27 +1538,16 @@ window.__ModuleLoader__.load({
 		}
 		var MODES = ["truncate", "llm"];
 		var LOG_LEVELS = ["debug", "info", "warn", "error"];
-		var BOOLS = ["imageGenEnabled", "imageGenPrivate", "imageGenGroup", "personaOnly", "personaIgnoreComments", "selfEdit", "archiveEnabled", "archiveUnwoken", "recallEnabled", "activeMemory", "organizeBeforeCompact", "cleanupEnabled", "cleanupAutoPurge",
-			"diaryEnabled", "monthlyEnabled", "diaryOnNewSession", "rotateSessions", "deleteOldSessions", "archiveImages",
-			"proactiveEnabled", "proactivePrivate", "proactiveGroup", "graphEnabled", "personaGuard", "personaReview", "autoCleanup", "purgeForgotten", "consolidateEnabled", "backupEnabled"];
-		var TEXTS = ["imageGenApiUrl", "imageGenModel", "imageGenOptions", "imageGenCommand", "diaryEffort", "summaryModel", "memoryModel", "graphModel", "summaryEffort", "summaryApiUrl", "summaryApiModel", "memoryEffort", "memoryApiUrl", "memoryApiModel", "graphEffort", "graphApiUrl", "graphApiModel", "embedApiUrl", "embedModel", "diaryTime", "timezone", "quietStart", "quietEnd", "silenceToken", "backupTime"];
-		var SECRETS = ["imageGenApiKey", "embedApiKey", "summaryApiKey", "memoryApiKey", "graphApiKey"];
-		var FLOATS = ["keywordThreshold", "vectorThreshold", "keywordWeight", "importanceWeight", "recencyWeight", "groupDiscount", "autoCleanupImportance", "consolidateOverlap"];
+		var BOOLS = ["personaOnly","personaIgnoreComments","selfEdit","recallEnabled","activeMemory","organizeBeforeCompact","cleanupEnabled","cleanupAutoPurge","diaryEnabled","monthlyEnabled","diaryOnNewSession","graphEnabled","personaGuard","personaReview","autoCleanup","purgeForgotten","consolidateEnabled","backupEnabled"];
+		var TEXTS = ["diaryEffort","summaryModel","memoryModel","graphModel","summaryEffort","summaryApiUrl","summaryApiModel","memoryEffort","memoryApiUrl","memoryApiModel","graphEffort","graphApiUrl","graphApiModel","embedApiUrl","embedModel","diaryTime","timezone","silenceToken","backupTime"];
+		var SECRETS = ["embedApiKey","summaryApiKey","memoryApiKey","graphApiKey"];
+		var FLOATS = ["keywordThreshold","vectorThreshold","keywordWeight","importanceWeight","recencyWeight","groupDiscount","autoCleanupImportance","consolidateOverlap"];
 		var FORGET = ["normal", "purge"];
-		var LISTS = ["personaPresets", "excludedPresets", "selfCheckQueries", "backupItems"];
+		var LISTS = ["personaPresets","excludedPresets","selfCheckQueries","backupItems"];
 		/** 一行一条 */
-		var LINE_LISTS = ["personaAllowed", "personaForbidden"];
-		var INTS = [["imageGenTimeoutSeconds",10,1800], ["imageGenMaxImages",1,4], ["imageGenMaxMB",1,50], ["imageGenKeepDays",1,365],
-			["historyKeep", 0], ["coreMasterMaxChars", 100], ["corePublicMaxChars", 100], ["thresholdPercent", 10, 95],
-			["masterMaxRounds", 0], ["masterDropRounds", 1], ["privateMaxRounds", 0], ["privateDropRounds", 1],
-			["groupMaxRounds", 0], ["groupDropRounds", 1], ["archiveDaysMaster", 1], ["archiveDaysOthers", 1],
-			["recallTopK", 0], ["recallTopKMaster", 0], ["halfLifeDays", 1], ["organizeEveryRounds", 0], ["embedBatch", 1, 64], ["groupContextCount", 0], ["graphBatch", 1, 30], ["graphHops", 0, 2],
-			["dayBoundaryHour", 0, 12], ["diaryDays", 0], ["overviewMonths", 0], ["diaryBudgetPercent", 1, 60], ["carryMessages", 0],
-			["personaEditMaxChars", 10], ["personaMaxChars", 100],
-			["proactiveMinMinutes", 10], ["proactiveMaxMinutes", 10], ["proactiveOthersMinMinutes", 10], ["proactiveOthersMaxMinutes", 10], ["proactiveRecentMinutes", 0], ["proactiveGroupContext", 0], ["proactiveActiveDays", 1],
-			["autoCleanupDays", 1], ["purgeForgottenDays", 1], ["consolidateGroups", 1], ["careIntervalDays", 1], ["backupKeep", 1]
-		];
-		var ENUMS = [["imageGenProvider", ["openai", "azure", "modelscope", "dashscope", "gemini", "imagen", "vertex", "openrouter", "bfl", "fal", "replicate", "stability", "ideogram", "huggingface", "a1111", "comfyui", "custom", "command"]], ["pluginAccess", ["all", "public", "off"]], ["summarySource", ["follow", "dsh", "api"]], ["memorySource", ["follow", "dsh", "api"]], ["graphSource", ["follow", "dsh", "api"]], ["masterMode", MODES], ["privateMode", MODES], ["groupMode", MODES], ["logLevel", LOG_LEVELS], ["masterForget", FORGET], ["privateForget", FORGET], ["groupForget", FORGET]];
+		var LINE_LISTS = ["personaAllowed","personaForbidden"];
+		var INTS = [["historyKeep", 0],["coreMasterMaxChars", 100],["corePublicMaxChars", 100],["thresholdPercent", 10, 95],["masterMaxRounds", 0],["masterDropRounds", 1],["privateMaxRounds", 0],["privateDropRounds", 1],["groupMaxRounds", 0],["groupDropRounds", 1],["recallTopK", 0],["recallTopKMaster", 0],["halfLifeDays", 1],["organizeEveryRounds", 0],["embedBatch", 1, 64],["graphBatch", 1, 30],["graphHops", 0, 2],["dayBoundaryHour", 0, 12],["diaryDays", 0],["overviewMonths", 0],["diaryBudgetPercent", 1, 60],["personaEditMaxChars", 10],["personaMaxChars", 100],["autoCleanupDays", 1],["purgeForgottenDays", 1],["consolidateGroups", 1],["careIntervalDays", 1],["backupKeep", 1, 5]];
+		var ENUMS = [["pluginAccess", ["all", "public", "off"]],["summarySource", ["follow", "dsh", "api"]],["memorySource", ["follow", "dsh", "api"]],["graphSource", ["follow", "dsh", "api"]],["masterMode", MODES],["privateMode", MODES],["groupMode", MODES],["logLevel", LOG_LEVELS],["masterForget", FORGET],["privateForget", FORGET],["groupForget", FORGET],["sessionScope",["qq","all"]]];
 		function floatField(field) {
 			return {
 				field: field,
@@ -1613,7 +1602,7 @@ window.__ModuleLoader__.load({
 					h("span", { className: "compc-tip", tabIndex: 0, role: "img", "aria-label": props.hint }, "?")));
 		}
 		function Section(props) {
-			var Layout = require("dsh-snowluma-companion/ui-layout");
+			var Layout = require("dsh-persona-memory/ui-layout");
 			return h(Layout.Section, props, props.children);
 		}
 		function Fold(props) {
@@ -1717,23 +1706,26 @@ window.__ModuleLoader__.load({
 			}));
 		}
 
+		var documentDrafts = new Map();
 		function DocEditor(props) {
 			var t = props.t, doc = props.doc || { text: "", history: [] };
-			var Layout = require("dsh-snowluma-companion/ui-layout"), view = React.useContext(Layout.Context);
-			var [draft, setDraft] = React.useState(null), [baseRevision, setBaseRevision] = React.useState(null);
+			var Layout = require("dsh-persona-memory/ui-layout"), view = React.useContext(Layout.Context);
+			var remembered=documentDrafts.get(props.name);
+            var [draft, setDraft] = React.useState(remembered?remembered.text:null), [baseRevision, setBaseRevision] = React.useState(remembered?remembered.revision:null);
 			var [busy, setBusy] = React.useState(false), [msg, setMsg] = React.useState(null);
 			var [preview, setPreview] = React.useState(null), [asking, setAsking] = React.useState(false);
 			var fileInput = React.useRef(null);
 			var value = draft === null ? doc.text : draft, dirty = draft !== null && draft !== doc.text;
 			var conflict = dirty && baseRevision !== null && doc.revision !== baseRevision;
-			function reset() { setDraft(null); setBaseRevision(null); setPreview(null); setAsking(false); setMsg(null); }
+			function reset() { documentDrafts.delete(props.name); setDraft(null); setBaseRevision(null); setPreview(null); setAsking(false); setMsg(null); }
 			// Restore replaces only selected editors; normal refreshes preserve unfinished drafts.
-			React.useEffect(function () { if (props.restoreStamp !== undefined) reset(); }, [props.restoreStamp]);
+			React.useEffect(function () { if (props.restoreStamp !== undefined && documentDrafts.get(props.name)?.restoreStamp!==props.restoreStamp) reset(); }, [props.restoreStamp]);
 			React.useEffect(function () {
 				if (view.documentChanged) view.documentChanged(props.name, dirty);
 				return function () { if (view.documentChanged) view.documentChanged(props.name, false); };
 			}, [dirty, view.documentChanged, props.name]);
 			function edit(text) {
+                documentDrafts.set(props.name,{text:text,revision:draft===null?doc.revision:baseRevision,restoreStamp:props.restoreStamp});
 				if (draft === null) setBaseRevision(doc.revision);
 				setDraft(text); setPreview(null); setMsg(null);
 			}
@@ -1856,10 +1848,10 @@ window.__ModuleLoader__.load({
 								h("input", { className: "compc-input", inputMode: "numeric", value: r.target || "", disabled: props.disabled, onChange: function (e) { set(i, "target", e.target.value.trim()); } })),
 							num(i, "maxRounds"), num(i, "dropRounds"),
 							sel(i, "mode", [["", t("modeDefault")], ["truncate", t("modeTruncate")], ["llm", t("modeLlm")]]),
-							num(i, "archiveDays"),
-							r.kind === "group" ? sel(i, "archiveUnwoken", [["", t("modeDefault")], ["on", t("unwokenOn")], ["off", t("unwokenOff")]]) : null,
+							null,
+							r.kind === "group" ? null : null,
 							sel(i, "forgetMode", [["", t("modeDefault")], ["normal", t("forgetNormal")], ["purge", t("forgetPurge")]]),
-							sel(i, "proactive", [["", t("modeDefault")], ["on", t("proRuleOn")], ["off", t("proRuleOff")]]),
+							null,
 							h("label", { className: "compc-field" },
 								h("span", { className: "compc-hint" }, h(Label, { text: t("note"), hint: t("noteHint") })),
 								h("input", { className: "compc-input", value: r.note || "", disabled: props.disabled, onChange: function (e) { set(i, "note", e.target.value); } }))),
@@ -2247,55 +2239,11 @@ window.__ModuleLoader__.load({
 				list ? list.days.map(function (e) { return h(DiaryEntryItem, { key: e.date + e.length, t: t, entry: e, onChanged: function () { load(); props.onChanged(); } }); }) : null);
 		}
 
-		function ExpiryPanel(props) {
-			var t = props.t, data = props.data;
-			var act = useAction();
-			if (!data) return null;
-			var last = data.maintenance;
-			var names = { archived: "stArchived", deleted: "stDeleted", failed: "stDeleteFailed" };
-			return h("div", { className: "compc-field" },
-				last ? h("p", { className: "compc-hint" }, t("lastRun", { time: fmtTime(last.at) })) : null,
-				h("div", { className: "compc-row" },
-					h(P.Button, { size: "sm", disabled: act.busy, onClick: function () {
-						act.run(function () {
-							return api("POST", "maintenance", { what: "expire" }).then(function (r) {
-								props.onState(r.state);
-								var rep = r.report;
-								var deleted = rep.expired.reduce(function (n, e) { return n + (e.deleted || 0); }, 0);
-								var rotated = rep.expired.filter(function (e) { return e.rotated; }).length;
-								act.setMsg({ tone: "ok", text: t("expiryDone", { deleted: deleted, rotated: rotated, sessions: rep.deletedSessions.length, media: rep.mediaRemoved }) });
-							});
-						});
-					} }, act.busy ? t("running") : t("runExpiry"))),
-				h(Status, { msg: act.msg }),
-				h("details", { className: "compc-details" },
-					h("summary", { className: "compc-summary" }, h("span", { className: "compc-chevron", "aria-hidden": true }, "›"), t("retired") + "（" + (data.retired || []).length + "）"),
-					h("div", { className: "compc-detailsBody" },
-						(data.retired || []).length === 0 ? h("p", { className: "compc-hint" }, t("retiredEmpty")) :
-							data.retired.map(function (r) {
-								var cat = r.category === "master" ? t("scopeMaster") : r.category === "group" ? t("kindGroup") : t("kindUser");
-								return h("p", { key: r.sessionId, className: r.state === "failed" ? "compc-result compc-warn" : "compc-hint" },
-									t("retiredState", { umo: r.umo, cat: cat, last: fmtTime(r.lastTime), state: t(names[r.state] || "stArchived", { note: r.note || "" }) }));
-							}))));
-		}
+
 		//#endregion
 
 		//#region 主动聊天、记忆保养、备份与迁移
-		function ProactivePanel(props) {
-			var t = props.t, data = props.data;
-			var act = useAction();
-			if (!data || !data.proactive) return null;
-			var pr = data.proactive;
-			var catName = function (c) { return c === "master" ? t("scopeMaster") : c === "group" ? t("kindGroup") : t("kindUser"); };
-			return h("div", { className: "compc-field" },
-				pr.wakeAvailable ? null : h("p", { className: "compc-result compc-warn" }, t("proNoWake")),
-				pr.list.length === 0 ? h("p", { className: "compc-hint" }, t("proListEmpty")) : pr.list.map(function (e) {
-					return h("div", { key: e.umo, className: "compc-row" },
-						h("span", { className: "compc-hint" }, t("proItem", { umo: e.umo, cat: catName(e.category), next: e.next ? fmtTime(e.next) : "—", last: e.last ? fmtTime(e.last) : t("never") })),
-						h(P.Button, { size: "sm", disabled: act.busy || !pr.wakeAvailable, onClick: function () { act.run(function () { return api("POST", "proactive/try", { umo: e.umo }).then(props.onState); }, t("proTried")); } }, t("proTry")));
-				}),
-				h(Status, { msg: act.msg }));
-		}
+
 
 		function CarePanel(props) {
 			var t = props.t, data = props.data;
@@ -2331,13 +2279,10 @@ window.__ModuleLoader__.load({
 						: h("div", { className: "compc-row" }, h(P.Button, { size: "sm", disabled: act.busy, onClick: function () { setAsking(true); } }, t("careUndo")))) : null);
 		}
 
-		function firstLine(text) {
-			var line = text.split("\n").map(function (x) { return x.replace(/^#+\s*/, "").trim(); }).filter(Boolean)[0] || "";
-			return line.length > 80 ? line.slice(0, 80) + "…" : line;
-		}
+
 		function sizeText(n) { return n > 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1024)) + " KB"; }
 
-		var BACKUP_ITEMS = ["persona", "core", "diary", "memory", "archiveMaster", "sessionsMaster", "settingsCompanion", "settingsBridge", "settingsDsh"];
+		var BACKUP_ITEMS = ["persona", "core", "diary", "memory", "settingsCompanion"];
 				/** 一组勾选框：每项一个标题和一句说明 */
 		function ItemChecks(props) {
 			var t = props.t;
@@ -2798,61 +2743,7 @@ window.__ModuleLoader__.load({
 		//#endregion
 
 
-        function ImageGeneration(props) {
-          var t = props.t, [catalog, setCatalog] = React.useState({ providers: {}, images: [] });
-          var [prompt, setPrompt] = React.useState(""), [busy, setBusy] = React.useState(false), [message, setMessage] = React.useState(null);
-          var [tab, setTab] = React.useState("connection"), [selected, setSelected] = React.useState(null), [seconds, setSeconds] = React.useState(0);
-          var controller = React.useRef(null);
-          function refresh() { return api("GET", "images").then(setCatalog, e => setMessage({tone:"error",text:e.message})); }
-          React.useEffect(() => { refresh(); return () => { if (controller.current) controller.current.abort(); }; }, []);
-          React.useEffect(() => { if (!busy) return; setSeconds(0); var started=Date.now(), timer=setInterval(()=>setSeconds(Math.floor((Date.now()-started)/1000)),1000);return()=>clearInterval(timer); }, [busy]);
-          function generate() {
-            var abort = new AbortController(); controller.current = abort; setBusy(true); setMessage(null);
-            fetch(apiUrl("images/generate"), { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt: prompt, count: 1 }), signal: abort.signal })
-              .then(async response => { var result = await response.json(); if (!response.ok) throw new Error(result.error || "HTTP " + response.status);setSelected(result.images[0]?.id || null);setMessage({tone:result.warning?"error":"ok",text:result.warning || t("imageGenSuccess")}); await refresh(); })
-              .catch(e => setMessage({tone:e.name === "AbortError"?"warn":"error",text:e.name === "AbortError" ? t("imageGenCanceled") : e.message}))
-              .finally(() => { controller.current = null; setBusy(false); });
-          }
-          var provider = props.state.imageGenProvider.text || "modelscope", preset=catalog.providers[provider];
-          var enabled=props.state.imageGenEnabled.text === "true", current=catalog.images.find(i=>i.id===selected)||catalog.images[0];
-          var local=provider === "command", needsKey=!["command","comfyui","a1111","custom"].includes(provider);
-          function choose(event) {
-            var id = event.target.value, preset = catalog.providers[id]; props.edit("imageGenProvider", id);
-            if (preset) { props.edit("imageGenApiUrl", preset[1]); props.edit("imageGenModel", preset[2]); }
-            props.edit("imageGenOptions", "{}");
-          }
-          function field(name, hint, numeric) { return h(Value, Object.assign({field:name,label:t(name),hint:t(hint||name+"Hint"),numeric:!!numeric},props)); }
-          function fold(title, body) {return h("details",{className:"sc-image-card sc-image-fold",name:"snowluma-image-options"},h("summary",null,title),h("div",{className:"sc-image-fields"},body));}
-          return h(Section, { sectionId: "companion-image-generation", category: "media", title: t("imageGenTitle"), hint: t("imageGenConfigHint") },
-            h("div",{className:"sc-image-top"},h("div",{className:"sc-image-service"},h("span",null,t("imageGenActiveService")),h("strong",null,preset?preset[0]:provider)),
-              h("span",{className:"sc-image-badge"},!enabled?t("imageGenOff"):needsKey&&!props.state.secretSet?.imageGenApiKey?t("imageGenNoKey"):t("imageGenReady"))),
-            h(Toggle, Object.assign({ field: "imageGenEnabled", label: t("imageGenEnabled"),hint:t("imageGenHint") }, props)),
-            h("div",{className:"sc-image-tabs",role:"tablist","aria-label":t("imageGenTitle")},[["connection","imageGenConnection"],["studio","imageGenStudio"]].map(([id,key])=>h("button",{key:id,type:"button",role:"tab",id:"image-gen-tab-"+id,"aria-controls":"image-gen-panel-"+id,"aria-selected":tab===id,onClick:()=>setTab(id)},t(key)))),
-            h("div",{id:"image-gen-panel-connection",role:"tabpanel","aria-labelledby":"image-gen-tab-connection",className:"sc-image-stack",hidden:tab!=="connection"},
-              h("div",{className:"sc-image-card sc-image-fields"},
-                h("div",{className:"compc-field"},h("label",{className:"compc-label",htmlFor:"image-gen-provider"},t("imageGenProvider")),h("select",{id:"image-gen-provider",className:"compc-select",value:provider,disabled:props.disabled,onChange:choose},
-                  [false,true].map(isLocal=>h("optgroup",{key:String(isLocal),label:t(isLocal?"imageGenProviderLocal":"imageGenProviderCloud")},Object.entries(catalog.providers).filter(([id])=>["command","comfyui","a1111","custom"].includes(id)===isLocal).map(([id,p])=>h("option",{key:id,value:id},p[0])))))),
-                !local?field("imageGenApiUrl"):null, field("imageGenModel"),
-                h(Secret,Object.assign({field:"imageGenApiKey",label:t("imageGenApiKey"),hint:t("imageGenKeyHint"),setLabel:t("apiKeySet"),unsetLabel:t("apiKeyUnset")},props)),
-                local?h(Lines,Object.assign({field:"imageGenCommand",label:t("imageGenCommand"),hint:t("imageGenCommandHint")},props)):null),
-              fold(t("imageGenAccess"),h(React.Fragment,null,h("p",{className:"sc-image-note"},t("imageGenAccessHint")),h("span",{className:"sc-image-badge"},t("imageGenOwnerAccess")),
-                h(Toggle,Object.assign({field:"imageGenPrivate",label:t("imageGenPrivate"),hint:t("imageGenPrivateHint")},props)),h(Toggle,Object.assign({field:"imageGenGroup",label:t("imageGenGroup"),hint:t("imageGenGroupHint")},props)))),
-              fold(t("imageGenLimits"),h("div",{className:"compc-grid"},["imageGenTimeoutSeconds","imageGenMaxImages","imageGenMaxMB","imageGenKeepDays"].map(name=>h(React.Fragment,{key:name},field(name,name==="imageGenKeepDays"?"imageGenKeepHint":"imageGenLimitsHint",true))))),
-              fold(t("imageGenAdvanced"),h(React.Fragment,null,h("p",{className:"sc-image-note"},t("imageGenAdvancedHint")),h(Lines,Object.assign({field:"imageGenOptions",label:t("imageGenOptions"),hint:t("imageGenOptionsHint")},props)),h("a",{className:"sc-image-meta",href:"https://github.com/Geng-zy/dsh-snowluma-companion/blob/main/docs/IMAGE-GENERATION.md",target:"_blank",rel:"noreferrer"},t("imageGenDocs"))))),
-            h("div",{id:"image-gen-panel-studio",role:"tabpanel","aria-labelledby":"image-gen-tab-studio",className:"sc-image-stack",hidden:tab!=="studio"},
-              h("div",{className:"sc-image-card"},h("label",{className:"compc-label",htmlFor:"image-gen-prompt"},t("imageGenPrompt")),
-                h("textarea",{id:"image-gen-prompt",className:"compc-textarea sc-image-prompt",value:prompt,placeholder:t("imageGenPromptPlaceholder"),disabled:busy||props.disabled,maxLength:12000,onChange:e=>setPrompt(e.target.value)}),
-                h("div",{className:"sc-image-actions"},h("button",{type:"button",className:"sc-image-primary",disabled:busy||props.disabled||!prompt.trim()||props.state.dirty||!enabled,onClick:generate},t("imageGenGenerate")),
-                  busy?h(P.Button,{onClick:()=>controller.current&&controller.current.abort()},t("imageGenCancel")):null,h("span",{className:"sc-image-meta"},busy?t("imageGenWaiting",{seconds:seconds}):t("imageGenSavedShort"))),
-                h("p",{className:"sc-image-note",style:{marginTop:"10px"}},props.state.dirty?t("imageGenDraftNotice"):t("imageGenQuotaNotice")),
-                busy?h("progress",{className:"sc-image-progress","aria-label":t("imageGenWorking")}):null,
-                message?h("div",{className:"sc-image-message","data-tone":message.tone,role:"status"},message.text):null),
-              h("div",{className:"sc-image-card sc-image-result"},h("div",{className:"sc-image-result-head"},h("h4",null,t("imageGenResults")),current?h("a",{href:apiUrl("images/"+current.id),target:"_blank",rel:"noreferrer"},t("imageGenOpenImage")):null),
-                h("div",{className:"sc-image-canvas"},current?h("img",{src:apiUrl("images/"+current.id),alt:t("imageGenResults")}):h("div",{className:"sc-image-empty"},h("span",{className:"sc-image-empty-icon","aria-hidden":true},"▧"),h("strong",null,t("imageGenResultEmpty")),t("imageGenResultEmptyHint"))),
-                current?h("span",{className:"sc-image-meta"},new Date(current.createdAt).toLocaleString()+" · "+(current.bytes/1024/1024).toFixed(2)+" MB"):null),
-              h("div",{className:"sc-image-result-head"},h("h4",null,t("imageGenHistory")),h(P.Button,{disabled:busy,onClick:refresh},t("imageGenRefresh"))),
-              h("div",{className:"sc-image-gallery"},catalog.images.slice(0,20).map((image,index)=>h("button",{key:image.id,type:"button","aria-label":t("imageGenSelectImage",{index:index+1}),"aria-pressed":current?.id===image.id,onClick:()=>setSelected(image.id)},h("img",{src:apiUrl("images/"+image.id),alt:"",loading:"lazy"}))))))
-        }
+
 
 		/** 有改动还没保存时，贴在页面底部的保存栏（dsh 自带的保存按钮在整页最下面，改完上面的设置容易找不到） */
 		function SettingsPage(props) {
@@ -2880,13 +2771,13 @@ window.__ModuleLoader__.load({
 					h("p", { key: "d", className: "compc-hint" }, t("dataDir", { dir: data.dataDir }))
 				];
 			return h(React.Fragment, null, h(React.Fragment, null,
-                h(ImageGeneration, common),
+                null,
 				h(Section, { sectionId: "companion-status", category: "overview", title: t("status"), hint: t("statusHint") },
 					statusLines,
 					h("div", { className: "compc-row" }, h(P.Button, { size: "sm", onClick: load }, t("refresh")))),
 				h(Section, { sectionId: "companion-scope", category: "persona", title: t("scope"), hint: t("scopeHint") },
 					h("div", { className: "compc-grid" },
-						h(Value, Object.assign({ field: "personaPresets", label: t("personaPresets"), hint: t("personaPresetsHint") }, common)),
+						h(Select,Object.assign({field:"sessionScope",label:"生效会话范围 / Session scope",hint:"默认只作用于QQ会话；可选同时作用于网页普通会话。",fallback:"qq",options:[{value:"qq",label:"仅QQ会话 / QQ only"},{value:"all",label:"所有会话 / All sessions"}]},common)),h(Value, Object.assign({ field: "personaPresets", label: t("personaPresets"), hint: t("personaPresetsHint") }, common)),
 						h(Value, Object.assign({ field: "excludedPresets", label: t("excludedPresets"), hint: t("excludedPresetsHint") }, common)),
 						h(Select, Object.assign({ field: "pluginAccess", label: t("pluginAccess"), hint: t("pluginAccessHint"), fallback: "all", options: [{ value: "all", label: t("pluginAccessAll") }, { value: "public", label: t("pluginAccessPublic") }, { value: "off", label: t("pluginAccessOff") }] }, common))),
 					h(Toggle, Object.assign({ field: "personaOnly", label: t("personaOnly"), hint: t("personaOnlyHint") }, common))),
@@ -2908,6 +2799,8 @@ window.__ModuleLoader__.load({
 				h(Section, { sectionId: "companion-core", category: "persona", title: t("core"), hint: t("coreHint") },
 					data ? h(DocEditor, { t: t, restoreStamp: data.lastImport && data.lastImport.plan && data.lastImport.plan.items.indexOf("core") >= 0 ? data.lastImport.at : undefined, name: "core-master", title: t("coreMaster"), small: true, doc: docs["core-master"], saveLabel: t("saveCore"), onState: setData }) : null,
 					data ? h(DocEditor, { t: t, restoreStamp: data.lastImport && data.lastImport.plan && data.lastImport.plan.items.indexOf("core") >= 0 ? data.lastImport.at : undefined, name: "core-public", title: t("corePublic"), small: true, doc: docs["core-public"], saveLabel: t("saveCore"), onState: setData }) : null,
+                    data ? h(DocEditor,{t:t,name:"core-group",title:"群聊核心记忆",small:true,doc:docs["core-group"],saveLabel:t("saveCore"),onState:setData}):null,
+                    data ? h(DocEditor,{t:t,name:"core-private",title:"其他私聊核心记忆",small:true,doc:docs["core-private"],saveLabel:t("saveCore"),onState:setData}):null,
 					h("div", { className: "compc-grid" },
 						h(Value, Object.assign({ field: "coreMasterMaxChars", label: t("coreMasterMaxChars"), hint: t("coreMasterMaxCharsHint"), numeric: true, invalidLabel: t("invalid") }, common)),
 						h(Value, Object.assign({ field: "corePublicMaxChars", label: t("corePublicMaxChars"), hint: t("corePublicMaxCharsHint"), numeric: true, invalidLabel: t("invalid") }, common)))),
@@ -2918,19 +2811,10 @@ window.__ModuleLoader__.load({
 					h(ContextRow, { t: t, common: common, prefix: "group", title: t("groupRow"), fallback: "truncate" }),
 					h(Toggle, Object.assign({ field: "organizeBeforeCompact", label: t("organizeBeforeCompact"), hint: t("organizeBeforeCompactHint") }, common)),
 					h(LlmField, { common: common, t: t, state: state, edit: props.edit, disabled: disabled, task: "summary", label: t("summaryModel"), hint: t("summaryModelHint"), followLabel: t("followSummary"), noFollowEffort: true, followNote: t("followSummaryNote") })),
-				h(Section, { sectionId: "companion-rules", category: "connection", title: t("rules"), hint: t("rulesHint") },
+				h(Section, { sectionId: "companion-rules", category: "chat", title: t("rules"), hint: t("rulesHint") },
 					h(RulesEditor, { t: t, state: state, edit: props.edit, disabled: disabled })),
-				h(Section, { sectionId: "companion-archive", category: "memory", title: t("archive"), hint: t("archiveHint") },
-					h(Toggle, Object.assign({ field: "archiveEnabled", label: t("archiveEnabled"), hint: t("archiveEnabledHint") }, common)),
-					h(Toggle, Object.assign({ field: "archiveImages", label: t("archiveImages"), hint: t("archiveImagesHint") }, common)),
-					h(Toggle, Object.assign({ field: "archiveUnwoken", label: t("archiveUnwokenAll"), hint: t("archiveUnwokenAllHint") }, common)),
-					h("div", { className: "compc-grid" },
-						h(Value, Object.assign({ field: "archiveDaysMaster", label: t("archiveDaysMaster"), hint: t("archiveDaysMasterHint"), numeric: true, invalidLabel: t("invalidPositive") }, common)),
-						h(Value, Object.assign({ field: "archiveDaysOthers", label: t("archiveDaysOthers"), hint: t("archiveDaysOthersHint"), numeric: true, invalidLabel: t("invalidPositive") }, common)))),
-				h(Section, { sectionId: "companion-groupCtx", category: "chat", title: t("groupCtx"), hint: t("groupCtxHint") },
-					state.archiveUnwoken.text === "false" ? h("p", { className: "compc-result compc-warn" }, t("groupCtxOff")) : null,
-					h("div", { className: "compc-grid" },
-						h(Value, Object.assign({}, common, { field: "groupContextCount", label: t("groupContextCount"), hint: t("groupContextCountHint"), numeric: true, invalidLabel: t("invalidCount"), disabled: disabled || state.archiveUnwoken.text === "false" })),)),
+				null,
+				null,
 				h(Section, { sectionId: "companion-memRecall", category: "memory", title: t("memRecall"), hint: t("memRecallHint") },
 					h(Toggle, Object.assign({ field: "recallEnabled", label: t("recallEnabled"), hint: t("recallEnabledHint") }, common)),
 					h("div", { className: "compc-grid" },
@@ -2991,28 +2875,8 @@ window.__ModuleLoader__.load({
 					h(DiaryPanel, { t: t, data: data, onState: setData })),
 				h(Section, { sectionId: "companion-diaryPage", category: "life", title: t("diaryPage"), hint: t("diaryPageHint") },
 					h(DiaryBook, { t: t, version: memVersion, onChanged: function () { api("GET", "state").then(setData, function () {}); } })),
-				h(Section, { sectionId: "companion-expirySec", category: "maintenance", title: t("expirySec"), hint: t("expirySecHint") },
-					h(Toggle, Object.assign({ field: "rotateSessions", label: t("rotateSessions"), hint: t("rotateSessionsHint") }, common)),
-					h(Toggle, Object.assign({ field: "deleteOldSessions", label: t("deleteOldSessions"), hint: t("deleteOldSessionsHint") }, common)),
-					h(Value, Object.assign({ field: "carryMessages", label: t("carryMessages"), hint: t("carryMessagesHint"), numeric: true, invalidLabel: t("invalidCount") }, common)),
-					h(ExpiryPanel, { t: t, data: data, onState: setData })),
-				h(Section, { sectionId: "companion-proSec", category: "life", title: t("proSec"), hint: t("proSecHint") },
-					h(Toggle, Object.assign({ field: "proactiveEnabled", label: t("proactiveEnabled"), hint: t("proactiveEnabledHint") }, common)),
-					h("div", { className: "compc-grid" },
-						h(Value, Object.assign({ field: "proactiveMinMinutes", label: t("proactiveMinMinutes"), hint: t("proactiveMinMinutesHint"), numeric: true, invalidLabel: t("invalid") }, common)),
-						h(Value, Object.assign({ field: "proactiveMaxMinutes", label: t("proactiveMaxMinutes"), hint: t("proactiveMaxMinutesHint"), numeric: true, invalidLabel: t("invalid") }, common)),
-						h(Value, Object.assign({ field: "proactiveOthersMinMinutes", label: t("proactiveOthersMinMinutes"), hint: t("proIntervalHint"), numeric: true, invalidLabel: t("invalid") }, common)),
-						h(Value, Object.assign({ field: "proactiveOthersMaxMinutes", label: t("proactiveOthersMaxMinutes"), hint: t("proIntervalHint"), numeric: true, invalidLabel: t("invalid") }, common))),
-					h(Toggle, Object.assign({ field: "proactivePrivate", label: t("proactivePrivate"), hint: t("proactivePrivateHint") }, common)),
-					h(Toggle, Object.assign({ field: "proactiveGroup", label: t("proactiveGroup"), hint: t("proactiveGroupHint") }, common)),
-					h("div", { className: "compc-grid" },
-						h(Value, Object.assign({ field: "quietStart", label: t("quietStart"), hint: t("quietHint") }, common)),
-						h(Value, Object.assign({ field: "quietEnd", label: t("quietEnd"), hint: t("quietHint") }, common)),
-						h(Value, Object.assign({ field: "proactiveRecentMinutes", label: t("proactiveRecentMinutes"), hint: t("proactiveRecentMinutesHint"), numeric: true, invalidLabel: t("invalidCount") }, common)),
-						h(Value, Object.assign({ field: "proactiveGroupContext", label: t("proactiveGroupContext"), hint: t("proactiveGroupContextHint"), numeric: true, invalidLabel: t("invalidCount") }, common)),
-						h(Value, Object.assign({ field: "proactiveActiveDays", label: t("proactiveActiveDays"), hint: t("proactiveActiveDaysHint"), numeric: true, invalidLabel: t("invalidPositive") }, common)),
-						h("p", { className: "compc-hint" }, t("sharedSilence"))),
-					h(ProactivePanel, { t: t, data: data, onState: setData })),
+				null,
+				null,
 				h(Section, { sectionId: "companion-careSec", category: "maintenance", title: t("careSec"), hint: t("careSecHint") },
 					h(Toggle, Object.assign({ field: "autoCleanup", label: t("autoCleanup"), hint: t("autoCleanupHint") }, common)),
 					h("div", { className: "compc-grid" },

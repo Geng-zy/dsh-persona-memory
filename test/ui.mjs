@@ -9,20 +9,22 @@ export async function runUi(session) {
  const artifacts=fileURLToPath(new URL('../.cache/ui-artifacts/',import.meta.url));mkdirSync(artifacts,{recursive:true})
  const chrome='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
  const executablePath=process.env.CHROME_BIN || (process.platform==='darwin'&&existsSync(chrome)?chrome:undefined)
+ let debugPage
  const browser=await chromium.launch({headless:true,...(executablePath?{executablePath}:{})})
  try {
   const context=await browser.newContext({viewport:{width:1440,height:1050},locale:'zh-CN'})
   await context.addCookies(session.cookie.split('; ').map(part=>{const i=part.indexOf('=');return{name:part.slice(0,i),value:part.slice(i+1),url:session.url}}))
   const page=await context.newPage(), errors=[]
+  debugPage=page
   page.on('pageerror',e=>errors.push(e.message))
   await page.goto(session.url)
   await page.getByRole('button',{name:'插件',exact:true}).waitFor()
   await page.getByRole('button',{name:'继续',exact:true}).click({timeout:5000}).catch(()=>{})
   await page.getByRole('button',{name:'插件',exact:true}).click()
-  await page.getByText('dsh-snowluma-companion',{exact:true}).click()
+  await page.getByText('dsh-qq-gateway',{exact:true}).click()
   const app=page.locator('.sc-app');await app.waitFor()
-  assert.equal(await app.locator('.sc-nav-item').count(),9)
-  assert.equal(await page.getByText('dsh-companion-core',{exact:true}).count(),0,'no second installed plugin entry')
+  assert.equal(await app.locator('.sc-nav-item').count(),8,'QQ UI: '+await app.innerText())
+  assert.equal(await app.getByText('人格与核心记忆',{exact:true}).count(),0,'QQ页面不包含人格设置')
   const navigate=async title=>{await app.locator('.sc-nav-item').filter({hasText:title}).click();await page.waitForTimeout(80)}
   const openSection=async id=>{const section=app.locator('[data-section="'+id+'"]');if(!await section.evaluate(e=>e.open))await section.locator(':scope > summary').click();await page.waitForFunction(id=>document.querySelector('[data-section="'+id+'"]')?.open,id);assert.equal(await app.locator('.sc-section[open]').count(),1,'only one category may be open');return section}
   const collapse=async()=>{await app.getByRole('button',{name:'全部收起',exact:true}).click();await page.waitForFunction(()=>[...document.querySelectorAll('.sc-section:not([hidden])')].every(e=>!e.open))}
@@ -42,7 +44,7 @@ export async function runUi(session) {
   await otherTyping.click()
 
   for(const [category,speed]of [['AdminPrivate','60'],['Private','120'],['Group','240']])await app.locator('#snowluma-bridge-typing'+category+'CharsPerMinute').fill(speed)
-  const save=app.getByRole('button',{name:'保存所有设置',exact:true})
+  const save=app.getByRole('button',{name:'保存设置',exact:true})
   const min=app.locator('#snowluma-bridge-typingPrivateMinSeconds'), previous=await min.inputValue()
   await min.fill('-1');assert.ok(await save.isDisabled(),'invalid values block a combined save')
   await min.fill(previous);await save.click()
@@ -52,7 +54,7 @@ export async function runUi(session) {
   await page.getByRole('button',{name:'账号菜单',exact:true}).click()
   await page.getByRole('menuitem',{name:/^设置/}).click()
   const settingsDialog=page.getByRole('dialog',{name:'设置',exact:true})
-  await settingsDialog.getByRole('button',{name:'SnowLuma 陪伴助手',exact:true}).click()
+  await settingsDialog.getByRole('button',{name:'QQ 接入助手',exact:true}).click()
   await page.locator('.sc-settings-entry .sc-app').waitFor()
   assert.equal(await app.count(),1,'one shared settings UI, no duplicate form')
   await settingsDialog.screenshot({path:join(artifacts,'settings-entry.png')})
@@ -62,7 +64,7 @@ export async function runUi(session) {
   for(const [category,speed]of [['AdminPrivate','60'],['Private','120'],['Group','240']])assert.equal(await app.locator('#snowluma-bridge-typing'+category+'CharsPerMinute').inputValue(),speed)
   assert.equal(await app.getByRole('button',{name:'全部展开',exact:true}).count(),0)
   console.log('[ui] Three independent typing profiles save/reload and one-open accordion passed')
-  console.log('[ui] Host Settings entry opens the same nine-group UI and reads settings saved through the plugin entry')
+  console.log('[ui] Host Settings entry opens the QQ UI and reads settings saved through the plugin entry')
   const endpoint=path=>session.url+'api/companion/'+path
   const post=async(path,data)=>{const response=await page.request.post(endpoint(path),{data});assert.ok(response.ok(),path);return response.json()}
   const state=async()=>{const response=await page.request.get(endpoint('state'));assert.ok(response.ok());return response.json()}
@@ -84,7 +86,7 @@ export async function runUi(session) {
   await imagePanel.getByRole('tab',{name:'服务配置',exact:true}).click()
   await imagePanel.getByRole('tab',{name:'试画与图库',exact:true}).click()
   assert.equal(await imagePanel.locator('#image-gen-prompt').inputValue(),'UI IMAGE TEST: a friendly cat','studio draft survives tab changes')
-  const imageResponse=page.waitForResponse(r=>r.url().endsWith('/api/companion/images/generate')&&r.request().method()==='POST')
+  const imageResponse=page.waitForResponse(r=>r.url().endsWith('/api/qq-gateway/images/generate')&&r.request().method()==='POST')
   await imagePanel.getByRole('button',{name:'生成一张（消耗额度）',exact:true}).click()
   assert.equal((await imageResponse).status(),200)
   await imagePanel.locator('.sc-image-gallery img').first().waitFor()
@@ -100,6 +102,8 @@ export async function runUi(session) {
   await page.emulateMedia({colorScheme:'dark'});await imagePanel.screenshot({path:join(artifacts,'image-generation-dark.png')})
   await page.emulateMedia({colorScheme:'light'});await page.setViewportSize({width:1440,height:1050})
   console.log('[ui] Image provider presets, settings save, quota-labeled real mocked generation, preview/download and light/dark rendering passed')
+  await settingsDialog.getByRole('button',{name:'人格与记忆',exact:true}).click()
+  assert.equal(await app.locator('.sc-nav-item').count(),7)
   await navigate('人格与核心记忆')
   const persona=app.locator('[data-section="companion-persona"]')
   if(!await persona.evaluate(e=>e.open))await persona.locator('summary').first().click()
@@ -108,7 +112,7 @@ export async function runUi(session) {
   assert.equal(await editor.inputValue(),'UI 草稿：切换分组与收起不会丢失。')
   await openSection('companion-scope');assert.equal(await persona.evaluate(e=>e.open),false)
   await openSection('companion-persona')
-  await navigate('图片、语音与视频');await openSection('companion-image-generation');await navigate('人格与核心记忆');await openSection('companion-persona')
+  await settingsDialog.getByRole('button',{name:'QQ 接入助手',exact:true}).click();await navigate('图片、语音与视频');await openSection('companion-image-generation');await settingsDialog.getByRole('button',{name:'人格与记忆',exact:true}).click();await navigate('人格与核心记忆');await openSection('companion-persona')
   assert.equal(await editor.inputValue(),'UI 草稿：切换分组与收起不会丢失。')
   // File editing is independent of settings saves; preview/import must not write the source.
   const doc=persona.locator('[data-document="persona"]')
@@ -147,10 +151,11 @@ export async function runUi(session) {
   await page.waitForFunction(()=>document.querySelector('.sc-save strong')?.textContent==='所有设置已保存')
   assert.equal((await state()).docs.persona.text,imported,'successful save retains the raw Markdown including comments')
   await page.setViewportSize({width:1440,height:1800});await persona.evaluate(el=>el.scrollIntoView({block:'start'}));
-  await persona.screenshot({path:join(artifacts,'persona-editor.png')})
-  await page.emulateMedia({colorScheme:'dark'});await persona.screenshot({path:join(artifacts,'persona-editor-dark.png')})
+  await settingsDialog.screenshot({path:join(artifacts,'persona-editor.png')})
+  await page.emulateMedia({colorScheme:'dark'});await settingsDialog.screenshot({path:join(artifacts,'persona-editor-dark.png')})
   await page.emulateMedia({colorScheme:'light'});await page.setViewportSize({width:1440,height:1050})
   console.log('[ui] Persona Markdown import/export, raw-source preservation, model preview, optional note filtering, stale-save conflict and native editor passed')
+  await settingsDialog.getByRole('button',{name:'QQ 接入助手',exact:true}).click()
   const search=app.getByRole('searchbox');await search.fill('语音')
   assert.ok(await app.locator('.sc-section:not([hidden])').count()>0)
   await search.fill('找不到的设置XYZ')
@@ -164,7 +169,7 @@ export async function runUi(session) {
   await page.setViewportSize({width:390,height:844});await page.waitForTimeout(150)
   assert.ok(await app.evaluate(el=>el.scrollWidth<=el.clientWidth+2),'settings must fit mobile width: '+JSON.stringify(await app.evaluate(el=>({client:el.clientWidth,scroll:el.scrollWidth,overflow:[...el.querySelectorAll('*')].filter(x=>x.getBoundingClientRect().right>el.getBoundingClientRect().right+2).slice(0,8).map(x=>({class:x.className,width:x.clientWidth,scroll:x.scrollWidth}))}))))
   await app.screenshot({path:join(artifacts,'settings-mobile.png')})
-  await navigate('人格与核心记忆');await openSection('companion-persona');await page.setViewportSize({width:390,height:1800});await persona.evaluate(el=>el.scrollIntoView({block:'start'}));await persona.screenshot({path:join(artifacts,'persona-editor-mobile.png')})
+  await page.setViewportSize({width:1440,height:1050});await settingsDialog.getByRole('button',{name:'人格与记忆',exact:true}).click();await navigate('人格与核心记忆');await openSection('companion-persona');await page.setViewportSize({width:390,height:1800});await persona.evaluate(el=>el.scrollIntoView({block:'start'}));await persona.screenshot({path:join(artifacts,'persona-editor-mobile.png')})
   assert.ok(await app.evaluate(el=>el.scrollWidth<=el.clientWidth+2),'persona editor must fit mobile width')
   // Exercise upload -> detected files -> multi-select -> actual selective restore, only in this disposable profile.
   await page.setViewportSize({width:1440,height:1050});await navigate('备份与迁移');await openSection('companion-restoreSec')
@@ -227,7 +232,7 @@ export async function runUi(session) {
   await selfcheck.locator('.sc-selfcheck-query').screenshot({path:join(artifacts,'migration-selfcheck.png')})
   console.log('[ui] Migration self-check shows all candidate excerpts with date headings and body, record IDs and retrieval-only labels')
   assert.deepEqual(errors,[])
-  console.log('[ui] Single entry, nine groups, fold/search, two-module save, validation, draft retention, desktop/mobile rendering passed')
- } finally {await browser.close()}
+  console.log('[ui] Two independent entries, QQ/persona groups, single-open accordion, independent saves, cross-plugin drafts, restore and mobile rendering passed')
+ } catch(error){if(debugPage){console.log('[ui-debug-footer]',await debugPage.locator('.sc-save').allTextContents());console.log('[ui-debug-alerts]',await debugPage.locator('[role=alert]').allTextContents());await debugPage.screenshot({path:join(artifacts,'failure.png'),fullPage:true}).catch(()=>{})}throw error} finally {await browser.close()}
 }
 if(process.argv[1]===fileURLToPath(import.meta.url))await runUi(JSON.parse(readFileSync(new URL('../.cache/ui-session.json',import.meta.url),'utf8')))

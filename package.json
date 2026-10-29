@@ -1,7 +1,7 @@
 {
-  "name": "dsh-snowluma-companion",
-  "version": "1.4.3",
-  "description": "SnowLuma 陪伴助手：QQ 接入、人格、记忆、主动聊天与备份的一体化 dsh 插件。",
+  "name": "dsh-qq-gateway",
+  "version": "2.0.0",
+  "description": "QQ接入助手：SnowLuma/OneBot接入、工作区、权限、媒体、主动聊天与独立备份。",
   "keywords": [
     "dsh",
     "deepseek-harness",
@@ -17,7 +17,12 @@
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
   "files": [
-    "lib",
+    "lib/*.js",
+    "lib/types/*.d.ts",
+    "lib/onebot",
+    "lib/types/onebot",
+    "lib/qq",
+    "lib/types/qq",
     "dsh.plugin.json",
     "cordis.patch.yml",
     "LICENSE",
@@ -25,11 +30,8 @@
     "README.md",
     "CHANGELOG.md",
     "docs",
-    "deploy/snowluma.compose.yml",
-    "deploy/snowluma.env.example",
-    "deploy/migrate-profile.mjs",
-    "install.sh",
-    "deploy/install.py"
+    "deploy",
+    "install.sh"
   ],
   "scripts": {
     "build": "rm -rf lib && tsc -p tsconfig.json && node scripts/build-client.mjs",
@@ -41,7 +43,8 @@
   },
   "dependencies": {
     "nodemailer": "^10.2.1",
-    "ws": "^8.18.0"
+    "ws": "^8.18.0",
+    "yaml": "2.9.1"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
@@ -129,14 +132,6 @@
       "default": "./lib/index.js"
     },
     "./client": "./lib/client.js",
-    "./package.json": "./package.json",
-    "./companion": {
-      "types": "./lib/types/companion/index.d.ts",
-      "default": "./lib/companion/index.js"
-    },
-    "./context": {
-      "types": "./lib/types/companion/context.d.ts",
-      "default": "./lib/companion/context.js"
-    }
+    "./package.json": "./package.json"
   }
 }
