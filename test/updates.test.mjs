@@ -94,3 +94,12 @@ test('连接测试期间可查询忙状态，拒绝重复测试，关闭自动�
  const request=async()=>{let status=0;await h.monitor.handle({url:'/api/updates/test-model',method:'POST'},{writeHead:s=>status=s,end:()=>{}},'/api/updates');return status}
  const running=request();assert.equal(h.monitor.snapshot().testingModel,true);assert.equal(await request(),409);await h.monitor.tick();release();assert.equal(await running,200);assert.equal(h.monitor.snapshot().testingModel,false)
 })
+
+test('报告输出预算允许50000和更大整数，拒绝无效数值；API按原值传递',async()=>{
+ const {default:Schema}=await import('@deepseek-ai/schemastery');const schema=Schema.object({tokens:updateSchema.updatesMaxTokens});
+ for(const tokens of [8192,50000,1000000])assert.equal(schema({tokens}).tokens.get(),tokens);
+ for(const tokens of [511,50000.5,Infinity,NaN,Number.MAX_SAFE_INTEGER+1])assert.throws(()=>schema({tokens}));
+ const {reportApiComplete}=await import('../lib/update-model.js');let sent;
+ await reportApiComplete({url:'https://provider.example/v1',key:'',model:'fixture',protocol:'openai'},'public',50000,AbortSignal.timeout(1000),async(url,options)=>{sent=JSON.parse(options.body);return Response.json({choices:[{finish_reason:'stop',message:{content:'complete'}}]})});
+ assert.equal(sent.max_tokens,50000);
+})
