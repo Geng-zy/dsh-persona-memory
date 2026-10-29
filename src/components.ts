@@ -190,9 +190,11 @@ async function portableFile(source: string): Promise<string> {
 /** BaseMessageComponent.to_dict（异步版）及 File/Video/Node/Nodes 的覆盖。 */
 export async function toDictAsync(comp: Component): Promise<Record<string, any>> {
   switch (comp.type) {
-    case 'File':
-      // 未配置 callback_api_base：直接用路径或 url
-      return { type: 'file', data: { name: comp.name, file: await portableFile(fileGetFile(comp)) } }
+    case 'File': {
+      const source = fileGetFile(comp)
+      if (!source) throw new Error('文件不存在或没有可发送的下载地址')
+      return { type: 'file', data: { name: comp.name, file: await portableFile(source) } }
+    }
     case 'Video':
       return { type: 'video', data: { file: await portableFile(String(comp.file || '')) } }
     case 'Node': {

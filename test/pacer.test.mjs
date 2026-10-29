@@ -118,3 +118,15 @@ test('管理员私聊、其他私聊、群聊的速度/开关/上下限相互独
   assert.deepEqual(splitTyping(['abcde','a'],true,s,3),[1250,250])
   assert.equal(typingDelay('abcde',false,S,true),typingDelay('abcde',false,S),'legacy configurations retain the original administrator-private pace')
 })
+
+test('配置默认最长等待5/8/8秒用于实际分类计算，显式设置仍可覆盖', async () => {
+  const { Config } = await import('../lib/index.js')
+  const config = Config({})
+  const profiles = Object.fromEntries([['adminPrivate', 'AdminPrivate'], ['private', 'Private'], ['group', 'Group']].map(([category, key]) =>
+    [category, { enabled: true, charsPerMinute: 60, minSeconds: 1, maxSeconds: config['typing' + key + 'MaxSeconds'].get() }]))
+  const s = { ...S, typingProfiles: profiles }
+  assert.equal(typingDelay('字'.repeat(100), false, s, true), 5000)
+  assert.equal(typingDelay('字'.repeat(100), false, s, false), 8000)
+  assert.equal(typingDelay('字'.repeat(100), true, s, true), 8000, '管理员在群中也用群设置')
+  assert.equal(Config({ typingAdminPrivateMaxSeconds: 3 }).typingAdminPrivateMaxSeconds.get(), 3)
+})

@@ -74,6 +74,7 @@ function harness(over = {}, api = {}, hooks = {}) {
   const adapter = new AiocqhttpAdapter({ id: 'snowluma', ws_reverse_host: '127.0.0.1', ws_reverse_port: 0, log: () => {}, onMessage: (abm, ev) => bridge.handle(abm, ev) })
   adapter.bot.callAction = async (action, params) => {
     if (action === 'send_private_msg' || action === 'send_group_msg') {
+      if (hooks.send) await hooks.send(params)
       sent.push({ action, message: params.message, text: params.message.map(m => m.type === 'record' ? '[语音:' + Buffer.from(String(m.data.file).replace('base64://', ''), 'base64').toString() + ']' : m.data.text ?? '').join('') })
       return { message_id: 1 }
     }
@@ -845,4 +846,23 @@ test('桥接按真实会话类型选择独立打字配置，管理员群聊不�
   await new Promise(r=>setTimeout(r,15))
   assert.deepEqual(waits,[5000,2500,1250])
   assert.equal(h.sent.length,3)
+})
+
+
+test('语音被明确拒绝回退一次原文字并保留群引用/@；超时不盲目补发', async () => {
+  const { ActionFailed, NetworkError } = await import('../lib/onebot/errors.js')
+  for (const uncertain of [false, true]) {
+    let attempts = 0
+    const h = harness({ ...groupReplyOn, tts: { ...settings().tts, enabled: true, mode: 'always', group: true, alsoText: true } }, memberInfo, {
+      tts: { speak: async () => ({ audio: Buffer.from('audio') }) },
+      send: async p => { attempts++; if (p.message[0].type === 'record') throw uncertain ? new NetworkError('timeout') : new ActionFailed({ status: 'failed', retcode: 1200 }) },
+    })
+    await h.groupMsg(9, 555, [at(BOT), text('在吗')])
+    h.turn(String(h.created[0].sessionId), '在的')
+    await flush()
+    assert.equal(attempts, uncertain ? 1 : 2)
+    assert.equal(h.sent.length, uncertain ? 0 : 1)
+    if (!uncertain) { assertReplyTarget(h.sent[0].message, 9, 100); assert.match(h.sent[0].text, /在的/) }
+    await h.bridge.dispose()
+  }
 })

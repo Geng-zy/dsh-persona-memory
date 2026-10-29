@@ -597,37 +597,58 @@ export class AiocqhttpMessageEvent {
 
   /** send_message：发送消息至 QQ 协议端 */
   static async sendMessage(bot: CQHttp, messageChain: MessageChain, event: OneBotEvent | null, isGroup: boolean, sessionId: string | null, _log?: Logger): Promise<void> {
-    // 转发消息、文件消息不能和普通消息混在一起发送
-    const sendOneByOne = messageChain.chain.some(seg => seg.type === 'Node' || seg.type === 'Nodes' || seg.type === 'File')
-    if (!sendOneByOne) {
-      const ret = await AiocqhttpMessageEvent.parseOnebotJson(messageChain)
-      if (ret.length === 0) return
-      await AiocqhttpMessageEvent.dispatchSend(bot, event, isGroup, sessionId, ret)
-      return
+    // QQ 的独立消息不能与 reply/at 或普通正文混装。先序列化全部内容，
+    // 防止后面的本地文件错误发生在前半条已经发出之后。
+    const standalone = new Set(['Record', 'Video', 'File', 'Node', 'Nodes', 'Forward',
+      'Json', 'Share', 'Contact', 'Location', 'Music', 'Poke', 'Shake'])
+    const parts: Array<{ chain: Component[]; forward?: Record<string, any> }> = []
+    let buffer: Component[] = []
+    const flush = (): void => {
+      // 引用必须附着在实际正文上；只有装饰时暂存，留给后面的普通正文。
+      if (!buffer.some(seg => seg.type !== 'Reply' && seg.type !== 'At')) return
+      parts.push({ chain: buffer })
+      buffer = []
     }
-    for (let seg of messageChain.chain) {
+    for (const seg of messageChain.chain) {
+      if (seg.type === 'Plain' && !String(seg.text).trim()) continue
+      if (!standalone.has(seg.type)) { buffer.push(seg); continue }
+      flush()
+      parts.push({ chain: [seg] })
+    }
+    flush()
+    if (buffer.length) {
+      // @ 本身可以发送通知；单独引用没有正文则不能发送。
+      const mentions = buffer.filter(seg => seg.type === 'At')
+      if (mentions.length) parts.push({ chain: mentions })
+      if (buffer.some(seg => seg.type === 'Reply')) _log?.('info', '独立消息不附加引用；没有普通正文可承载该引用')
+    }
+    const prepared = await Promise.all(parts.map(async part => {
+      const seg = part.chain[0]!
       if (seg.type === 'Node' || seg.type === 'Nodes') {
-        // 合并转发消息
-        if (seg.type === 'Node') seg = make('Nodes', { nodes: [seg] })
-        const payload: Record<string, any> = await toDictAsync(seg)
-        if (event && event.self_id) payload.self_id = event.self_id
-        if (isGroup) {
-          payload.group_id = sessionId
-          await bot.callAction('send_group_forward_msg', payload)
-        } else {
-          payload.user_id = sessionId
-          await bot.callAction('send_private_forward_msg', payload)
+        return { ...part, forward: await toDictAsync(seg.type === 'Node' ? make('Nodes', { nodes: [seg] }) : seg), messages: [] }
+      }
+      return { ...part, messages: await AiocqhttpMessageEvent.parseOnebotJson({ chain: part.chain }) }
+    }))
+    const failures: unknown[] = []
+    for (const [index, part] of prepared.entries()) {
+      if (index > 0) await sleep(500) // 拆分后的消息保留发送间隔，避免连续提交触发风控
+      try {
+        if (part.forward) {
+          const payload = { ...part.forward, ...(event?.self_id ? { self_id: event.self_id } : {}),
+            [isGroup ? 'group_id' : 'user_id']: sessionId }
+          await bot.callAction(isGroup ? 'send_group_forward_msg' : 'send_private_forward_msg', payload)
+        } else if (part.messages.length) {
+          await AiocqhttpMessageEvent.dispatchSend(bot, event, isGroup, sessionId, part.messages)
         }
-      } else if (seg.type === 'File') {
-        const d = await AiocqhttpMessageEvent.fromSegmentToDict(seg)
-        await AiocqhttpMessageEvent.dispatchSend(bot, event, isGroup, sessionId, [d])
-      } else {
-        const messages = await AiocqhttpMessageEvent.parseOnebotJson({ chain: [seg] })
-        if (messages.length === 0) continue
-        await AiocqhttpMessageEvent.dispatchSend(bot, event, isGroup, sessionId, messages)
-        await sleep(500)
+      } catch (error) {
+        // 明确拒绝只影响当前子消息，其余仍尝试发送；超时结果未知，不重试。
+        if (!(error instanceof ActionFailed)) throw error
+        failures.push(error)
+        _log?.('error', 'QQ 子消息发送被拒绝（' + part.chain.map(seg => seg.type).join(',') + '）：' + error.message)
       }
     }
+    if (failures.length === 1) throw failures[0]
+    if (failures.length) throw new AggregateError(failures, 'QQ 有 ' + failures.length + ' 条子消息发送失败；已发送部分不会自动重发')
   }
 
   /** send */

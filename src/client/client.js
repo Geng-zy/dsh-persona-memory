@@ -103,7 +103,7 @@ window.__ModuleLoader__.load({
           if (form.field("typingAdminPrivate").text === "") actions[0].edit("typingAdminPrivate",form.field("typingPrivate").text);
           ["AdminPrivate","Private","Group"].forEach(category=>["CharsPerMinute","MinSeconds","MaxSeconds"].forEach(suffix=>{
             var key="typing"+category+suffix, legacy=suffix === "CharsPerMinute" ? "typingCharsPerMinute" : "typing"+suffix;
-            if (form.field(key).text === "") actions[0].edit(key,form.field(legacy).text);
+            if (form.field(key).text === "") actions[0].edit(key,suffix==="MaxSeconds"?String(category==="AdminPrivate"?5:8):form.field(legacy).text);
           }));
         }
         actions[0].edit(field, text); if (field === "silenceToken") actions[1].edit(field, text);

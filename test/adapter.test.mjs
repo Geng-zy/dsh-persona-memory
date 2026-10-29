@@ -358,3 +358,74 @@ test('@ 优先使用已有群昵称，避免重复查询陌生人接口', async 
   assert.equal(abm.message[0].name, '群昵称')
   assert.equal(abm.message_str, ' @群昵称(9) ')
 })
+
+// 独立媒体不与 @/引用混装；普通图文保持同一条。
+test('混合发送：保留图文装饰，视频、语音、文件、卡片、转发各自独立', async () => {
+  const calls = []
+  const bot = { sendGroupMsg: async p => calls.push(p.message), callAction: async (a, p) => calls.push([a, p]) }
+  const reply = make('Reply', { id: 7 })
+  await AiocqhttpMessageEvent.sendMessage(bot, { chain: [reply, At({ qq: 9 }), Plain('看这个'),
+    make('Image', { file: 'base64://eA==' }), make('Record', { file: 'base64://eA==' }),
+    make('Video', { file: 'base64://eA==' }), make('File', { name: 'a.txt', file_: 'base64://eA==' }),
+    make('Json', { data: '{}' }), make('Nodes', { nodes: [make('Node', { uin: 1, name: 'a', content: [Plain('记录')] })] }), Plain('最后') ] }, { self_id: BOT }, true, '555')
+  assert.deepEqual(calls[0].map(s => s.type), ['reply', 'at', 'text', 'text', 'image'])
+  assert.deepEqual(calls.slice(1, 5).map(m => m.map(s => s.type)), [['record'], ['video'], ['file'], ['json']])
+  assert.equal(calls[5][0], 'send_group_forward_msg')
+  assert.equal(calls[5][1].self_id, BOT)
+  assert.deepEqual(calls[6], [{ type: 'text', data: { text: '最后' } }])
+})
+
+test('独立媒体前只有引用/@：引用留给下一条正文；无正文时不发纯引用', async () => {
+  for (const trailingText of [true, false]) {
+    const calls = []
+    const bot = { sendPrivateMsg: async p => calls.push(p.message) }
+    await AiocqhttpMessageEvent.sendMessage(bot, { chain: [make('Reply', { id: 7 }), At({ qq: 9 }),
+      make('Video', { file: 'base64://eA==' }), ...(trailingText ? [Plain('好了')] : [])] }, null, false, '9')
+    assert.deepEqual(calls[0].map(s => s.type), ['video'])
+    assert.deepEqual(calls[1].map(s => s.type), trailingText ? ['reply', 'at', 'text', 'text'] : ['at', 'text'])
+  }
+})
+
+test('卡片和动作消息也隔离，多条视频不放在同一条里', async () => {
+  const calls = []
+  const bot = { sendGroupMsg: async p => calls.push(p.message) }
+  const types = ['Video', 'Video', 'Share', 'Contact', 'Location', 'Music', 'Forward', 'Poke', 'Shake']
+  await AiocqhttpMessageEvent.sendMessage(bot, { chain: types.map(type => make(type, { file: 'base64://eA==', url: 'https://example.com', title: '标题', _type: 'custom', id: 1, lat: 1, lon: 1 })) }, null, true, '555')
+  assert.deepEqual(calls.map(m => m.map(s => s.type)), types.map(t => [t.toLowerCase()]))
+})
+
+test('先检查全部本地媒体，后面文件无效不会导致前面正文已发送', async () => {
+  let sends = 0
+  await assert.rejects(AiocqhttpMessageEvent.sendMessage({ sendGroupMsg: async () => sends++ },
+    { chain: [Plain('前文'), make('File', { file_: '/nonexistent/qq-send-test.txt' })] }, null, true, '555'))
+  assert.equal(sends, 0)
+})
+
+test('明确拒绝只影响当前媒体，其余正文继续；不重发已成功部分', async () => {
+  const { ActionFailed } = await import('../lib/onebot/errors.js')
+  const calls = []
+  const rejected = new ActionFailed({ status: 'failed', retcode: 1200, message: 'rejected' })
+  const bot = { sendGroupMsg: async p => { calls.push(p.message); if (p.message[0].type === 'video') throw rejected } }
+  await assert.rejects(AiocqhttpMessageEvent.sendMessage(bot, { chain: [Plain('前'), make('Video', { file: 'base64://eA==' }), Plain('后')] }, null, true, '555'), e => e === rejected)
+  assert.deepEqual(calls.map(m => m[0].type), ['text', 'video', 'text'])
+})
+
+test('连接超时不重试，不假报成功', async () => {
+  const { NetworkError } = await import('../lib/onebot/errors.js')
+  let sends = 0
+  const error = new NetworkError('timeout')
+  await assert.rejects(AiocqhttpMessageEvent.sendMessage({ sendPrivateMsg: async () => { sends++; throw error } },
+    { chain: [make('Record', { file: 'base64://eA==' })] }, null, false, '9'), e => e === error)
+  assert.equal(sends, 1)
+})
+
+
+test('没有正文的纯引用不会提交；多条拒发最终报告全部失败', async () => {
+  const { ActionFailed } = await import('../lib/onebot/errors.js')
+  let calls = 0
+  const bot = { sendPrivateMsg: async () => { calls++; throw new ActionFailed({ status: 'failed', retcode: 1200 }) } }
+  await AiocqhttpMessageEvent.sendMessage(bot, { chain: [make('Reply', { id: 7 })] }, null, false, '9')
+  assert.equal(calls, 0)
+  await assert.rejects(AiocqhttpMessageEvent.sendMessage(bot, { chain: [make('Video', { file: 'base64://eA==' }), make('Record', { file: 'base64://eA==' })] }, null, false, '9'), e => e instanceof AggregateError && e.errors.length === 2)
+  assert.equal(calls, 2)
+})

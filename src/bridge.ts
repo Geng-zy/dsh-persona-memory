@@ -26,6 +26,7 @@ import { segmentEnabled, splitReply, type SegmentSettings } from './segment.js'
 import { planPieces, ttsActive, ttsHint, type Speech, type TtsSettings } from './tts.js'
 import type { Logger } from './onebot/server.js'
 import { TtlCache } from './cache.js'
+import { ActionFailed } from './onebot/errors.js'
 
 interface GroupReplyTarget { userId: string; messageId: string }
 
@@ -977,7 +978,14 @@ export class Bridge {
             headerSent = true
           }
           if (voice === undefined) return sendText()
-          await chat.send({ chain: [make('Record', { file: 'base64://' + voice.audio.toString('base64') })] })
+          try {
+            await chat.send({ chain: [make('Record', { file: 'base64://' + voice.audio.toString('base64') })] })
+          } catch (error) {
+            if (!(error instanceof ActionFailed)) throw error
+            this.deps.log('warn', umo + '：语音发送被拒绝，改发原文字：' + errText(error))
+            if (!canReply()) return false
+            return sendText()
+          }
           if (settings.tts.alsoText && canReply()) await sendText()
         }, typing[i], adminSender() !== undefined || adminPrivate, adminPrivate).then(result => {
           if (result === 'dropped') return
