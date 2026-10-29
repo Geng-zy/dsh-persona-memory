@@ -17,6 +17,36 @@ window.__ModuleLoader__.load({
 		var PACKAGE = "dsh-snowluma-companion";
 
 		var zh = {
+            imageGenConnection: "服务配置",
+            imageGenStudio: "试画与图库",
+            imageGenAccess: "使用范围",
+            imageGenAccessHint: "主人会话在功能开启后可用；其他人和群聊分别授权。",
+            imageGenOwnerAccess: "主人会话默认可用",
+            imageGenLimits: "任务与保存",
+            imageGenAdvanced: "高级接入",
+            imageGenAdvancedHint: "工作流、自定义HTTP模板和本地程序配置。常规云接口通常保留默认即可。",
+            imageGenReady: "已开启",
+            imageGenOff: "已关闭",
+            imageGenNoKey: "尚未配置密钥",
+            imageGenActiveService: "当前服务",
+            imageGenConfigHint: "独立配置生图服务，聊天模型仍负责理解请求和调用工具。",
+            imageGenQuotaNotice: "每次生成会使用服务商额度。试画结果仅在这里展示。",
+            imageGenPromptPlaceholder: "描述你想画的主体、场景、风格、光线与构图…",
+            imageGenResults: "生成结果",
+            imageGenResultEmpty: "你的下一张作品从这里开始",
+            imageGenResultEmptyHint: "填写描述并生成，或从下方图库选择已有图片。",
+            imageGenHistory: "最近图片",
+            imageGenCount: "{count} 张",
+            imageGenSuccess: "图片已生成",
+            imageGenFailed: "生成未完成",
+            imageGenWaiting: "已等待 {seconds} 秒",
+            imageGenSelectImage: "查看图片 {index}",
+            imageGenProviderCloud: "云端接口",
+            imageGenProviderLocal: "本地与自定义",
+            imageGenSavedShort: "使用已保存配置",
+            imageGenOpenImage: "打开原图",
+            imageGenDraftNotice: "配置有未保存改动，请先保存再试画。",
+
             imageGenKeyHint: "填写生图服务自己的密钥。已保存凭据不回显，不导出到备份；本地程序可从IMAGE_GENERATION_API_KEY环境变量读取。",
 			imageGenTitle: "图片生成",
 			imageGenHint: "通过独立生图接口生成图片。聊天模型调用工具后，QQ会话自动发送结果；网页会话在工具结果中展示。默认关闭，仅主人可用，其他私聊和群聊需单独开放。",
@@ -643,6 +673,36 @@ window.__ModuleLoader__.load({
 			noteHint: "规则备注，仅用于说明配置用途，不改变匹配或权限行为。",
 		};
 		var en = {
+            imageGenConnection: "Connection",
+            imageGenStudio: "Studio & gallery",
+            imageGenAccess: "Who can generate",
+            imageGenAccessHint: "Owner conversations are available when enabled. Authorize other private chats and groups separately.",
+            imageGenOwnerAccess: "Owners are allowed by default",
+            imageGenLimits: "Tasks & storage",
+            imageGenAdvanced: "Advanced integration",
+            imageGenAdvancedHint: "Workflows, HTTP templates and local programs. Ordinary cloud services can usually keep the defaults.",
+            imageGenReady: "Enabled",
+            imageGenOff: "Disabled",
+            imageGenNoKey: "No saved key",
+            imageGenActiveService: "Current service",
+            imageGenConfigHint: "Configure image generation separately. The chat model still interprets requests and calls the tool.",
+            imageGenQuotaNotice: "Each generation uses provider quota. Test results are shown only here.",
+            imageGenPromptPlaceholder: "Describe the subject, setting, style, lighting and composition…",
+            imageGenResults: "Result",
+            imageGenResultEmpty: "Your next image starts here",
+            imageGenResultEmptyHint: "Describe an image, generate it, or select an existing result below.",
+            imageGenHistory: "Recent images",
+            imageGenCount: "{count} images",
+            imageGenSuccess: "Image generated",
+            imageGenFailed: "Generation did not complete",
+            imageGenWaiting: "Waiting {seconds}s",
+            imageGenSelectImage: "View image {index}",
+            imageGenProviderCloud: "Cloud APIs",
+            imageGenProviderLocal: "Local & custom",
+            imageGenSavedShort: "Uses saved settings",
+            imageGenOpenImage: "Open original",
+            imageGenDraftNotice: "Save your configuration changes before generating.",
+
             imageGenKeyHint: "Provider image credential. Saved secrets are never echoed or exported in backups. Local programs can read IMAGE_GENERATION_API_KEY.",
 			imageGenTitle: "Image generation",
 			imageGenHint: "Independent image APIs. The chat tool delivers results to the current QQ conversation or as web tool attachments. Disabled by default; owner only unless explicitly allowed.",
@@ -1270,6 +1330,40 @@ window.__ModuleLoader__.load({
 		};
 
 		var CSS = [
+            ".sc-image-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 0 14px;flex-wrap:wrap}",
+            ".sc-image-service{display:flex;gap:8px;align-items:center;min-width:0;color:var(--dsw-alias-label-secondary);font-size:12px}",
+            ".sc-image-service strong{color:var(--dsw-alias-label-primary);font-size:13px;overflow-wrap:anywhere}",
+            ".sc-image-badge{display:inline-flex;align-items:center;border:1px solid var(--dsw-alias-border-l3);border-radius:999px;padding:4px 9px;font-size:11px;color:var(--dsw-alias-label-secondary)}",
+            ".sc-image-tabs{display:flex;gap:4px;padding:4px;border-radius:12px;background:var(--dsw-alias-bg-layer-2);margin-bottom:20px}",
+            ".sc-image-tabs button{flex:1;border:0;border-radius:9px;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:13px;padding:9px 12px;cursor:pointer}",
+            ".sc-image-tabs button[aria-selected=true]{background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);box-shadow:0 1px 4px #00000012;font-weight:600}",
+            ".sc-image-stack{display:grid;gap:18px;min-width:0}.sc-image-stack[hidden]{display:none}",
+            ".sc-image-card{border:1px solid var(--dsw-alias-border-l3);border-radius:14px;padding:16px;min-width:0}",
+            ".sc-image-card h4{font-size:13px;margin:0 0 6px;color:var(--dsw-alias-label-primary)}",
+            ".sc-image-card>.compc-hint{margin:0 0 14px}.sc-image-card .compc-select{width:100%}",
+            ".sc-image-fields{display:grid;gap:16px}.sc-image-fields>.compc-grid{align-items:start}",
+            ".sc-image-fold>summary{cursor:pointer;display:flex;justify-content:space-between;align-items:center;color:var(--dsw-alias-label-primary);font-size:13px;font-weight:600;list-style:none}",
+            ".sc-image-fold>summary:after{content:'\uff0b';color:var(--dsw-alias-label-tertiary)}.sc-image-fold[open]>summary:after{content:'\u2212'}",
+            ".sc-image-fold[open]>.sc-image-fields{margin-top:16px}.sc-image-fold .compc-textarea{font-family:ui-monospace,monospace;font-size:12px;min-height:170px}",
+            ".sc-image-primary{border:0;background:var(--dsw-alias-label-primary);color:var(--dsw-alias-bg-layer-1);border-radius:10px;padding:10px 16px;font:inherit;font-size:13px;cursor:pointer}",
+            ".sc-image-primary:disabled{opacity:.4;cursor:default}.sc-image-prompt{min-height:130px!important;resize:vertical}",
+            ".sc-image-note{font-size:12px;line-height:1.6;color:var(--dsw-alias-label-tertiary);margin:0}",
+            ".sc-image-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}",
+            ".sc-image-result{display:grid;gap:12px}.sc-image-result-head{display:flex;align-items:center;justify-content:space-between;gap:12px}",
+            ".sc-image-result-head h4{margin:0}.sc-image-result-head a{font-size:12px;color:var(--dsw-alias-label-secondary)}",
+            ".sc-image-canvas{display:flex;align-items:center;justify-content:center;min-height:240px;max-height:440px;overflow:hidden;border:1px dashed var(--dsw-alias-border-l3);background:var(--dsw-alias-bg-layer-2);border-radius:12px}",
+            ".sc-image-canvas img{display:block;max-width:100%;max-height:440px;width:auto;height:auto;object-fit:contain}",
+            ".sc-image-empty{text-align:center;max-width:290px;padding:24px;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:1.7}.sc-image-empty strong{display:block;color:var(--dsw-alias-label-secondary);font-size:13px;margin:8px 0}",
+            ".sc-image-empty-icon{display:inline-flex;width:42px;height:42px;align-items:center;justify-content:center;font-size:24px;border:1px solid var(--dsw-alias-border-l3);border-radius:12px}",
+            ".sc-image-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:8px}",
+            ".sc-image-gallery button{padding:3px;border:1px solid var(--dsw-alias-border-l3);border-radius:10px;background:var(--dsw-alias-bg-layer-2);cursor:pointer;aspect-ratio:1;min-width:0;overflow:hidden}",
+            ".sc-image-gallery button[aria-pressed=true]{border:2px solid var(--dsw-alias-label-primary);padding:2px}",
+            ".sc-image-gallery img{width:100%;height:100%;object-fit:contain;border-radius:6px}.sc-image-meta{font-size:11px;color:var(--dsw-alias-label-tertiary)}",
+            ".sc-image-message{font-size:12px;line-height:1.6;padding:10px 12px;border-radius:10px;background:var(--dsw-alias-bg-layer-2);overflow-wrap:anywhere}",
+            ".sc-image-message[data-tone=error]{border-left:3px solid #d85959}.sc-image-message[data-tone=ok]{border-left:3px solid #39906d}",
+            ".sc-image-progress{width:100%;height:4px;accent-color:var(--dsw-alias-label-secondary)}",
+            "@media(max-width:520px){.sc-image-card{padding:12px}.sc-image-fields .compc-grid{grid-template-columns:1fr}.sc-image-canvas{min-height:190px;max-height:320px}.sc-image-canvas img{max-height:320px}.sc-image-tabs button{padding:9px 6px}}",
+
 			".compc-section{display:grid;gap:12px;padding:16px 0 8px;border-top:.5px solid var(--dsw-alias-border-l3)}",
 			".compc-section:first-child{border-top:none;padding-top:4px}",
 			".compc-title{color:var(--dsw-alias-label-primary);font-size:14px;font-weight:600;margin:0}",
@@ -2706,47 +2800,58 @@ window.__ModuleLoader__.load({
 
         function ImageGeneration(props) {
           var t = props.t, [catalog, setCatalog] = React.useState({ providers: {}, images: [] });
-          var [prompt, setPrompt] = React.useState(""), [busy, setBusy] = React.useState(false), [message, setMessage] = React.useState("");
+          var [prompt, setPrompt] = React.useState(""), [busy, setBusy] = React.useState(false), [message, setMessage] = React.useState(null);
+          var [tab, setTab] = React.useState("connection"), [selected, setSelected] = React.useState(null), [seconds, setSeconds] = React.useState(0);
           var controller = React.useRef(null);
-          function refresh() { return api("GET", "images").then(setCatalog, e => setMessage(e.message)); }
+          function refresh() { return api("GET", "images").then(setCatalog, e => setMessage({tone:"error",text:e.message})); }
           React.useEffect(() => { refresh(); return () => { if (controller.current) controller.current.abort(); }; }, []);
+          React.useEffect(() => { if (!busy) return; setSeconds(0); var started=Date.now(), timer=setInterval(()=>setSeconds(Math.floor((Date.now()-started)/1000)),1000);return()=>clearInterval(timer); }, [busy]);
           function generate() {
-            var abort = new AbortController(); controller.current = abort; setBusy(true); setMessage(t("imageGenWorking"));
+            var abort = new AbortController(); controller.current = abort; setBusy(true); setMessage(null);
             fetch(apiUrl("images/generate"), { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt: prompt, count: 1 }), signal: abort.signal })
-              .then(async response => { var result = await response.json(); if (!response.ok) throw new Error(result.error || "HTTP " + response.status); setMessage(result.warning || "✓"); await refresh(); })
-              .catch(e => setMessage(e.name === "AbortError" ? t("imageGenCanceled") : e.message))
+              .then(async response => { var result = await response.json(); if (!response.ok) throw new Error(result.error || "HTTP " + response.status);setSelected(result.images[0]?.id || null);setMessage({tone:result.warning?"error":"ok",text:result.warning || t("imageGenSuccess")}); await refresh(); })
+              .catch(e => setMessage({tone:e.name === "AbortError"?"warn":"error",text:e.name === "AbortError" ? t("imageGenCanceled") : e.message}))
               .finally(() => { controller.current = null; setBusy(false); });
           }
-          var provider = props.state.imageGenProvider.text || "modelscope";
+          var provider = props.state.imageGenProvider.text || "modelscope", preset=catalog.providers[provider];
+          var enabled=props.state.imageGenEnabled.text === "true", current=catalog.images.find(i=>i.id===selected)||catalog.images[0];
+          var local=provider === "command", needsKey=!["command","comfyui","a1111","custom"].includes(provider);
           function choose(event) {
             var id = event.target.value, preset = catalog.providers[id]; props.edit("imageGenProvider", id);
             if (preset) { props.edit("imageGenApiUrl", preset[1]); props.edit("imageGenModel", preset[2]); }
             props.edit("imageGenOptions", "{}");
           }
-          return h(Section, { sectionId: "companion-image-generation", category: "media", title: t("imageGenTitle"), hint: t("imageGenHint") },
-            h(Toggle, Object.assign({ field: "imageGenEnabled", label: t("imageGenEnabled") }, props)),
-            h("div", { className: "compc-field" }, h("label", { className: "compc-label", htmlFor: "image-gen-provider" }, t("imageGenProvider")),
-              h("select", { id: "image-gen-provider", className: "compc-select", value: provider, disabled: props.disabled, onChange: choose }, Object.entries(catalog.providers).map(([id, preset]) => h("option", { key: id, value: id }, preset[0])))),
-            h("div", { className: "compc-grid" },
-              h(Value, Object.assign({ field: "imageGenApiUrl", label: t("imageGenApiUrl"), hint: t("imageGenApiUrlHint") }, props)),
-              h(Value, Object.assign({ field: "imageGenModel", label: t("imageGenModel"), hint: t("imageGenModelHint") }, props))),
-            h(Secret, Object.assign({ field: "imageGenApiKey", label: t("imageGenApiKey"), hint: t("imageGenKeyHint"), setLabel: t("apiKeySet"), unsetLabel: t("apiKeyUnset") }, props)),
-            h(Toggle, Object.assign({ field: "imageGenPrivate", label: t("imageGenPrivate"), hint: t("imageGenPrivateHint") }, props)),
-            h(Toggle, Object.assign({ field: "imageGenGroup", label: t("imageGenGroup"), hint: t("imageGenGroupHint") }, props)),
-            h("div", { className: "compc-grid" }, ["imageGenTimeoutSeconds", "imageGenMaxImages", "imageGenMaxMB", "imageGenKeepDays"].map(field => h(Value, Object.assign({ key: field, field: field, label: t(field), numeric: true, hint: t(field === "imageGenKeepDays" ? "imageGenKeepHint" : "imageGenLimitsHint") }, props)))),
-            h("details", { className: "compc-field" }, h("summary", null, t("imageGenOptions")), h(Lines, Object.assign({ field: "imageGenOptions", label: t("imageGenOptions"), hint: t("imageGenOptionsHint") }, props)),
-              provider === "command" ? h(Lines, Object.assign({ field: "imageGenCommand", label: t("imageGenCommand"), hint: t("imageGenCommandHint") }, props)) : null),
-            h("p", { className: "compc-hint" }, h("a", { href: "https://github.com/Geng-zy/dsh-snowluma-companion/blob/main/docs/IMAGE-GENERATION.md", target: "_blank", rel: "noreferrer" }, t("imageGenDocs"))),
-            h("label", { className: "compc-label", htmlFor: "image-gen-prompt" }, t("imageGenPrompt")),
-            h("textarea", { id: "image-gen-prompt", className: "compc-textarea compc-small", value: prompt, disabled: busy || props.disabled, maxLength: 12000, onChange: e => setPrompt(e.target.value) }),
-            h("p", { className: "compc-hint" }, t("imageGenSaved")),
-            h("div", { className: "compc-row" }, h(P.Button, { disabled: busy || props.disabled || !prompt.trim() || props.state.dirty, onClick: generate }, t("imageGenGenerate")),
-              busy ? h(P.Button, { onClick: () => controller.current && controller.current.abort() }, t("imageGenCancel")) : null,
-              h(P.Button, { disabled: busy, onClick: refresh }, t("imageGenRefresh"))),
-            message ? h("p", { className: "compc-hint", role: "status" }, message) : null,
-            h("div", { className: "sc-image-gallery", style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: "12px", marginTop: "16px" } },
-              catalog.images.length ? catalog.images.slice(0,20).map(image => h("a", { key: image.id, href: apiUrl("images/" + image.id), target: "_blank", rel: "noreferrer", title: t("imageGenDownload") },
-                h("img", { src: apiUrl("images/" + image.id), alt: image.id, loading: "lazy", style: { width: "100%", maxHeight: "220px", objectFit: "contain", borderRadius: "10px" } }))) : h("p", { className: "compc-hint" }, t("imageGenEmpty"))))
+          function field(name, hint, numeric) { return h(Value, Object.assign({field:name,label:t(name),hint:t(hint||name+"Hint"),numeric:!!numeric},props)); }
+          function fold(title, body) {return h("details",{className:"sc-image-card sc-image-fold"},h("summary",null,title),h("div",{className:"sc-image-fields"},body));}
+          return h(Section, { sectionId: "companion-image-generation", category: "media", title: t("imageGenTitle"), hint: t("imageGenConfigHint") },
+            h("div",{className:"sc-image-top"},h("div",{className:"sc-image-service"},h("span",null,t("imageGenActiveService")),h("strong",null,preset?preset[0]:provider)),
+              h("span",{className:"sc-image-badge"},!enabled?t("imageGenOff"):needsKey&&!props.state.secretSet?.imageGenApiKey?t("imageGenNoKey"):t("imageGenReady"))),
+            h(Toggle, Object.assign({ field: "imageGenEnabled", label: t("imageGenEnabled"),hint:t("imageGenHint") }, props)),
+            h("div",{className:"sc-image-tabs",role:"tablist","aria-label":t("imageGenTitle")},[["connection","imageGenConnection"],["studio","imageGenStudio"]].map(([id,key])=>h("button",{key:id,type:"button",role:"tab",id:"image-gen-tab-"+id,"aria-controls":"image-gen-panel-"+id,"aria-selected":tab===id,onClick:()=>setTab(id)},t(key)))),
+            h("div",{id:"image-gen-panel-connection",role:"tabpanel","aria-labelledby":"image-gen-tab-connection",className:"sc-image-stack",hidden:tab!=="connection"},
+              h("div",{className:"sc-image-card sc-image-fields"},
+                h("div",{className:"compc-field"},h("label",{className:"compc-label",htmlFor:"image-gen-provider"},t("imageGenProvider")),h("select",{id:"image-gen-provider",className:"compc-select",value:provider,disabled:props.disabled,onChange:choose},
+                  [false,true].map(isLocal=>h("optgroup",{key:String(isLocal),label:t(isLocal?"imageGenProviderLocal":"imageGenProviderCloud")},Object.entries(catalog.providers).filter(([id])=>["command","comfyui","a1111","custom"].includes(id)===isLocal).map(([id,p])=>h("option",{key:id,value:id},p[0])))))),
+                !local?field("imageGenApiUrl"):null, field("imageGenModel"),
+                h(Secret,Object.assign({field:"imageGenApiKey",label:t("imageGenApiKey"),hint:t("imageGenKeyHint"),setLabel:t("apiKeySet"),unsetLabel:t("apiKeyUnset")},props)),
+                local?h(Lines,Object.assign({field:"imageGenCommand",label:t("imageGenCommand"),hint:t("imageGenCommandHint")},props)):null),
+              fold(t("imageGenAccess"),h(React.Fragment,null,h("p",{className:"sc-image-note"},t("imageGenAccessHint")),h("span",{className:"sc-image-badge"},t("imageGenOwnerAccess")),
+                h(Toggle,Object.assign({field:"imageGenPrivate",label:t("imageGenPrivate"),hint:t("imageGenPrivateHint")},props)),h(Toggle,Object.assign({field:"imageGenGroup",label:t("imageGenGroup"),hint:t("imageGenGroupHint")},props)))),
+              fold(t("imageGenLimits"),h("div",{className:"compc-grid"},["imageGenTimeoutSeconds","imageGenMaxImages","imageGenMaxMB","imageGenKeepDays"].map(name=>h(React.Fragment,{key:name},field(name,name==="imageGenKeepDays"?"imageGenKeepHint":"imageGenLimitsHint",true))))),
+              fold(t("imageGenAdvanced"),h(React.Fragment,null,h("p",{className:"sc-image-note"},t("imageGenAdvancedHint")),h(Lines,Object.assign({field:"imageGenOptions",label:t("imageGenOptions"),hint:t("imageGenOptionsHint")},props)),h("a",{className:"sc-image-meta",href:"https://github.com/Geng-zy/dsh-snowluma-companion/blob/main/docs/IMAGE-GENERATION.md",target:"_blank",rel:"noreferrer"},t("imageGenDocs"))))),
+            h("div",{id:"image-gen-panel-studio",role:"tabpanel","aria-labelledby":"image-gen-tab-studio",className:"sc-image-stack",hidden:tab!=="studio"},
+              h("div",{className:"sc-image-card"},h("label",{className:"compc-label",htmlFor:"image-gen-prompt"},t("imageGenPrompt")),
+                h("textarea",{id:"image-gen-prompt",className:"compc-textarea sc-image-prompt",value:prompt,placeholder:t("imageGenPromptPlaceholder"),disabled:busy||props.disabled,maxLength:12000,onChange:e=>setPrompt(e.target.value)}),
+                h("div",{className:"sc-image-actions"},h("button",{type:"button",className:"sc-image-primary",disabled:busy||props.disabled||!prompt.trim()||props.state.dirty||!enabled,onClick:generate},t("imageGenGenerate")),
+                  busy?h(P.Button,{onClick:()=>controller.current&&controller.current.abort()},t("imageGenCancel")):null,h("span",{className:"sc-image-meta"},busy?t("imageGenWaiting",{seconds:seconds}):t("imageGenSavedShort"))),
+                h("p",{className:"sc-image-note",style:{marginTop:"10px"}},props.state.dirty?t("imageGenDraftNotice"):t("imageGenQuotaNotice")),
+                busy?h("progress",{className:"sc-image-progress","aria-label":t("imageGenWorking")}):null,
+                message?h("div",{className:"sc-image-message","data-tone":message.tone,role:"status"},message.text):null),
+              h("div",{className:"sc-image-card sc-image-result"},h("div",{className:"sc-image-result-head"},h("h4",null,t("imageGenResults")),current?h("a",{href:apiUrl("images/"+current.id),target:"_blank",rel:"noreferrer"},t("imageGenOpenImage")):null),
+                h("div",{className:"sc-image-canvas"},current?h("img",{src:apiUrl("images/"+current.id),alt:t("imageGenResults")}):h("div",{className:"sc-image-empty"},h("span",{className:"sc-image-empty-icon","aria-hidden":true},"▧"),h("strong",null,t("imageGenResultEmpty")),t("imageGenResultEmptyHint"))),
+                current?h("span",{className:"sc-image-meta"},new Date(current.createdAt).toLocaleString()+" · "+(current.bytes/1024/1024).toFixed(2)+" MB"):null),
+              h("div",{className:"sc-image-result-head"},h("h4",null,t("imageGenHistory")),h(P.Button,{disabled:busy,onClick:refresh},t("imageGenRefresh"))),
+              h("div",{className:"sc-image-gallery"},catalog.images.slice(0,20).map((image,index)=>h("button",{key:image.id,type:"button","aria-label":t("imageGenSelectImage",{index:index+1}),"aria-pressed":current?.id===image.id,onClick:()=>setSelected(image.id)},h("img",{src:apiUrl("images/"+image.id),alt:"",loading:"lazy"}))))))
         }
 
 		/** 有改动还没保存时，贴在页面底部的保存栏（dsh 自带的保存按钮在整页最下面，改完上面的设置容易找不到） */
