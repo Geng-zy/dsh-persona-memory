@@ -265,6 +265,7 @@ export declare class Bridge {
     canArchive(session: MessageSession): boolean;
     private checkAccess;
     /** 给其他插件代发时也检查，不能绕过群白名单。 */
+    get pendingReplies(): number;
     canSendToolResult(sessionId: string): boolean;
     sendToolImages(sessionId: string, chain: MessageChain): Promise<void>;
     sendBySession(session: MessageSession, chain: MessageChain): Promise<void>;

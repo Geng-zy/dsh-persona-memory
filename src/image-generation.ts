@@ -273,6 +273,7 @@ async function runCommand(s: ImageSettings, request: ImageRequest, signal: Abort
 export class ImageGenerator {
   private active = new Set<AbortController>()
   constructor(readonly dir: string, readonly settings: () => ImageSettings) {}
+  get activeCount(): number { return this.active.size }
   dispose(): void { for (const c of this.active) c.abort(new Error('插件已停止')) }
   async run(request: ImageRequest, signal?: AbortSignal): Promise<GenerationResult> {
     const s = { ...this.settings() }

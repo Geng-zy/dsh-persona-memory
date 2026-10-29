@@ -7,7 +7,7 @@
 要求dsh **0.2.1-rc.2**、Node **≥22.13**及可用的pnpm。先停止目标dsh进程，以**运行dsh的同一账号**执行，并保持相同的`DSH_HOME`；未设置时使用该账号的默认`.dsh`目录。
 
 ```sh
-dsh plugin --profile web add "https://github.com/Geng-zy/dsh-snowluma-companion/releases/download/v1.4.1/dsh-snowluma-companion-1.4.1.tgz" --ignore-scripts
+dsh plugin --profile web add "https://github.com/Geng-zy/dsh-snowluma-companion/releases/download/v1.4.2/dsh-snowluma-companion-1.4.2.tgz" --ignore-scripts
 ```
 
 这是GitHub发行包地址，不是npm包名。包内已经包含编译后的服务端和界面，`--ignore-scripts`即可安装；由dsh管理依赖并在首次安装时加入profile的bundle。其他原有bundle和设置保留。
@@ -25,17 +25,17 @@ dsh plugin --profile web add "https://github.com/Geng-zy/dsh-snowluma-companion/
 ```bash
 export PATH="$HOME/.local/node/bin:$HOME/.local/dsh/node_modules/.bin:$PATH"
 cd "$HOME/.local/dsh"
-npx --yes pnpm@11.28.5 exec dsh plugin --profile web add "https://github.com/Geng-zy/dsh-snowluma-companion/releases/download/v1.4.1/dsh-snowluma-companion-1.4.1.tgz" --ignore-scripts
+npx --yes pnpm@11.28.5 exec dsh plugin --profile web add "https://github.com/Geng-zy/dsh-snowluma-companion/releases/download/v1.4.2/dsh-snowluma-companion-1.4.2.tgz" --ignore-scripts
 ```
 
 `npx`提供指定版本的pnpm，由其运行已有dsh命令。若你采用其他安装目录，应按实际位置调整；不要在不相关的账号或profile下照抄路径。
 
 ## 已下载发行包：从本地安装
 
-服务器无法下载GitHub资产时，在可访问GitHub的电脑从[发行页](https://github.com/Geng-zy/dsh-snowluma-companion/releases/tag/v1.4.1)下载插件`.tgz`，上传到运行dsh的账号可读取的位置，再执行：
+服务器无法下载GitHub资产时，在可访问GitHub的电脑从[发行页](https://github.com/Geng-zy/dsh-snowluma-companion/releases/tag/v1.4.2)下载插件`.tgz`，上传到运行dsh的账号可读取的位置，再执行：
 
 ```sh
-dsh plugin --profile web add "/绝对路径/dsh-snowluma-companion-1.4.1.tgz" --ignore-scripts
+dsh plugin --profile web add "/绝对路径/dsh-snowluma-companion-1.4.2.tgz" --ignore-scripts
 ```
 
 使用本地包时，依赖仍需要可用网络或缓存；缓存齐全时可在命令末尾加`--offline`。

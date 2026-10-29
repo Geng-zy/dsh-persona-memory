@@ -2822,7 +2822,7 @@ window.__ModuleLoader__.load({
             props.edit("imageGenOptions", "{}");
           }
           function field(name, hint, numeric) { return h(Value, Object.assign({field:name,label:t(name),hint:t(hint||name+"Hint"),numeric:!!numeric},props)); }
-          function fold(title, body) {return h("details",{className:"sc-image-card sc-image-fold"},h("summary",null,title),h("div",{className:"sc-image-fields"},body));}
+          function fold(title, body) {return h("details",{className:"sc-image-card sc-image-fold",name:"snowluma-image-options"},h("summary",null,title),h("div",{className:"sc-image-fields"},body));}
           return h(Section, { sectionId: "companion-image-generation", category: "media", title: t("imageGenTitle"), hint: t("imageGenConfigHint") },
             h("div",{className:"sc-image-top"},h("div",{className:"sc-image-service"},h("span",null,t("imageGenActiveService")),h("strong",null,preset?preset[0]:provider)),
               h("span",{className:"sc-image-badge"},!enabled?t("imageGenOff"):needsKey&&!props.state.secretSet?.imageGenApiKey?t("imageGenNoKey"):t("imageGenReady"))),

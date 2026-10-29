@@ -19,6 +19,14 @@ window.__ModuleLoader__.load({
 		/** 设置服务里的配置行 id（cordis.patch.yml 里的 id） */
 
 		var zh = {
+            typingInherited: "未单独设置时沿用原值，修改后独立生效。",
+            typingProfileHint: "按该类回复的非空白字符数计算等待。速度为0或关闭开关时不等待；此时间不包含模型生成与群限频等待。",
+            typingMax: "最长等待（秒）",
+            typingMin: "最短等待（秒）",
+            typingSpeed: "打字速度（字／分钟）",
+            typingSeparateHint: "三类会话分别设置开关、速度与等待范围。管理员在群里发言仍使用群聊设置。未单独设置的值沿用升级前配置；分段回复仍受分段等待上限约束。",
+            typingEnabled: "模拟打字",
+            typingAdminPrivate: "管理员私聊",
 			nudgeOnEmpty: "她只想没说时提醒她说出来",
 			nudgeOnEmptyHint: "正式模型一轮结束但未生成正文时，自动追加一次提示，要求输出回复或静默标记。默认开启，每轮最多提醒一次；被 /stop 中止的回复不提醒。启用后可能增加一次模型调用。",
 			alertTestUsesForm: "用的是现在页面上填的（还没保存也行），记得保存。",
@@ -307,8 +315,8 @@ window.__ModuleLoader__.load({
 			silenceToken: "「不发」暗号",
 			paceSec: "发消息节奏",
 			paceHint: "控制正式回复及主动聊天回复的发送节奏，包括模拟打字等待、群消息间隔及窗口内数量限制。同一会话按顺序发送；其他插件直接代发的消息不经过此流程，管理员真实来信的回复豁免群限频。",
-			typingPrivate: "私聊里模拟打字",
-			typingGroup: "群里模拟打字",
+			typingPrivate: "其他人私聊",
+			typingGroup: "群聊",
 			typingCharsPerMinute: "打字速度（每分钟几个字）",
 			typingCharsPerMinuteHint: "按回复中非空白字符数计算模拟打字等待，默认每分钟 100 字；设为 0 时不等待。结果受最短和最长等待时间限制，分段发送还受分段等待上限约束。",
 			typingMinSeconds: "最少等几秒",
@@ -382,6 +390,14 @@ window.__ModuleLoader__.load({
 			groupWindowSecondsHint: "群发送数量限制的统计窗口，单位为秒，默认 60。与“群里一段时间最多发几条”配合使用。",
 		};
 		var en = {
+            typingInherited: "Unset values inherit the previous setting; edits apply independently.",
+            typingProfileHint: "Uses non-whitespace reply length. Disable or set speed to 0 to skip typing delay. Model generation and group rate waits are separate.",
+            typingMax: "Maximum wait (s)",
+            typingMin: "Minimum wait (s)",
+            typingSpeed: "Speed (chars/min)",
+            typingSeparateHint: "Separate switches, speed and wait bounds for all three categories. Administrators speaking in groups use group settings. Unset values retain pre-upgrade behavior; split-segment caps still apply.",
+            typingEnabled: "Simulate typing",
+            typingAdminPrivate: "Administrator private chat",
 			nudgeOnEmpty: "Nudge her when she says nothing",
 			nudgeOnEmptyHint: "When a model turn ends without reply text, send one follow-up requesting a reply or the silence token. Enabled by default; cancelled turns are excluded. This may add one model call.",
 			alertTestUsesForm: "Uses what is on the page now (saved or not); remember to save.",
@@ -670,8 +686,8 @@ window.__ModuleLoader__.load({
 			silenceToken: "Silence token",
 			paceSec: "Sending rhythm",
 			paceHint: "Control delivery pacing for model and proactive replies: typing delay, group spacing, and window limits. Each conversation is queued in order. Direct service sends bypass this flow; replies to actual administrator messages bypass group rate limits.",
-			typingPrivate: "Simulate typing in private chats",
-			typingGroup: "Simulate typing in groups",
+			typingPrivate: "Other private chats",
+			typingGroup: "Group chats",
 			typingCharsPerMinute: "Typing speed (chars/min)",
 			typingCharsPerMinuteHint: "Typing delay is calculated from non-whitespace characters, default 100 per minute. Set to 0 for no typing delay. Minimum, maximum, and per-segment caps also apply.",
 			typingMinSeconds: "Minimum wait (s)",
@@ -746,6 +762,7 @@ window.__ModuleLoader__.load({
 		};
 
 		var CSS = [
+            ".snowlumab-typing-cards{display:grid;gap:12px}.snowlumab-typing-card{border:1px solid var(--dsw-alias-border-l3);border-radius:14px;padding:14px;min-width:0}.snowlumab-typing-card>.snowlumab-subtitle{margin:0 0 4px}.snowlumab-typing-card .snowlumab-grid{margin-top:12px}",
 			".snowlumab-section{display:grid;gap:12px;padding:4px 0 8px}",
 			".snowlumab-section,.snowlumab-details+.snowlumab-section{border-top:.5px solid var(--dsw-alias-border-l3);padding-top:16px}",
 			".snowlumab-title{color:var(--dsw-alias-label-primary);font-size:14px;font-weight:600;margin:0}",
@@ -838,7 +855,7 @@ window.__ModuleLoader__.load({
 		function boolField(field) {
 			return {
 				field: field,
-				format: function (v) { return v === true ? "true" : "false"; },
+				format: function (v) { return v === undefined && field === "typingAdminPrivate" ? "" : v === true ? "true" : "false"; },
 				parse: function (text) { return text === "true" ? { kind: "set", value: true } : text === "false" ? { kind: "set", value: false } : void 0; }
 			};
 		}
@@ -876,7 +893,7 @@ window.__ModuleLoader__.load({
 		var STT_MODES = ["off", "command", "openai"];
 		var PUSH_SERVICES = ["off", "serverchan", "pushplus"];
 		var TTS_MODES = ["tag", "always", "chance"];
-		var BOOLS = [
+		var BOOLS = ["typingAdminPrivate",
 			"nudgeOnEmpty", "groupReplyMention", "groupReplyQuote",
 			"watchEnabled", "alertOnRecover", "mailEnabled",
 			"friend_message_needs_wake_prefix", "ignore_bot_self_message", "identifier", "imageToModel",
@@ -895,6 +912,15 @@ window.__ModuleLoader__.load({
 		];
 		/** 整数字段：[字段, 最小值] */
 		var INTS = [
+            ["typingAdminPrivateCharsPerMinute",0],
+            ["typingAdminPrivateMinSeconds",0],
+            ["typingAdminPrivateMaxSeconds",0],
+            ["typingPrivateCharsPerMinute",0],
+            ["typingPrivateMinSeconds",0],
+            ["typingPrivateMaxSeconds",0],
+            ["typingGroupCharsPerMinute",0],
+            ["typingGroupMinSeconds",0],
+            ["typingGroupMaxSeconds",0],
 			["ws_reverse_port", 1, 65535], ["maxImages", 0], ["rateLimitCount", 0], ["rateLimitSeconds", 1],
 			["videoMaxFrames", 1], ["videoSecondsPerFrame", 1], ["videoMaxEdge", 64], ["videoMaxMB", 1],
 			["videoMaxMinutes", 1], ["videoTimeoutSeconds", 5],
@@ -969,6 +995,27 @@ window.__ModuleLoader__.load({
 					onChange: function (checked) { props.edit(props.field, checked ? "true" : "false"); }
 				}));
 		}
+
+
+        function TypingProfiles(common) {
+          var t=common.t, state=common.state;
+          return h("div",{className:"snowlumab-typing-cards"},
+            h("p",{className:"snowlumab-hint"},t("typingSeparateHint")),
+            ["AdminPrivate","Private","Group"].map(category=>{
+              var prefix="typing"+category, flag=category==="AdminPrivate"?"typingAdminPrivate":category==="Group"?"typingGroup":"typingPrivate";
+              var effective=Object.assign({},state);
+              if(category==="AdminPrivate"&&state[flag].text==="")effective[flag]=Object.assign({},state[flag],{text:state.typingPrivate.text});
+              ["CharsPerMinute","MinSeconds","MaxSeconds"].forEach(suffix=>{
+                var key=prefix+suffix, legacy=suffix==="CharsPerMinute"?"typingCharsPerMinute":"typing"+suffix;
+                if(state[key].text==="")effective[key]=Object.assign({},state[key],{text:state[legacy].text});
+              });
+              var props=Object.assign({},common,{state:effective});
+              return h("div",{key:category,className:"snowlumab-typing-card","data-typing-category":category},
+                h("h4",{className:"snowlumab-subtitle"},t(prefix)),
+                h(Toggle,Object.assign({field:flag,label:t("typingEnabled"),hint:t("typingProfileHint")},props)),
+                G.apply(null,[["CharsPerMinute","typingSpeed"],["MinSeconds","typingMin"],["MaxSeconds","typingMax"]].map(([suffix,label])=>h(Value,Object.assign({field:prefix+suffix,label:t(label),hint:t("typingProfileHint")+" "+t("typingInherited"),numeric:true,invalidLabel:t("invalidCount")},props)))));
+            }));
+        }
 
 		function Value(props) {
 			var t = props.t;
@@ -1598,12 +1645,7 @@ window.__ModuleLoader__.load({
 						h(Value, Object.assign({ field: "ffmpegPath", label: t("ffmpegPath"), hint: t("ffmpegPathHint"), placeholder: ffmpegAt ? t("ffmpegPathAuto", { path: ffmpegAt }) : void 0 }, common)))
 				],
 				h(Section, { sectionId: "bridge-paceSec", category: "chat", title: t("paceSec"), hint: t("paceHint") },
-					Sub(t("typingSub")),
-					h(Toggle, Object.assign({ field: "typingPrivate", label: t("typingPrivate"), hint: t("typingPrivateHint") }, common)),
-					h(Toggle, Object.assign({ field: "typingGroup", label: t("typingGroup"), hint: t("typingGroupHint") }, common)),
-					G(h(Value, Object.assign({ field: "typingCharsPerMinute", label: t("typingCharsPerMinute"), hint: t("typingCharsPerMinuteHint"), numeric: true, invalidLabel: t("invalidCount") }, common)),
-						h(Value, Object.assign({ field: "typingMinSeconds", label: t("typingMinSeconds"), hint: t("typingMinSecondsHint"), numeric: true, invalidLabel: t("invalidCount") }, common)),
-						h(Value, Object.assign({ field: "typingMaxSeconds", label: t("typingMaxSeconds"), hint: t("typingMaxSecondsHint"), numeric: true, invalidLabel: t("invalidCount") }, common))),
+                    h(TypingProfiles,common),
 					Sub(t("groupReplySub")),
 					h(Toggle, Object.assign({ field: "groupReplyMention", label: t("groupReplyMention"), hint: t("groupReplyHint") }, common)),
 					h(Toggle, Object.assign({ field: "groupReplyQuote", label: t("groupReplyQuote"), hint: t("groupReplyHint") }, common)),

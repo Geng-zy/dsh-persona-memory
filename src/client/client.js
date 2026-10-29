@@ -13,13 +13,13 @@ window.__ModuleLoader__.load({
       title: "SnowLuma 陪伴助手", eyebrow: "SNOWLUMA COMPANION", subtitle: "连接、表达与记忆，井然有序。",
       overview: "运行概览", connection: "连接与权限", chat: "聊天与回复", persona: "人格与核心记忆", memory: "记忆与存档", life: "日记与主动聊天", media: "图片、语音与视频", backup: "备份与迁移", maintenance: "维护与通知",
       overviewHint: "查看连接、存储状态与常用入口。", connectionHint: "管理 QQ 接入、主人权限、白名单与会话例外规则。", chatHint: "从唤醒、模型到上下文和回复节奏，按聊天流程集中设置。", personaHint: "编辑人格和核心记忆，配置生效范围与自主修改规则。", memoryHint: "管理消息存档、长期记忆、向量召回与关系图。", lifeHint: "安排日记与主动聊天，设置间隔和免打扰时段。", mediaHint: "集中配置图片输入、语音识别、语音合成和视频抽帧。", backupHint: "选择备份内容、下载或导入已有备份。", maintenanceHint: "管理掉线通知、数据到期、记忆保养与运行日志。",
-      search: "搜索设置名称或说明…", searchLabel: "搜索全部设置", searchResults: "搜索结果", searchHint: "搜索全部分组，展开卡片查看具体设置。", expand: "全部展开", collapse: "全部收起", save: "保存所有设置", discard: "放弃设置改动", saved: "设置已保存", dirty: "有未保存的设置", clean: "所有设置已保存", unavailable: "设置暂不可用", readOnly: "当前设置只读", saveFailed: "保存失败", saving: "正在保存…", documentHint: "人格、核心记忆和日记正文使用编辑器中的保存按钮。", privacy: "白名单约束本插件存档；QQ 和 SnowLuma 的协议缓存独立管理。", quick: "从这里开始", quickHint: "每组设置均可折叠；展开状态会保存在当前浏览器。", noResults: "未找到匹配的设置，请尝试“白名单”“语音”或“备份”。", back: "返回分组"
+      search: "搜索设置名称或说明…", searchLabel: "搜索全部设置", searchResults: "搜索结果", searchHint: "搜索全部分组，展开卡片查看具体设置。", expand: "全部展开", collapse: "全部收起", save: "保存所有设置", discard: "放弃设置改动", saved: "设置已保存", dirty: "有未保存的设置", clean: "所有设置已保存", unavailable: "设置暂不可用", readOnly: "当前设置只读", saveFailed: "保存失败", saving: "正在保存…", documentHint: "人格、核心记忆和日记正文使用编辑器中的保存按钮。", privacy: "白名单约束本插件存档；QQ 和 SnowLuma 的协议缓存独立管理。", quick: "从这里开始", quickHint: "每次仅展开一个设置分类；展开另一项时自动收起原项，草稿继续保留。", noResults: "未找到匹配的设置，请尝试“白名单”“语音”或“备份”。", back: "返回分组"
     };
     var en = {
       documentsDirty: "Unsaved document drafts", renderFailed: "Settings could not render. Reload to try again.", reloadPage: "Reload page", language: "en", summary: "QQ connectivity, persona, memory, proactive chat and backups in one place.", title: "SnowLuma Companion", eyebrow: "SNOWLUMA COMPANION", subtitle: "A considered home for connection, expression and memory.",
       overview: "Overview", connection: "Connection & access", chat: "Chat & replies", persona: "Persona & core memory", memory: "Memory & archives", life: "Diary & proactive chat", media: "Images, voice & video", backup: "Backup & migration", maintenance: "Maintenance & alerts",
       overviewHint: "Connection, storage and common destinations.", connectionHint: "QQ access, owners, allowlists and conversation overrides.", chatHint: "Wake triggers, models, context and reply pacing in conversation order.", personaHint: "Persona, core memory, preset scope and self-edit rules.", memoryHint: "Archives, long-term memory, vector recall and graph relations.", lifeHint: "Diaries, proactive intervals and quiet hours.", mediaHint: "Image input, speech recognition, synthesis and video frames.", backupHint: "Choose content, download or import backups.", maintenanceHint: "Offline alerts, expiry, memory care and runtime logs.",
-      search: "Search settings and descriptions…", searchLabel: "Search all settings", searchResults: "Search results", searchHint: "Search spans all groups. Expand a card to inspect its settings.", expand: "Expand all", collapse: "Collapse all", save: "Save all settings", discard: "Discard setting changes", saved: "Settings saved", dirty: "Unsaved settings", clean: "All settings saved", unavailable: "Settings unavailable", readOnly: "Settings are read-only", saveFailed: "Save failed", saving: "Saving…", documentHint: "Save persona, core memory and diary text using their editor buttons.", privacy: "Allowlists govern plugin archives; QQ and SnowLuma protocol caches are managed separately.", quick: "Start here", quickHint: "Each settings group collapses independently. This browser remembers its state.", noResults: "No matching settings. Try allowlist, voice or backup.", back: "Back to groups"
+      search: "Search settings and descriptions…", searchLabel: "Search all settings", searchResults: "Search results", searchHint: "Search spans all groups. Expand a card to inspect its settings.", expand: "Expand all", collapse: "Collapse all", save: "Save all settings", discard: "Discard setting changes", saved: "Settings saved", dirty: "Unsaved settings", clean: "All settings saved", unavailable: "Settings unavailable", readOnly: "Settings are read-only", saveFailed: "Save failed", saving: "Saving…", documentHint: "Save persona, core memory and diary text using their editor buttons.", privacy: "Allowlists govern plugin archives; QQ and SnowLuma protocol caches are managed separately.", quick: "Start here", quickHint: "Opening a settings group collapses the previous one. Drafts remain available.", noResults: "No matching settings. Try allowlist, voice or backup.", back: "Back to groups"
     };
     function readCategory() { try { var v = localStorage.getItem("snowluma-companion:category"); return categories.includes(v) ? v : "overview"; } catch (_) { return "overview"; } }
     function SettingsPage(props) {
@@ -38,8 +38,9 @@ window.__ModuleLoader__.load({
     }
     function Editor(props) {
       var t = props.t, b = props.useSnowlumaForm(s => s), c = props.useCompanionForm(s => s);
-      var [category, setCategory] = React.useState(readCategory), [query, setQuery] = React.useState(""), [expansion, setExpansion] = React.useState(null);
+      var [category, setCategory] = React.useState(readCategory), [query, setQuery] = React.useState(""), [activeSection, setActiveSection] = React.useState(Layout.readActiveSection);
 
+      React.useEffect(() => { try { localStorage.setItem("snowluma-companion:active-section", activeSection); } catch (_) {} }, [activeSection]);
       var [documentDrafts, setDocumentDrafts] = React.useState({});
       var documentChanged = React.useCallback((name, value) => { setDocumentDrafts(previous => previous[name] === value ? previous : Object.assign({}, previous, { [name]: value })); }, []);
       var documentDirty = Object.values(documentDrafts).some(Boolean);
@@ -61,15 +62,14 @@ window.__ModuleLoader__.load({
           h("nav", { className: "sc-nav", "aria-label": t("title") }, categories.map((id, i) => h("button", { key: id, type: "button", className: "sc-nav-item" + (category === id && !query ? " sc-active" : ""), "aria-current": category === id && !query ? "page" : undefined, onClick: () => navigate(id) }, h("span", { className: "sc-nav-number", "aria-hidden": true }, String(i + 1).padStart(2, "0")), t(id)))),
           h("main", { className: "sc-main" },
             h("div", { className: "sc-search-row" }, h("input", { type: "search", className: "sc-search", placeholder: t("search"), "aria-label": t("searchLabel"), value: query, onChange: e => setQuery(e.target.value) }),
-              h("button", { type: "button", className: "sc-tool", onClick: () => setExpansion({ open: true, at: Date.now() }) }, t("expand")),
-              h("button", { type: "button", className: "sc-tool", onClick: () => setExpansion({ open: false, at: Date.now() }) }, t("collapse"))),
+              h("button", { type: "button", className: "sc-tool", onClick: () => setActiveSection("") }, t("collapse"))),
             h("div", { className: "sc-page-heading" }, h("h3", null, query ? t("searchResults") : t(category)), h("p", null, query ? t("searchHint") : t(category + "Hint"))),
             category === "overview" && !query ? h("div", { className: "sc-quick" }, ["connection", "persona", "memory", "backup"].map(id => h("button", { type: "button", key: id, onClick: () => navigate(id) }, h("strong", null, t(id)), h("span", null, t(id + "Hint")), h("span", { "aria-hidden": true }, "↗")))) : null,
             h("div", { className: "sc-settings", "data-searching": query ? "true" : "false", "data-empty-text": t("noResults") },
               !shell.available ? h("p", { role: "status" }, t("unavailable")) : null,
               !shell.writable ? h("p", { role: "status" }, t("readOnly")) : null,
               shell.failed ? h("p", { role: "alert", className: "compc-error" }, t("saveFailed")) : null,
-              shell.available ? h(Layout.Context.Provider, { value: { category: category, query: query, expansion: expansion, documentChanged: documentChanged } },
+              shell.available ? h(Layout.Context.Provider, { value: { category: category, query: query, activeSection: activeSection, setActiveSection: setActiveSection, documentChanged: documentChanged } },
                 h(Bridge.SettingsPage, { t: bt, useSnowlumaForm: props.useSnowlumaForm, edit: props.bridgeEdit, resetField: props.bridgeReset }),
                 h(Companion.SettingsPage, { t: ct, useCompanionForm: props.useCompanionForm, edit: props.companionEdit, resetField: props.companionReset })) : null),
             h("p", { className: "sc-footnote" }, t("privacy")))),
@@ -95,7 +95,19 @@ window.__ModuleLoader__.load({
         }, () => {});
       }
       refreshSecrets(); scopes.forEach(scope => ctx.effect(() => scope.subscribe(refreshSecrets), "companion: secret state"));
-      var editBridge = (field, text) => { actions[0].edit(field, text); if (field === "silenceToken") actions[1].edit(field, text); };
+      var editBridge = (field, text) => {
+        // Materialize inherited values together before the first typing edit. Private toggles
+        // must not silently change an unset administrator profile on this or the next launch.
+        if (field.startsWith("typing")) {
+          var form=models[0].form;
+          if (form.field("typingAdminPrivate").text === "") actions[0].edit("typingAdminPrivate",form.field("typingPrivate").text);
+          ["AdminPrivate","Private","Group"].forEach(category=>["CharsPerMinute","MinSeconds","MaxSeconds"].forEach(suffix=>{
+            var key="typing"+category+suffix, legacy=suffix === "CharsPerMinute" ? "typingCharsPerMinute" : "typing"+suffix;
+            if (form.field(key).text === "") actions[0].edit(key,form.field(legacy).text);
+          }));
+        }
+        actions[0].edit(field, text); if (field === "silenceToken") actions[1].edit(field, text);
+      };
       // Both entry points use the same forms and actions; only the host layout differs.
       var injected = () => ({ hooks: { snowlumaForm: models[0].store, companionForm: models[1].store },
           bridgeEdit: editBridge, companionEdit: actions[1].edit, bridgeReset: field => { actions[0].resetField(field); if (field === "silenceToken") actions[1].resetField(field); }, companionReset: actions[1].resetField,

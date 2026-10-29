@@ -71,6 +71,16 @@ export interface Config {
     ffmpegPath: string;
     silenceToken: string;
     nudgeOnEmpty: boolean;
+    typingAdminPrivate: boolean | undefined;
+    typingAdminPrivateCharsPerMinute: number | undefined;
+    typingAdminPrivateMinSeconds: number | undefined;
+    typingAdminPrivateMaxSeconds: number | undefined;
+    typingPrivateCharsPerMinute: number | undefined;
+    typingPrivateMinSeconds: number | undefined;
+    typingPrivateMaxSeconds: number | undefined;
+    typingGroupCharsPerMinute: number | undefined;
+    typingGroupMinSeconds: number | undefined;
+    typingGroupMaxSeconds: number | undefined;
     typingPrivate: boolean;
     typingGroup: boolean;
     typingCharsPerMinute: number;

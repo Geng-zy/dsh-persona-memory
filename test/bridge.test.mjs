@@ -832,3 +832,17 @@ test('群内每人独立会话仍共用本群发送限频，不跨群限频', as
   assert.equal(waits.length, 1)
   await h.bridge.dispose()
 })
+
+test('桥接按真实会话类型选择独立打字配置，管理员群聊不借用主人私聊速度', async () => {
+  const waits=[]
+  const profile=(charsPerMinute)=>({enabled:true,charsPerMinute,minSeconds:0,maxSeconds:30})
+  const h=harness({pace:{...settings().pace,typingProfiles:{adminPrivate:profile(60),private:profile(120),group:profile(240)}}},memberInfo,{sleep:async ms=>{waits.push(ms)}})
+  await h.privateMsg(Number(ADMIN),[text('主人')]);h.turn(String(h.created[0].sessionId),'abcde')
+  await new Promise(r=>setTimeout(r,15))
+  await h.privateMsg(77,[text('其他人')]);h.turn(String(h.created[1].sessionId),'abcde')
+  await new Promise(r=>setTimeout(r,15))
+  await h.groupMsg(Number(ADMIN),555,[at(BOT),text('管理员在群里')]);h.turn(String(h.created[2].sessionId),'abcde')
+  await new Promise(r=>setTimeout(r,15))
+  assert.deepEqual(waits,[5000,2500,1250])
+  assert.equal(h.sent.length,3)
+})

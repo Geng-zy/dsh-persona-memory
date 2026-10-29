@@ -1206,7 +1206,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
     }
     try {
       if (parts[0] === 'images') {
-        if (req.method === 'GET' && parts.length === 1) return json(200, { providers: IMAGE_PROVIDERS, images: imageGenerator.list() })
+        if (req.method === 'GET' && parts.length === 1) return json(200, { providers: IMAGE_PROVIDERS, images: imageGenerator.list(), activeTasks: imageGenerator.activeCount })
         if (req.method === 'GET' && parts.length === 2) {
           const file = imageGenerator.file(parts[1])
           if (!file) return json(404, { error: '图片不存在或已清理' })

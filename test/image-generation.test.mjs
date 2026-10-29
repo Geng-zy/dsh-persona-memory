@@ -172,8 +172,10 @@ test('custom multipart/binary response, download limit and cancellation/concurre
     settings = { ...defaults, provider: 'modelscope', baseUrl: base }
     const first = new AbortController(), second = new AbortController()
     const outcomes = [generator.run({ prompt: 'a' }, first.signal), generator.run({ prompt: 'b' }, second.signal)].map(p => p.then(() => 'unexpected', e => e.message))
+    assert.equal(generator.activeCount,2)
     await assert.rejects(generator.run({ prompt: 'third' }), /两个生图任务/)
     first.abort();second.abort()
     assert.ok((await Promise.all(outcomes)).every(m => /取消或超时/.test(m)))
+    assert.equal(generator.activeCount,0)
   })
 })

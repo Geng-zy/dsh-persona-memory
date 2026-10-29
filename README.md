@@ -7,12 +7,12 @@
 适用于 **dsh 0.2.1-rc.2 / Node ≥22.13** 的网页环境。先停止 dsh，再以运行 dsh 的同一系统账号、相同 `DSH_HOME` 执行（`dsh` 和 `pnpm` 须在 PATH 中）：
 
 ```sh
-dsh plugin --profile web add "https://github.com/Geng-zy/dsh-snowluma-companion/releases/download/v1.4.1/dsh-snowluma-companion-1.4.1.tgz" --ignore-scripts
+dsh plugin --profile web add "https://github.com/Geng-zy/dsh-snowluma-companion/releases/download/v1.4.2/dsh-snowluma-companion-1.4.2.tgz" --ignore-scripts
 ```
 
 命令向现有 `web` profile 安装插件，首次安装自动加入 bundle。随后重新启动 dsh，进入 **更多 → 设置 → SnowLuma 陪伴助手**。QQ 接入需要已有 SnowLuma 及反向 WS 配置。[命令路径、其他 profile、本地安装包与升级说明](docs/PLUGIN-INSTALL.md)。
 
-桌面版也可通过应用内插件管理安装[同一发行包](https://github.com/Geng-zy/dsh-snowluma-companion/releases/tag/v1.4.1)。从两个旧插件合并升级时，使用下方迁移流程。
+桌面版也可通过应用内插件管理安装[同一发行包](https://github.com/Geng-zy/dsh-snowluma-companion/releases/tag/v1.4.2)。从两个旧插件合并升级时，使用下方迁移流程。
 
 ## 全新服务器一键部署
 
@@ -30,12 +30,12 @@ curl -fsSL https://raw.githubusercontent.com/Geng-zy/dsh-snowluma-companion/main
 
 ## 安装与升级
 
-要求 dsh **0.2.1-rc.2** 对应 SDK、Node **≥22.13**（使用内置 SQLite）。在 dsh 插件管理页安装本仓库 [v1.4.1](https://github.com/Geng-zy/dsh-snowluma-companion/releases/tag/v1.4.1) 的 `.tgz`。只需安装一个包；QQ 协议端仍由官方 SnowLuma Docker 镜像运行。
+要求 dsh **0.2.1-rc.2** 对应 SDK、Node **≥22.13**（使用内置 SQLite）。在 dsh 插件管理页安装本仓库 [v1.4.2](https://github.com/Geng-zy/dsh-snowluma-companion/releases/tag/v1.4.2) 的 `.tgz`。只需安装一个包；QQ 协议端仍由官方 SnowLuma Docker 镜像运行。
 
 从两个旧插件升级时，停止 dsh，保留现有数据与 profile 配置，以 profile 所属用户执行：
 
 ```sh
-node /解包目录/deploy/migrate-profile.mjs /绝对路径/profiles/web /绝对路径/dsh-snowluma-companion-1.4.1.tgz
+node /解包目录/deploy/migrate-profile.mjs /绝对路径/profiles/web /绝对路径/dsh-snowluma-companion-1.4.2.tgz
 cd /绝对路径/profiles/web
 pnpm install
 ```
@@ -45,6 +45,10 @@ pnpm install
 ## 魔搭聊天接口
 
 自定义OpenAI Chat Completions接入魔搭时，如遇`developer is not one of...`的400错误，需要配置dsh提供商的`compat.supportsDeveloperRole: false`。此兼容设置不删除旧会话、不关闭思考或人格记忆。[原因及配置位置](docs/MODELSCOPE.md)。
+
+## 回复节奏
+
+管理员私聊、其他人私聊、群聊各自设置模拟打字开关、每分钟字数及最短/最长等待。管理员在群里仍采用群聊打字设置，原有管理员群限频豁免保留。升级沿用现有节奏，修改后分别生效。[设置与兼容说明](docs/CHAT-PACING.md)。
 
 ## 图片生成
 
@@ -64,7 +68,7 @@ pnpm install
 
 ## 统一设置界面
 
-设置页按用途组织，支持搜索全部设置、独立折叠、全部展开/收起、浏览器记忆展开状态，以及跨分组统一保存设置。已打开的编辑器在分组切换和收起后保留草稿；人格、核心记忆、日记正文使用编辑器内的保存按钮。
+设置页按用途组织，支持搜索全部设置、单项展开（打开另一项时自动收起前项）、全部收起、浏览器记忆当前展开项，以及跨分组统一保存设置。已打开的编辑器在分组切换和收起后保留草稿；人格、核心记忆、日记正文使用编辑器内的保存按钮。
 
 | 分组 | 内容 |
 |---|---|

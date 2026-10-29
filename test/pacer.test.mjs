@@ -91,3 +91,30 @@ test('管理员回复不受群发言限频约束，也不占普通回复额度',
   await p.run('g', true, '下一条普通回复', async () => {})
   assert.deepEqual(c.waits, [5000])
 })
+
+test('管理员私聊、其他私聊、群聊的速度/开关/上下限相互独立，群内管理员仍用群配置', async () => {
+  const s = { ...S, typingProfiles: {
+    adminPrivate: { enabled: true, charsPerMinute: 60, minSeconds: 1, maxSeconds: 30 },
+    private: { enabled: true, charsPerMinute: 120, minSeconds: 2, maxSeconds: 8 },
+    group: { enabled: true, charsPerMinute: 240, minSeconds: 0, maxSeconds: 3 },
+  } }
+  assert.equal(typingDelay('abcde', false, s, true), 5000)
+  assert.equal(typingDelay('abcde', false, s), 2500)
+  assert.equal(typingDelay('abcde', true, s), 1250)
+  assert.equal(typingDelay('abcde', true, s, true), 1250)
+  assert.equal(typingDelay('a', false, s), 2000)
+  assert.equal(typingDelay('a'.repeat(100), false, s), 8000)
+  const disabled = { ...s, typingProfiles: { ...s.typingProfiles, adminPrivate: { ...s.typingProfiles.adminPrivate, enabled: false } } }
+  assert.equal(typingDelay('abcde', false, disabled, true), 0)
+  assert.equal(typingDelay('abcde', false, disabled), 2500)
+  const clock = fakeClock(), pacer = new Pacer({ settings: () => s, log: () => {}, now: clock.now, sleep: clock.sleep })
+  await pacer.run('owner', false, 'abcde', async () => {}, undefined, true, true)
+  await pacer.run('other', false, 'abcde', async () => {})
+  await pacer.run('group', true, 'abcde', async () => {}, undefined, true)
+  assert.deepEqual(clock.waits, [5000,2500,1250])
+  const { splitTyping } = await import('../lib/pacer.js')
+  assert.deepEqual(splitTyping(['abcde','a'],false,s,3,true),[3000,1000])
+  assert.deepEqual(splitTyping(['abcde','a'],false,s,3),[2500,2000])
+  assert.deepEqual(splitTyping(['abcde','a'],true,s,3),[1250,250])
+  assert.equal(typingDelay('abcde',false,S,true),typingDelay('abcde',false,S),'legacy configurations retain the original administrator-private pace')
+})

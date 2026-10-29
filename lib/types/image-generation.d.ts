@@ -59,6 +59,7 @@ export declare class ImageGenerator {
     readonly settings: () => ImageSettings;
     private active;
     constructor(dir: string, settings: () => ImageSettings);
+    get activeCount(): number;
     dispose(): void;
     run(request: ImageRequest, signal?: AbortSignal): Promise<GenerationResult>;
     file(id: string): string | undefined;
