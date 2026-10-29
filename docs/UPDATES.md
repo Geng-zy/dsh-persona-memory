@@ -1,6 +1,6 @@
 # 开发者选项：依赖与公开上游更新
 
-两个插件分别检查、分别通知。功能默认关闭，周期默认7天；不扫描宿主、不自动升级。升级到2.3.1不会自动启用。
+两个插件分别检查、分别通知。功能默认关闭，周期默认7天；不扫描宿主、不自动升级。升级到2.4.0不会自动启用。
 
 在本插件设置的“开发者选项 → 依赖与上游更新”中启用，配置独立邮件/微信，保存后立即检查。启用后一分钟内开始首次检查，以后按上次检查时间计算；重启保留进度。部分来源失败次日补查，通知失败一小时后重试。关闭后停止后续检查、通知及模型调用，在途请求会收到取消信号或等待已有请求结束。
 
@@ -27,7 +27,7 @@ npm/GitHub/PyPI默认正式稳定版，排除草稿、预览、撤回和nightly�
 
 ## 独立大模型和预算
 
-从dsh已配置模型中选择报告模型，或填写提供商/模型ID。不借用QQ聊天、人格、记忆或日记上下文；没有终端、文件、浏览或发布工具。模型仅分析公开证据，未配置或调用失败仍生成基础文档。
+在“报告模型”页选择“使用已有模型”，直接从dsh已配置列表选择；不需要手填内部ID。也可选择“单独配置API”，使用DeepSeek、魔搭、硅基流动、百炼、OpenRouter、OpenAI、Anthropic模板或自定义服务，填写基础地址、密钥和模型名称。支持OpenAI与Anthropic兼容协议，可获取模型列表和测试连接。原有已选模型保持。不借用QQ聊天、人格、记忆或日记上下文；没有终端、文件、浏览或发布工具。模型仅分析公开证据，未配置或调用失败仍生成基础文档。
 
 默认每次8192输出token、每份报告最多8次调用、每次180秒。这不是货币费用上限，输入和隐藏思考仍按提供商计费。预算未覆盖、超时、截断和无法确认的项目明确列出。相同更新沿用已有分析，“生成/重新生成”可手动重试。来源正文采集上限会注明，并保留完整链接和需补查的版本区间。
 
@@ -47,6 +47,12 @@ npm/GitHub/PyPI默认正式稳定版，排除草稿、预览、撤回和nightly�
 
 状态位于各自数据目录developer/upstream-updates.json，以私密权限保存公开检查结果、通知去重/失败、忽略项和脱敏报告。它不是额外业务备份；通知密钥仍由dsh设置服务管理，新增secret字段不得进入备份或报告。
 
-已登录接口：QQ `/api/qq-gateway/updates`，人格 `/api/companion/updates`。GET状态、report.md、manifest.json；POST check、analyze、test-mail、test-push、retry-notify、ignore、unignore。关闭时拒绝POST操作，零自动外部请求。
+已登录接口：QQ `/api/qq-gateway/updates`，人格 `/api/companion/updates`。GET状态、report.md、manifest.json；POST check、analyze、test-mail、test-push、retry-notify、ignore、unignore。关闭时拒绝自动检查/分析/通知操作，零自动外部请求。手动“获取可用模型”和“测试模型连接”可在关闭时使用，均使用已保存设置；测试会调用一次模型，可能消耗额度。
 
 开发者显式执行`node scripts/check-upstreams.mjs`可以检查一次公开上游，只写仓库.cache/upstream-cli，不通知、不调模型、不扫描宿主。修改适配基准应完成代码审查与测试后提交，不能将读过提醒当作已更新。
+
+## GitHub只读令牌（可选）
+
+可以先留空，遇到公开接口限额时再添加。打开[细粒度令牌创建页](https://github.com/settings/personal-access-tokens/new)，填写用途与有效期，Repository access选Public repositories，不添加额外或写入权限；生成后粘贴至“更多选项 → GitHub只读令牌”并保存。细粒度令牌默认只读访问公开仓库，见[GitHub官方说明](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)。两个插件可以分别保存同一个只读令牌，通知仍各自独立。
+
+更新助手分为概览、报告模型、通知、更多选项。高级用量、动态文档后备、补充来源及完整清单均可按需展开。API密钥作为secret保存，不进入报告、模型提示或设置备份；API地址也不写入更新报告。

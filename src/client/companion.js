@@ -1569,6 +1569,7 @@ window.__ModuleLoader__.load({
 		//#region 表单模型
 		function createForm(scope) {
 			ENUMS.some(x=>x[0]==="updatesPushService") || ENUMS.push(["updatesPushService",["off","serverchan","pushplus"]]);
+			ENUMS.some(x=>x[0]==="updatesModelSource") || ENUMS.push(["updatesModelSource",["dsh","api"]],["updatesApiProtocol",["openai","anthropic"]]);
 			var specs = INTS.map(function (x) { return intField(x[0], x[1], x[2] === void 0 ? Number.MAX_SAFE_INTEGER : x[2]); })
 				.concat(ENUMS.map(function (x) { return enumField(x[0], x[1]); }), LISTS.map(listField), LINE_LISTS.map(lineListField), BOOLS.map(boolField),
 					TEXTS.map(function (f) { return P.settingsTextField(f); }), FLOATS.map(floatField), [rulesField("rules")]);

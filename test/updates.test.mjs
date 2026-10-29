@@ -66,3 +66,31 @@ test('同一组更新重复检查保留已有AI文档，不重复调用模型；
  let calls=0;const h=harness(t,[source()],{llm:()=>({async *stream(){calls++;yield {type:'block-end',index:0,block:{type:'text',text:'已核对的公开变化分析'}};yield {type:'finish',reason:{kind:'stop'}}}})});h.config.updatesModelProvider='fixture';h.config.updatesModel='model';await h.monitor.check();const report=h.monitor.snapshot().report;await h.monitor.check();assert.equal(calls,1);assert.equal(h.monitor.snapshot().report.markdown,report.markdown)
  const p=new UpdateMonitor({...h.deps,fetch:async()=>Response.json({releases:{'1.1':[{}],'1.1.post1':[{}],'1.2rc1':[{}]}})});assert.equal((await p.inspect(source('pypi',{current:'1.1'}))).latest,'1.1.post1')
 })
+test('独立报告API支持OpenAI及Anthropic，不携带dsh模型或业务上下文',async()=>{
+ const {reportApiComplete,reportApiModels}=await import('../lib/update-model.js');const seen=[]
+ const fake=async(url,opts)=>{seen.push([url,opts]);if(url.endsWith('/models'))return Response.json({data:[{id:'public-model'}]});return url.endsWith('/messages')?Response.json({stop_reason:'end_turn',content:[{type:'text',text:'API报告'}]}):Response.json({choices:[{finish_reason:'stop',message:{content:'API报告'}}]})}
+ for(const protocol of ['openai','anthropic']){const api={url:'https://provider.example/v1',key:'fixture-api-password',model:'public-model',protocol};assert.equal(await reportApiComplete(api,'只有公开证据',8192,AbortSignal.timeout(1000),fake),'API报告');assert.deepEqual(await reportApiModels(api,AbortSignal.timeout(1000),fake),['public-model'])}
+ assert.equal(seen[0][1].headers.authorization,'Bearer fixture-api-password');assert.equal(seen[2][1].headers['x-api-key'],'fixture-api-password')
+ assert.ok(seen.every(([,o])=>o.redirect==='error'));assert.equal(JSON.parse(seen[0][1].body).messages.length,1);assert.doesNotMatch(seen[0][1].body,/fixture-api-password/)
+})
+test('独立报告API不把截断当作成功，拒绝URL凭据，错误不包含远端正文',async()=>{
+ const {reportApiComplete}=await import('../lib/update-model.js');const api={url:'https://provider.example/v1',key:'private-api-key',model:'test',protocol:'openai'}
+ await assert.rejects(reportApiComplete(api,'public',512,AbortSignal.timeout(1000),async()=>Response.json({choices:[{finish_reason:'length',message:{content:'半截'}}]})),/截断/)
+ await assert.rejects(reportApiComplete({...api,url:'https://user:password@provider.example/v1'},'public',512,AbortSignal.timeout(1000),async()=>{}),/不含密钥/)
+ await assert.rejects(reportApiComplete(api,'public',512,AbortSignal.timeout(1000),async()=>new Response('private-api-key',{status:401})),e=>e.message.includes('401')&&!e.message.includes('private-api-key'))
+})
+test('API报告独立于dsh模型，输入/输出不含API地址密钥，保留原dsh选择',async t=>{
+ const prompts=[];const h=harness(t,[source()],{fetch:async(url,opts)=>{if(String(url).endsWith('/chat/completions')){prompts.push(opts.body);return Response.json({choices:[{finish_reason:'stop',message:{content:'公开更新分析'}}]})}if(String(url).includes('osv.dev'))return Response.json({results:[{vulns:[]}]});return Response.json({versions:{'1.0.0':{},'1.1.0':{}}})}})
+ Object.assign(h.config,{updatesModelSource:'api',updatesApiProtocol:'openai',updatesApiUrl:'https://private-provider.example/v1',updatesApiKey:'private-report-api-password',updatesApiModel:'fixture-model',updatesModelProvider:'saved-provider',updatesModel:'saved-model'})
+ await h.monitor.check();assert.equal(h.monitor.snapshot().report.analyzed,1);assert.equal(prompts.length,1);assert.doesNotMatch(prompts[0],/private-provider|private-report-api-password|saved-provider/);assert.doesNotMatch(h.monitor.snapshot().report.markdown,/private-provider|private-report-api-password/);assert.equal(h.config.updatesModel,'saved-model')
+})
+test('关闭自动检查时仍可显式读取模型列表/测试API，API密钥不出现在返回状态中',async t=>{
+ const h=harness(t,[],{fetch:async(url)=>String(url).endsWith('/models')?Response.json({data:[{id:'example-model'}]}):Response.json({choices:[{finish_reason:'stop',message:{content:'连接成功'}}]})});Object.assign(h.config,{updatesEnabled:false,updatesModelSource:'api',updatesApiProtocol:'openai',updatesApiUrl:'https://api.example.org/v1',updatesApiModel:'example-model',updatesApiKey:'fixture-api-key'})
+ const request=async action=>{let status=0,text='';await h.monitor.handle({url:'/api/updates/'+action,method:'POST'},{writeHead:s=>status=s,end:s=>text=s},'/api/updates');return{status,json:JSON.parse(text)}}
+ assert.deepEqual((await request('models')).json.models,['example-model']);assert.equal((await request('test-model')).json.text,'连接成功');assert.equal((await request('check')).status,409);assert.doesNotMatch(JSON.stringify(h.monitor.snapshot()),/fixture-api-key|https:\/\/api.example.org/)
+})
+test('连接测试期间可查询忙状态，拒绝重复测试，关闭自动检查不会取消手动测试',async t=>{
+ let release;const gate=new Promise(r=>release=r);const h=harness(t,[],{fetch:async()=>{await gate;return Response.json({choices:[{finish_reason:'stop',message:{content:'连接成功'}}]})}});Object.assign(h.config,{updatesEnabled:false,updatesModelSource:'api',updatesApiProtocol:'openai',updatesApiUrl:'https://api.example.org/v1',updatesApiModel:'example-model',updatesApiKey:'fixture-api-key'})
+ const request=async()=>{let status=0;await h.monitor.handle({url:'/api/updates/test-model',method:'POST'},{writeHead:s=>status=s,end:()=>{}},'/api/updates');return status}
+ const running=request();assert.equal(h.monitor.snapshot().testingModel,true);assert.equal(await request(),409);await h.monitor.tick();release();assert.equal(await running,200);assert.equal(h.monitor.snapshot().testingModel,false)
+})

@@ -1,4 +1,3 @@
-/** Independent, opt-in upstream monitoring. Never probes installed host software or reads business data. */
 import z from '@deepseek-ai/schemastery';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 export interface UpdateConfig {
@@ -6,6 +5,11 @@ export interface UpdateConfig {
     updatesReaderFallback: boolean;
     updatesIntervalDays: number;
     updatesAutoAnalyze: boolean;
+    updatesModelSource: 'dsh' | 'api';
+    updatesApiUrl: string;
+    updatesApiKey: string;
+    updatesApiModel: string;
+    updatesApiProtocol: 'openai' | 'anthropic';
     updatesModelProvider: string;
     updatesModel: string;
     updatesMaxTokens: number;
@@ -23,6 +27,11 @@ export interface UpdateConfig {
     updatesExtraSources: string;
 }
 export declare const updateSchema: {
+    updatesModelSource: z<"api" | "dsh", "api" | "dsh", "volatile-defined">;
+    updatesApiUrl: z<string, string, "volatile-defined">;
+    updatesApiKey: z<string, string, "volatile">;
+    updatesApiModel: z<string, string, "volatile-defined">;
+    updatesApiProtocol: z<"anthropic" | "openai", "anthropic" | "openai", "volatile-defined">;
     updatesReaderFallback: z<boolean, boolean, "volatile-defined">;
     updatesEnabled: z<boolean, boolean, "volatile-defined">;
     updatesIntervalDays: z<number, number, "volatile-defined">;
@@ -103,6 +112,7 @@ export declare class UpdateMonitor {
     private state;
     private busy;
     private analyzing;
+    private testingModel;
     private notificationTask?;
     private closed;
     private abort;
@@ -129,6 +139,8 @@ export declare class UpdateMonitor {
     private changes;
     private baseReport;
     analyze(): Promise<void>;
+    private apiSettings;
+    private completeReport;
     private performAnalysis;
     ignore(fingerprints: string[]): void;
     notify(testChannel?: 'mail' | 'push'): Promise<void>;
