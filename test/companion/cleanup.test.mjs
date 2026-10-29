@@ -6,21 +6,9 @@ import { join } from 'node:path'
 import { Archive } from '../../lib/companion/archive.js'
 import { MemoryStore } from '../../lib/companion/memory.js'
 import { Care, similarGroups } from '../../lib/companion/care.js'
-import { archivedImage } from '../../lib/companion/archived-image.js'
 
-test('存档图片：保留格式回退与内容，拒绝越界路径，缺失文件跳过', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'companion-image-'))
-  try {
-    const hash = 'a'.repeat(64)
-    for (const [ext, mime] of [['png', 'image/png'], ['gif', 'image/gif'], ['webp', 'image/webp'], ['jpg', 'image/jpeg'], ['jpeg', 'image/jpeg'], ['bin', 'image/jpeg'], ['constructor', 'image/jpeg']]) {
-      writeFileSync(join(dir, hash + '.' + ext), 'image bytes')
-      assert.deepEqual(archivedImage(dir, hash + '.' + ext), { type: 'image', mediaType: mime, data: Buffer.from('image bytes').toString('base64') })
-    }
-    for (const name of [undefined, '../' + hash + '.png', 'nested/' + hash + '.png', hash.toUpperCase() + '.png', 'missing.png', hash + '.bmp']) assert.equal(archivedImage(dir, name), undefined)
-    mkdirSync(join(dir, hash + '.directory'))
-    assert.throws(() => archivedImage(dir, hash + '.directory'), '读取失败仍由上层处理，不伪装为成功')
-  } finally { rmSync(dir, { recursive: true, force: true }) }
-})
+
+
 
 test('统计查询：空库、混合状态、已遗忘且被取代、不同向量模型保持原有计数', () => {
   const archive = new Archive(':memory:')

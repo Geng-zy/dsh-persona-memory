@@ -7,7 +7,7 @@ import { Archive } from '../../lib/companion/archive.js'
 import { MemoryStore } from '../../lib/companion/memory.js'
 import { TextDoc } from '../../lib/companion/docs.js'
 import { personaTool } from '../../lib/companion/tools.js'
-import { Proactive } from '../../lib/companion/proactive.js'
+
 
 test('批量读取向量跨越 500 条边界，保持模型过滤、缺失与重复 ID 的行为', () => {
   const a = new Archive(':memory:')
@@ -45,28 +45,7 @@ test('人格审核期间设置页已修改或主人权限已取消，旧稿不�
   } finally { rmSync(dir, { recursive: true, force: true }) }
 })
 
-test('主动聊天先检查权限，名单外会话不读取历史/图片、不排任务、不出现在候选中；手动并发只唤醒一次', async () => {
-  const umo = 'snowluma:GroupMessage:555'
-  let allowed = false, reads = 0, wakes = 0, release
-  const p = new Proactive({
-    archive: { umos: () => [{ umo, kind: 'group' }], lastTime: () => Date.now(), recent: () => { reads++; return [] } },
-    organizer: { categoryOf: () => 'group' },
-    mediaDir: '/unused', meta: { get: () => undefined, set: () => { assert.ok(allowed, '禁止的会话不应排任务') } },
-    allowed: () => allowed,
-    settings: () => ({ enabled: true, groupEnabled: true, activeWithinDays: 7, groupContextMessages: 15, silenceToken: '[不发]', timeZone: 'UTC', override: () => undefined }),
-    wake: () => async () => { wakes++; await new Promise(r => { release = r }) }, log: () => {},
-  })
-  assert.deepEqual(await p.tick(), [])
-  assert.deepEqual(p.list(), [])
-  assert.equal(await p.fire(umo, { category: 'group', umo }), false)
-  assert.equal(reads, 0)
-  allowed = true
-  const one = p.fire(umo, { category: 'group', umo })
-  assert.equal(await p.fire(umo, { category: 'group', umo }), false)
-  release()
-  assert.equal(await one, true)
-  assert.equal(wakes, 1)
-})
+
 
 
 test('模型状态只返回标识与思考等级，不把外部接口密钥带回设置页', async () => {

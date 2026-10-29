@@ -1,6 +1,6 @@
 import { parse } from 'acorn'
 import { readFileSync } from 'node:fs'
-for (const file of ['bridge','qq-extra','companion','qq-entry','persona-entry']) {
+for (const file of ['companion', 'persona-entry']) {
  const source=readFileSync(new URL('../src/client/'+file+'.js',import.meta.url),'utf8')
  const tree=parse(source,{ecmaVersion:'latest',sourceType:'script'})
  function visit(node) {

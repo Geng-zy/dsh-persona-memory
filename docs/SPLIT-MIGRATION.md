@@ -1,12 +1,12 @@
 # 从统一版迁移到两个插件
 
-适用于本仓库1.x统一版。两个新包都使用2.0.0；内部配置命名空间`snowluma-bridge`和`companion-core`保留，方便沿用Token、模型及原设置。不要同时启用旧包和新包。
+适用于旧dsh-snowluma-companion仓库的1.x统一版。当前两个独立仓库发行2.1.0；内部配置命名空间`snowluma-bridge`和`companion-core`保留，方便沿用Token、模型及原设置。不要同时启用旧包和新包。
 
 ## 迁移前
 
 等待模型回复、生图和待发队列全部完成，再停止dsh。保留原profile的package.json、pnpm-lock.yaml、cordis.yml/cordis.patch.yml，以及DSH_HOME下的`storages`、`companion`、`snowluma-bridge`目录。`storages`包含工作区归档状态；只恢复旧安装包不能撤销已归档标记。逻辑会话文件原件保留，迁移不会清空QQ登录。
 
-以原dsh运行账号下载[发行页](https://github.com/Geng-zy/dsh-snowluma-companion/releases/tag/v2.0.2)的两个tgz，分别解压到独立临时目录。将`QQ包解压目录/package/deploy`中的两个脚本视为待审查的迁移工具。
+以原dsh运行账号分别从[QQ发行页](https://github.com/Geng-zy/dsh-qq-gateway/releases/tag/v2.1.0)和[人格发行页](https://github.com/Geng-zy/dsh-persona-memory/releases/tag/v2.1.0)下载两个tgz，分别解压到独立临时目录。将`QQ包解压目录/package/deploy`中的两个脚本视为待审查的迁移工具。
 
 ## 迁移配置和安装
 
@@ -19,7 +19,7 @@ cd /绝对路径/临时工具目录
 pnpm init
 pnpm add yaml@2.9.1
 # 将QQ发行包的deploy目录复制到这个工具目录，再执行：
-node deploy/migrate-profile.mjs /绝对路径/DSH_HOME/profiles/web /绝对路径/dsh-qq-gateway-2.0.2.tgz /绝对路径/dsh-persona-memory-2.0.2.tgz
+node deploy/migrate-profile.mjs /绝对路径/DSH_HOME/profiles/web /绝对路径/dsh-qq-gateway-2.1.0.tgz /绝对路径/dsh-persona-memory-2.1.0.tgz
 cd /绝对路径/DSH_HOME/profiles/web
 pnpm install --ignore-scripts
 ```
@@ -45,3 +45,7 @@ node /绝对路径/DSH_HOME/profiles/web/node_modules/dsh-qq-gateway/deploy/migr
 ## 回退
 
 先停止dsh，恢复原profile及`storages`，重新安装原依赖，再用原`companion`和`snowluma-bridge`目录启动。保留新目录供核对，不能直接覆盖；原会话文件仍在。回退过程中不要触碰SnowLuma命名卷、密码或QQ账号。恢复存储快照前须确认新版本尚未产生需要保留的新业务数据。
+
+## 已安装2.0.x独立包
+
+仓库拆分不改变包名、配置命名空间或数据目录。停止dsh后，按两个新仓库的安装命令分别升级到2.1.0，再按原方式启动；不必重新运行数据拆分脚本。QQ命令权限现统一要求机器人管理员QQ，普通白名单私聊和群成员不再可用命令。
