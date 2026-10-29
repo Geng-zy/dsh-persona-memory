@@ -382,12 +382,13 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
   })
 
   const sessionStore = new SessionStore(join(defaultDataDir(), 'sessions.json'))
+  let hasPendingReplies=()=>false
   const workspace = new QqWorkspaceManager({
     registry: ctx.get('workspaceRegistry' as never) as never,
     persistence: ctx.get('sessionPersistence' as never) as never,
     configuredPath: () => get('workspacePath'),
     memo: new SessionStore(join(defaultDataDir(),'workspace-migrations.json')),
-    busy: id => (ctx.agents.list() as any[]).some(a=>String(a.session?.id)===id && a.status==='running'),
+    busy: id => hasPendingReplies() || (ctx.agents.list() as any[]).some(a=>String(a.session?.id)===id && a.status==='running'),
     owned: id => id.startsWith(dshSessionId(get('id')+':')),
     replace: (oldId,newId) => {
       for(const [umo,id] of sessionStore.entries()) if(id===oldId)sessionStore.set(umo,newId)
@@ -466,6 +467,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
     tts,
     log,
   })
+  hasPendingReplies=()=>bridge.pendingReplies>0
 
   const adapter: AiocqhttpAdapter = new AiocqhttpAdapter({
     id: () => get('id'),

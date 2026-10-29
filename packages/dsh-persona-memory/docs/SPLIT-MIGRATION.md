@@ -6,7 +6,7 @@
 
 等待模型回复、生图和待发队列全部完成，再停止dsh。保留原profile的package.json、pnpm-lock.yaml、cordis.yml/cordis.patch.yml，以及DSH_HOME下的`storages`、`companion`、`snowluma-bridge`目录。`storages`包含工作区归档状态；只恢复旧安装包不能撤销已归档标记。逻辑会话文件原件保留，迁移不会清空QQ登录。
 
-以原dsh运行账号下载[发行页](https://github.com/Geng-zy/dsh-snowluma-companion/releases/tag/v2.0.1)的两个tgz，分别解压到独立临时目录。将`QQ包解压目录/package/deploy`中的两个脚本视为待审查的迁移工具。
+以原dsh运行账号下载[发行页](https://github.com/Geng-zy/dsh-snowluma-companion/releases/tag/v2.0.2)的两个tgz，分别解压到独立临时目录。将`QQ包解压目录/package/deploy`中的两个脚本视为待审查的迁移工具。
 
 ## 迁移配置和安装
 
@@ -19,7 +19,7 @@ cd /绝对路径/临时工具目录
 pnpm init
 pnpm add yaml@2.9.1
 # 将QQ发行包的deploy目录复制到这个工具目录，再执行：
-node deploy/migrate-profile.mjs /绝对路径/DSH_HOME/profiles/web /绝对路径/dsh-qq-gateway-2.0.1.tgz /绝对路径/dsh-persona-memory-2.0.1.tgz
+node deploy/migrate-profile.mjs /绝对路径/DSH_HOME/profiles/web /绝对路径/dsh-qq-gateway-2.0.2.tgz /绝对路径/dsh-persona-memory-2.0.2.tgz
 cd /绝对路径/DSH_HOME/profiles/web
 pnpm install --ignore-scripts
 ```

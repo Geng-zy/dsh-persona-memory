@@ -22,7 +22,7 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-VERSION = '2.0.1'
+VERSION = '2.0.2'
 DSH_VERSION = '0.2.1-rc.2'
 NODE_VERSION = '24.22.1'
 PNPM_VERSION = '11.28.5'
