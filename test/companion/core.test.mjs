@@ -10,7 +10,7 @@ import { Archive } from '../../lib/companion/archive.js'
 import { TextDoc, applyEdit } from '../../lib/companion/docs.js'
 import { applyPrompt, personaText, CORE_SECTION, IDENTITY_SECTION, PERSONA_SECTION } from '../../lib/companion/prompt.js'
 import { countRounds, pendingHumanTurn, selectRounds, truncationNote } from '../../lib/companion/rounds.js'
-import { archiveRule, contextRule, matchRule, scopeOf } from '../../lib/companion/rules.js'
+import { contextRule, matchRule, scopeOf } from '../../lib/companion/rules.js'
 
 const tmp = () => mkdtempSync(join(tmpdir(), 'companion-'))
 
@@ -64,7 +64,6 @@ test('scopeOf：插件一登记的会话按类型分；没登记的 QQ 会话不
 test('例外规则：群按群号、私聊按 QQ 号；空着的项用默认', () => {
   const defaults = {
     context: { master: { maxRounds: 60, dropRounds: 20, mode: 'llm' }, private: { maxRounds: 60, dropRounds: 20, mode: 'truncate' }, group: { maxRounds: 60, dropRounds: 20, mode: 'truncate' } },
-    archive: { master: { days: 365, unwoken: true }, private: { days: 5, unwoken: true }, group: { days: 5, unwoken: true } },
   }
   const rows = [
     { target: '555', kind: 'group', maxRounds: 10, mode: 'llm', archiveUnwoken: 'off' },
@@ -73,10 +72,8 @@ test('例外规则：群按群号、私聊按 QQ 号；空着的项用默认', (
   ]
   const group = { category: 'group', qq: true, groupId: '555' }
   assert.deepEqual(contextRule(group, defaults, rows), { maxRounds: 10, dropRounds: 20, mode: 'llm' })
-  assert.deepEqual(archiveRule(group, defaults, rows), { days: 5, unwoken: false })
   const p = { category: 'private', qq: true, userId: '8' }
   assert.deepEqual(contextRule(p, defaults, rows), defaults.context.private)
-  assert.deepEqual(archiveRule(p, defaults, rows), { days: 30, unwoken: true })
   assert.equal(matchRule({ category: 'master', qq: false }, rows), undefined)
 })
 

@@ -1,10 +1,6 @@
-// 备份与迁移：把勾选的东西打成一个 .tar.gz，导入时也按勾选还原。
-// 能备份的（ITEMS）：人格和核心记忆现稿、日记和月度总览、记忆库（长期记忆、向量、关系网、指纹）、
-// 主人私聊的消息存档和图片、主人 QQ 私聊的 dsh 会话及引用附件、插件二 / 插件一 / dsh 其他插件的设置（配置不含 Key 和 Token：
-// 从 dsh 设置服务读，标了 role('secret') 的字段它会自己去掉）。另有一份清单 manifest.json（版本、时间、各种数量、每个文件的 SHA-256）。
-// 普通包不包含配置密钥、其他私聊或群聊的存档和 dsh 会话、网页会话及运行环境。原始会话可能包含聊天中出现的敏感内容。
-// 导入：先解开、核对校验值、给你看清单和勾选；确认后先自动备份当前全部数据，设置马上套用，
-// 文件和数据库在插件重新加载时替换（数据库在用着时不能动）。数据库按勾选的部分换表，没勾的部分保持原样。
+// 备份与迁移：人格和核心记忆现稿、日记、长期记忆/关系图及本插件非密钥设置。
+// 保留旧清单字段和设置迁移；cleanItems在导出/恢复写入前限制为本插件的项目。
+// 上传先校验路径、文件类型、大小与摘要，确认后按选择恢复，其他数据保持。
 
 import { execFile } from 'node:child_process'
 import { createHash } from 'node:crypto'
@@ -14,7 +10,6 @@ import { DatabaseSync } from 'node:sqlite'
 import {writeBackupGuide} from './backup-guide.js'
 import { Archive } from './archive.js'
 import { TextDoc } from './docs.js'
-import { exportMasterSessions, importMasterSessions, type MasterSessionServices } from './master-sessions.js'
 
 export const BACKUP_FORMAT = 'dsh-companion-backup'
 export const BACKUP_FORMAT_VERSION = 3
@@ -52,14 +47,12 @@ export function itemsOf(m: Manifest): BackupItem[] {
   return Array.isArray(m.items) ? cleanItems(m.items) : LEGACY_ITEMS
 }
 
-/** Validated payload files grouped by the restore operation that consumes them. A DB may serve two independent table selections. */
+/** 按当前插件可恢复项目列出已校验的业务文件。 */
 export function restoreContents(m: Manifest): Array<{ item: BackupItem; files: Array<{ path: string; size: number }> }> {
   return itemsOf(m).map(item => ({ item, files: m.files.filter(f => {
     if (item === 'persona' || item === 'core') return DOC_FILES[item].some(([path]) => path === f.path)
     if (item === 'diary') return f.path.startsWith('diary/')
     if (item === 'memory') return f.path === 'companion.db'
-    if (item === 'archiveMaster') return f.path === 'companion.db' || f.path.startsWith('media/')
-    if (item === 'sessionsMaster') return f.path === 'master-sessions.json'
     return Object.entries(SETTINGS_FILES).some(([name, value]) => value === item && f.path === 'settings/' + name + '.json') || item === 'settingsCompanion' && f.path === 'settings.json'
   }).map(({ path, size }) => ({ path, size })) }))
 }
@@ -134,7 +127,6 @@ export interface CreateOptions {
   /** 设置文件（名字见 SETTINGS_FILES），只放勾选了的 */
   settingDescriptions?:Record<string,string>
   settingsFiles?: Record<string, unknown>
-  sessionServices?: MasterSessionServices
   now?: number
 }
 
@@ -157,11 +149,7 @@ export async function createBackup(o: CreateOptions): Promise<{ name: string; ma
         cpSync(join(o.dataDir, file), join(staging, file))
       }
     }
-    let archiveMessages = 0
-    const masterSessions = items.has('sessionsMaster') ? await exportMasterSessions(staging, o.sessionServices ?? {}) : 0
-    let range: Manifest['range'] = {}
     let memories = 0
-    const media = new Set<string>()
     if (DB_ITEMS.some(i => items.has(i))) {
       // 数据库：在线拷一份（VACUUM INTO 不影响正在用的），再删掉没勾的部分
       const dbPath = join(staging, 'companion.db')
@@ -177,12 +165,6 @@ export async function createBackup(o: CreateOptions): Promise<{ name: string; ma
         copy.close()
       }
     }
-    for (const name of media) {
-      const src = join(o.dataDir, 'media', name)
-      if (!existsSync(src)) continue
-      mkdirSync(join(staging, 'media'), { recursive: true })
-      cpSync(src, join(staging, 'media', name))
-    }
     if (items.has('settingsCompanion')) writeFileSync(join(staging, 'settings.json'), JSON.stringify(o.settings, null, 2))
     for (const [name, value] of Object.entries(o.settingsFiles ?? {})) {
       if (SETTINGS_FILES[name] === undefined || !items.has(SETTINGS_FILES[name])) continue
@@ -195,8 +177,8 @@ export async function createBackup(o: CreateOptions): Promise<{ name: string; ma
     const manifest: Manifest = {
       owner: 'dsh-persona-memory', format: BACKUP_FORMAT, formatVersion: BACKUP_FORMAT_VERSION, plugin: o.plugin, schema: o.schema, createdAt: now, reason: o.reason,
       items: ITEMS.filter(i => items.has(i)),
-      counts: { memories, diaryDays: diaryFiles.filter(f => !f.startsWith('monthly/')).length, months: diaryFiles.filter(f => f.startsWith('monthly/')).length, archiveMessages, media: media.size, masterSessions },
-      range, embed: o.embed, settings: items.has('settingsCompanion') ? o.settings : {}, files,
+      counts: { memories, diaryDays: diaryFiles.filter(f => !f.startsWith('monthly/')).length, months: diaryFiles.filter(f => f.startsWith('monthly/')).length, archiveMessages: 0, media: 0, masterSessions: 0 },
+      range: {}, embed: o.embed, settings: items.has('settingsCompanion') ? o.settings : {}, files,
     }
     writeFileSync(join(staging, 'manifest.json'), JSON.stringify(manifest, null, 2))
     const name = 'persona-memory-' + (o.reason === 'auto' ? 'auto' : o.reason === 'before-import' ? 'before-import' : 'manual') + '-' + stamp(now) + '.tar.gz'
@@ -283,10 +265,10 @@ export interface RestorePlan { items: BackupItem[]; notes?: string[] }
 
 /**
  * 插件启动时（打开数据库之前）调用：有待导入的数据就按勾选还原。
- * 原始会话先建立新日志并切换绑定（旧日志保留），再换数据库（一个事务），再换文件夹（旧的先挪开，失败放回去），图片只补不删。
+ * 记忆数据库使用事务替换；文档保留修订历史，日记目录替换失败时恢复旧目录。
  * 返回导入的清单和勾选（没有待导入时 undefined）。
  */
-export async function applyPendingImport(dataDir: string, historyKeep: () => number = () => 20, sessionServices: MasterSessionServices = {}): Promise<{ manifest: Manifest; plan: RestorePlan } | undefined> {
+export async function applyPendingImport(dataDir: string, historyKeep: () => number = () => 20): Promise<{ manifest: Manifest; plan: RestorePlan } | undefined> {
   const pending = join(dataDir, '.pending-import')
   if (!existsSync(join(pending, 'manifest.json'))) return undefined
   const manifest = JSON.parse(readFileSync(join(pending, 'manifest.json'), 'utf-8')) as Manifest
@@ -294,8 +276,7 @@ export async function applyPendingImport(dataDir: string, historyKeep: () => num
   const plan: RestorePlan = existsSync(planPath) ? JSON.parse(readFileSync(planPath, 'utf-8')) as RestorePlan : { items: itemsOf(manifest) }
   plan.items = cleanItems(plan.items).filter(item=>itemsOf(manifest).includes(item))
   if(!plan.items.length)throw new Error('备份中没有属于当前插件的可恢复内容')
-  const items = new Set(cleanItems(plan.items).filter(i => itemsOf(manifest).includes(i)))
-  if (items.has('sessionsMaster')) await importMasterSessions(pending, sessionServices)
+  const items = new Set(plan.items) // 已在上一行按所属插件与清单筛选
   if (DB_ITEMS.some(i => items.has(i)) && existsSync(join(pending, 'companion.db'))) mergeDb(join(dataDir, 'companion.db'), join(pending, 'companion.db'), items)
   // 人格、核心记忆：只换文件，历史版本留着（被换掉的那版也存进去，导错了能在设置页回退）
   for (const d of Object.keys(DOC_FILES)) {
@@ -317,10 +298,6 @@ export async function applyPendingImport(dataDir: string, historyKeep: () => num
   } catch (e) {
     for (const d of moved) if (!existsSync(join(dataDir, d))) renameSync(join(aside, d), join(dataDir, d))
     throw e
-  }
-  if (items.has('archiveMaster') && existsSync(join(pending, 'media'))) {
-    mkdirSync(join(dataDir, 'media'), { recursive: true })
-    for (const name of readdirSync(join(pending, 'media'))) if (!existsSync(join(dataDir, 'media', name))) cpSync(join(pending, 'media', name), join(dataDir, 'media', name))
   }
   rmSync(pending, { recursive: true, force: true })
   rmSync(aside, { recursive: true, force: true })

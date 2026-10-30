@@ -1,5 +1,4 @@
 import { DatabaseSync } from 'node:sqlite';
-import { type MasterSessionServices } from './master-sessions.js';
 export declare const BACKUP_FORMAT = "dsh-companion-backup";
 export declare const BACKUP_FORMAT_VERSION = 3;
 /** 能备份的东西，顺序就是设置页里的顺序 */
@@ -14,7 +13,7 @@ export declare function cleanItems(list: unknown): BackupItem[];
 export declare function configuredItems(list: unknown): BackupItem[];
 /** 包里有哪些（旧包没写就按旧版固定内容算） */
 export declare function itemsOf(m: Manifest): BackupItem[];
-/** Validated payload files grouped by the restore operation that consumes them. A DB may serve two independent table selections. */
+/** 按当前插件可恢复项目列出已校验的业务文件。 */
 export declare function restoreContents(m: Manifest): Array<{
     item: BackupItem;
     files: Array<{
@@ -86,7 +85,6 @@ export interface CreateOptions {
     /** 设置文件（名字见 SETTINGS_FILES），只放勾选了的 */
     settingDescriptions?: Record<string, string>;
     settingsFiles?: Record<string, unknown>;
-    sessionServices?: MasterSessionServices;
     now?: number;
 }
 /** 打一个备份包，返回文件名。成功生成后，所有类型合计仅保留最新 keep 份。 */
@@ -113,10 +111,10 @@ export interface RestorePlan {
 }
 /**
  * 插件启动时（打开数据库之前）调用：有待导入的数据就按勾选还原。
- * 原始会话先建立新日志并切换绑定（旧日志保留），再换数据库（一个事务），再换文件夹（旧的先挪开，失败放回去），图片只补不删。
+ * 记忆数据库使用事务替换；文档保留修订历史，日记目录替换失败时恢复旧目录。
  * 返回导入的清单和勾选（没有待导入时 undefined）。
  */
-export declare function applyPendingImport(dataDir: string, historyKeep?: () => number, sessionServices?: MasterSessionServices): Promise<{
+export declare function applyPendingImport(dataDir: string, historyKeep?: () => number): Promise<{
     manifest: Manifest;
     plan: RestorePlan;
 } | undefined>;

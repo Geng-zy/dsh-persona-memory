@@ -1,50 +1,18 @@
-// 每天定时做的事（默认凌晨 1:30，一天按凌晨 4 点分界）：
-//   1. 写日记：这段时间里她和主人的聊天（QQ 主人私聊 + dsh 里的会话）和新记的主人记忆 → 第一人称日记；
-//      跨月时再写上个月的月度总览。日记永久保留，也写进记忆库（类型 diary）。
-//   2. 存档到期：每个 QQ 会话按保留天数（主人默认 365 天，其他 5 天）——
-//      先整理还没整理的 → 删掉到期的存档 → 这个 dsh 会话也用满了保留期就换新会话（开头带最近几句）→
-//      旧会话归档；其他人的旧会话等它最后一条消息也过期后再删掉（主人的永不删）。
-//   3. 清理：没被存档引用的图片文件、过期的聊天流水。
-// 设置页可以「立即运行」。
+// 人格插件每日任务：管理员日记和月度总览。QQ存档保留与轮换由QQ插件负责。
 
-import { existsSync, readdirSync, rmSync, statSync } from 'node:fs'
-import { join, resolve, sep } from 'node:path'
 import type { Archive } from './archive.js'
 import { diaryPrompt, logicalDay, monthPrompt, type DiaryStore } from './diary.js'
 import { complete, type LlmLike, type ModelTarget } from './extract.js'
 import type { MemoryStore } from './memory.js'
 import type { Organizer } from './organizer.js'
 import { transcriptOf } from './organizer.js'
-import type { Category, Scope } from './rules.js'
 
-const DAY = 86_400_000
 
 export interface MaintenanceSettings {
   diaryEnabled: boolean
   monthlyEnabled: boolean
   boundaryHour: number
   timeZone: string
-  rotateSessions: boolean
-  deleteOldSessions: boolean
-  /** 换会话时带过去最近几条消息 */
-  carryMessages: number
-  /** 这个会话的存档保留天数 */
-  archiveDays(scope: Scope): number
-}
-
-export interface SnowlumaRotate {
-  rotateSession?(umo: string): Promise<{ oldSessionId: string; newSessionId: string }>
-}
-
-export interface WorkspaceRegistryLike {
-  archiveSession?(id: string, options?: { stopActivity?: boolean }): Promise<void>
-  unarchiveSession?(id: string): Promise<void>
-  list?(): Array<{ sessionIds: readonly string[]; detachSession?(id: string): Promise<void> }>
-}
-
-export interface PersistenceLike {
-  stat(id: string): Promise<unknown>
-  list?(): Promise<unknown[]>
 }
 
 export interface MaintenanceDeps {
@@ -55,17 +23,6 @@ export interface MaintenanceDeps {
   llm(): LlmLike | undefined
   target(): ModelTarget | undefined
   settings(): MaintenanceSettings
-  snowluma(): SnowlumaRotate | undefined
-  registry(): WorkspaceRegistryLike | undefined
-  persistence(): PersistenceLike | undefined
-  /** 这个 dsh 会话还在跑吗（在跑的不能删） */
-  isLive(sessionId: string): boolean
-  /** <DSH_HOME>/sessions */
-  sessionsRoot: string
-  /** 图片目录 */
-  mediaDir: string
-  /** 换会话时带过去的内容存起来，新会话第一轮给她 */
-  setCarry(umo: string, text: string): void
   log(level: 'debug' | 'info' | 'warn', message: string): void
 }
 
@@ -80,11 +37,6 @@ export interface MaintenanceReport {
 
 const errText = (e: unknown): string => (e instanceof Error ? e.message : String(e))
 
-function scopeOfUmo(umo: string, category: Category): Scope {
-  const id = umo.split(':').pop() ?? ''
-  return category === 'group' ? { category, qq: true, umo, groupId: id } : { category, qq: true, umo, userId: id }
-}
-
 export class Maintenance {
   private running: Promise<MaintenanceReport> | undefined
   last: MaintenanceReport | undefined
@@ -92,15 +44,15 @@ export class Maintenance {
   constructor(private readonly deps: MaintenanceDeps) {}
 
   /** 跑一遍（同时只跑一个）。 */
-  run(now = Date.now(), what: 'all' | 'diary' | 'expire' = 'all'): Promise<MaintenanceReport> {
+  run(now = Date.now()): Promise<MaintenanceReport> {
     if (this.running !== undefined) return this.running
-    this.running = this.doRun(now, what).finally(() => { this.running = undefined })
+    this.running = this.doRun(now).finally(() => { this.running = undefined })
     return this.running
   }
 
-  private async doRun(now: number, what: 'all' | 'diary' | 'expire'): Promise<MaintenanceReport> {
+  private async doRun(now: number): Promise<MaintenanceReport> {
     const report: MaintenanceReport = { at: now, expired: [], deletedSessions: [], failedSessions: [], mediaRemoved: 0 }
-    if (what !== 'expire' && this.deps.settings().diaryEnabled) {
+    if (this.deps.settings().diaryEnabled) {
       try {
         report.diary = await this.writeDiary(now)
       } catch (e) {
@@ -108,7 +60,6 @@ export class Maintenance {
         this.deps.log('warn', '写日记失败：' + errText(e))
       }
     }
-    if (what !== 'diary') await this.expire(now, report)
     this.last = report
     return report
   }
@@ -173,119 +124,4 @@ export class Maintenance {
   }
   //#endregion
 
-  //#region 存档到期、换会话
-  private async expire(now: number, report: MaintenanceReport): Promise<void> {
-    const s = this.deps.settings()
-    const { archive, organizer } = this.deps
-    for (const { umo, kind } of archive.umos()) {
-      const category = organizer.categoryOf(umo, kind)
-      const scope = scopeOfUmo(umo, category)
-      const cutoff = now - Math.max(1, s.archiveDays(scope)) * DAY
-      const item: MaintenanceReport['expired'][number] = { umo, deleted: 0 }
-      try {
-        const oldest = archive.oldest(umo)
-        const current = archive.currentSession(umo)
-        // 已经换掉的旧会话（新会话还没有消息时，存档里最近的还是它）不再换第二次
-        const needRotate = s.rotateSessions && current !== undefined && current.firstTime < cutoff && !archive.isRetired(current.sessionId)
-        if ((oldest !== undefined && oldest < cutoff) || needRotate) {
-          // 先整理还没整理的部分（只整理没整理过的）
-          await organizer.organizeUmo(umo, '存档到期')
-        }
-        if (needRotate && current !== undefined) {
-          const rotate = this.deps.snowluma()?.rotateSession
-          if (rotate !== undefined) {
-            const recent = archive.recent(umo, Math.max(0, s.carryMessages))
-            if (recent.length > 0) this.deps.setCarry(umo, transcriptOf(recent).join('\n'))
-            const r = await rotate(umo)
-            item.rotated = r.newSessionId
-            archive.retire({ sessionId: r.oldSessionId, umo, category, lastTime: current.lastTime, state: 'archived' })
-            await this.archiveSession(r.oldSessionId)
-            this.deps.log('info', umo + ' 用满保留期，换到新会话 ' + r.newSessionId + '，旧会话 ' + r.oldSessionId + ' 已归档')
-          }
-        }
-        if (oldest !== undefined && oldest < cutoff) {
-          item.deleted = archive.deleteBefore(umo, cutoff)
-          if (item.deleted > 0) this.deps.log('info', umo + ' 删掉了 ' + item.deleted + ' 条到期存档')
-        }
-      } catch (e) {
-        item.error = errText(e)
-        this.deps.log('warn', umo + ' 到期处理失败：' + item.error)
-      }
-      if (item.deleted > 0 || item.rotated || item.error) report.expired.push(item)
-    }
-    // 其他人的旧会话：最后一条消息也过期了就删掉（主人的永不删）
-    if (s.deleteOldSessions) {
-      for (const r of archive.retiredList()) {
-        if (r.state !== 'archived' || r.category === 'master') continue
-        const cutoff = now - Math.max(1, s.archiveDays(scopeOfUmo(r.umo, r.category as Category))) * DAY
-        if (r.lastTime >= cutoff) continue
-        try {
-          await this.deleteSession(r.sessionId)
-          archive.retire({ ...r, state: 'deleted' })
-          report.deletedSessions.push(r.sessionId)
-          this.deps.log('info', '删掉了已归档的旧会话 ' + r.sessionId)
-        } catch (e) {
-          archive.retire({ ...r, state: 'failed', note: errText(e) })
-          report.failedSessions.push({ sessionId: r.sessionId, error: errText(e) })
-          this.deps.log('warn', '删旧会话 ' + r.sessionId + ' 失败（保留归档）：' + errText(e))
-        }
-      }
-    }
-    // 没被引用的图片、7 天前的聊天流水（已经整理过、写过日记）
-    report.mediaRemoved = this.gcMedia()
-    archive.deleteJournalBefore(Math.min(now - 7 * DAY, archive.cursor('diary:to') || now))
-  }
-
-  private async archiveSession(id: string): Promise<void> {
-    try {
-      await this.deps.registry()?.archiveSession?.(id, { stopActivity: true })
-    } catch (e) {
-      this.deps.log('debug', '归档会话 ' + id + ' 时 dsh 说：' + errText(e))
-    }
-  }
-
-  /**
-   * 删一个已归档的旧会话（dsh 没有删除接口，这是我们自己的做法，端到端测试验证过）：
-   * 确认不在跑 → 从工作区移除 → 删掉会话文件夹 → 从归档列表去掉 → 确认 dsh 查不到它了、列表还正常。
-   * 只删插件一建的 QQ 会话（id 以 snowluma- 开头），文件夹必须在 <DSH_HOME>/sessions 里。
-   */
-  async deleteSession(id: string): Promise<void> {
-    if (!/^snowluma-[A-Za-z0-9-]+$/.test(id)) throw new Error('只删 dsh-snowluma-bridge 建的会话')
-    if (this.deps.isLive(id)) throw new Error('会话还在跑')
-    const registry = this.deps.registry()
-    for (const ws of registry?.list?.() ?? []) {
-      if (ws.sessionIds.includes(id)) await ws.detachSession?.(id)
-    }
-    const root = resolve(this.deps.sessionsRoot)
-    const dirs: string[] = []
-    if (existsSync(root)) {
-      for (const project of readdirSync(root)) {
-        const candidate = resolve(root, project, id)
-        if (candidate.startsWith(root + sep) && existsSync(candidate) && statSync(candidate).isDirectory()) dirs.push(candidate)
-      }
-    }
-    if (dirs.length === 0) throw new Error('没找到会话文件夹')
-    for (const d of dirs) rmSync(d, { recursive: true, force: true })
-    try { await registry?.unarchiveSession?.(id) } catch { /* 已经不在归档里 */ }
-    const persistence = this.deps.persistence()
-    if (persistence !== undefined) {
-      if (await persistence.stat(id) !== undefined) throw new Error('删了文件夹，dsh 还能查到这个会话')
-      await persistence.list?.()
-    }
-  }
-
-  /** 删掉没被存档引用的图片，返回删了几个。 */
-  private gcMedia(): number {
-    const dir = this.deps.mediaDir
-    if (!existsSync(dir)) return 0
-    const refs = this.deps.archive.mediaRefs()
-    let n = 0
-    for (const name of readdirSync(dir)) {
-      if (refs.has(name)) continue
-      rmSync(join(dir, name), { force: true })
-      n += 1
-    }
-    return n
-  }
-  //#endregion
 }

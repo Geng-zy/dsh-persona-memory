@@ -70,13 +70,6 @@ export interface ContextRule {
   mode: ContextMode
 }
 
-export interface ArchiveRule {
-  /** 保留多少天（阶段 3 起按它删除） */
-  days: number
-  /** 保存没唤醒她的群消息 */
-  unwoken: boolean
-}
-
 /** 例外规则的一行（设置页的表格）。空着的项用默认值。 */
 export interface RuleRow {
   /** QQ 号或群号 */
@@ -98,7 +91,6 @@ export type ForgetMode = 'normal' | 'purge'
 
 export interface RuleDefaults {
   context: Record<Category, ContextRule>
-  archive: Record<Category, ArchiveRule>
   forget: Record<Category, ForgetMode>
 }
 
@@ -120,16 +112,6 @@ export function contextRule(scope: Scope, defaults: RuleDefaults, rows: readonly
     maxRounds: isCount(row.maxRounds) ? row.maxRounds : base.maxRounds,
     dropRounds: isCount(row.dropRounds) && row.dropRounds > 0 ? row.dropRounds : base.dropRounds,
     mode: row.mode === 'truncate' || row.mode === 'llm' ? row.mode : base.mode,
-  }
-}
-
-export function archiveRule(scope: Scope, defaults: RuleDefaults, rows: readonly RuleRow[]): ArchiveRule {
-  const base = defaults.archive[scope.category]
-  const row = matchRule(scope, rows)
-  if (row === undefined) return { ...base }
-  return {
-    days: isCount(row.archiveDays) && row.archiveDays > 0 ? row.archiveDays : base.days,
-    unwoken: row.archiveUnwoken === 'on' ? true : row.archiveUnwoken === 'off' ? false : base.unwoken,
   }
 }
 

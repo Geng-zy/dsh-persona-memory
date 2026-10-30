@@ -45,12 +45,6 @@ export interface ContextRule {
     dropRounds: number;
     mode: ContextMode;
 }
-export interface ArchiveRule {
-    /** 保留多少天（阶段 3 起按它删除） */
-    days: number;
-    /** 保存没唤醒她的群消息 */
-    unwoken: boolean;
-}
 /** 例外规则的一行（设置页的表格）。空着的项用默认值。 */
 export interface RuleRow {
     /** QQ 号或群号 */
@@ -70,12 +64,10 @@ export interface RuleRow {
 export type ForgetMode = 'normal' | 'purge';
 export interface RuleDefaults {
     context: Record<Category, ContextRule>;
-    archive: Record<Category, ArchiveRule>;
     forget: Record<Category, ForgetMode>;
 }
 /** 这个会话命中的例外规则：群会话按群号，私聊（含主人）按对方 QQ 号。 */
 export declare function matchRule(scope: Scope, rows: readonly RuleRow[]): RuleRow | undefined;
 export declare function contextRule(scope: Scope, defaults: RuleDefaults, rows: readonly RuleRow[]): ContextRule;
-export declare function archiveRule(scope: Scope, defaults: RuleDefaults, rows: readonly RuleRow[]): ArchiveRule;
 /** 这个会话的遗忘方式：默认主人普通遗忘、其他直接彻底遗忘，例外规则可改。 */
 export declare function forgetMode(scope: Scope, defaults: RuleDefaults, rows: readonly RuleRow[]): ForgetMode;

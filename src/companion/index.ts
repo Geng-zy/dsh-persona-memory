@@ -18,7 +18,7 @@ import { Archive } from './archive.js'
 import { TextDoc, defaultDataDir } from './docs.js'
 import { applyPrompt, coreBlock, personaText, type AssemblyLike } from './prompt.js'
 import { listModels } from '../models.js'
-import { archiveAllowed, archiveRule, contextRule, forgetMode, scopeOf, type Category, type ContextMode, type ForgetMode, type SnowlumaLike, type RuleDefaults, type RuleRow, type Scope } from './rules.js'
+import { archiveAllowed, contextRule, forgetMode, scopeOf, type Category, type ContextMode, type ForgetMode, type SnowlumaLike, type RuleDefaults, type RuleRow, type Scope } from './rules.js'
 import type { BeforeCompactPayload, CompanionService, ContextPolicy } from './service.js'
 import { coreTool, personaTool, type ToolDeps } from './tools.js'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
@@ -34,14 +34,12 @@ import { countRounds, isHumanTurn, pendingHumanTurn } from './rounds.js'
 import { DiaryStore, diaryBlock, guessDate, localClock, logicalDay } from './diary.js'
 import { Maintenance } from './maintenance.js'
 import { Care } from './care.js'
-import type { MasterSessionServices } from './master-sessions.js'
 import { applyPendingImport, cleanItems, configuredItems, createBackup, DEFAULT_ITEMS, inspectBackup, ITEMS, itemsOf, listBackups, readSavedSettings, safeBackupName, restoreContents, SETTINGS_ITEMS, type BackupItem, type Manifest, type RestorePlan, type SavedSettings } from './backup.js'
 import { SCHEMA_VERSION } from './archive.js'
 import { createReadStream, createWriteStream, renameSync, rmSync, statSync } from 'node:fs'
 import { pipeline } from 'node:stream/promises'
 import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { dirname } from 'node:path'
 
 declare module '@deepseek-ai/dsh-llm' {
   interface MessageSourceMap {
@@ -245,7 +243,7 @@ export const Config: z<LiveConfig> = z.object({
   // 群聊上下文
   // 日记
   diaryEnabled: z.boolean().default(true).volatile().description('每天写日记'),
-  diaryTime: z.string().default('01:30').volatile().description('每天几点写日记、处理存档到期（HH:MM）'),
+  diaryTime: z.string().default('01:30').volatile().description('每日生成日记的时间（HH:MM）；QQ存档到期由QQ插件单独处理'),
   dayBoundaryHour: z.natural().max(12).default(4).volatile().description('一天按凌晨几点分界'),
   timezone: z.string().default('Asia/Shanghai').volatile().description('时区'),
   monthlyEnabled: z.boolean().default(true).volatile().description('每月写月度总览'),
@@ -298,12 +296,6 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
     else console.log(line)
   }
 
-  const sessionServices = (): MasterSessionServices => ({
-    bridge: ctx.get('snowluma' as never) as never,
-    persistence: ctx.get('sessionPersistence' as never) as never,
-    attachments: ctx.get('attachments' as never) as never,
-    workspaces: ctx.get('workspaceRegistry' as never) as never,
-  })
   const dir = defaultDataDir()
   const updates = new UpdateMonitor({ catalog: updateCatalog, directory: join(dir, 'developer'), settings: () => Object.fromEntries(Object.keys(updateSchema).map(key => [key, get(key as keyof Config)])) as unknown as UpdateConfig, llm: () => ctx.get('llm' as never) as never })
   ctx.effect(() => updates.start(), 'upstream updates: independent and opt-in')
@@ -318,7 +310,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
   // 导入：上一次在设置页确认导入后，插件重新加载时在这里替换数据（数据库还没打开）
   let lastImport: { manifest: Manifest; plan?: RestorePlan; at: number; error?: string } | undefined
   try {
-    const imported = await applyPendingImport(dir, keep, sessionServices())
+    const imported = await applyPendingImport(dir, keep)
     if (imported !== undefined) {
       lastImport = { manifest: imported.manifest, plan: imported.plan, at: Date.now() }
       log('info', '导入了备份包（' + new Date(imported.manifest.createdAt).toISOString() + ' 做的，还原了：' + imported.plan.items.join('、') + '）')
@@ -357,11 +349,6 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
       master: { maxRounds: get('masterMaxRounds'), dropRounds: get('masterDropRounds'), mode: get('masterMode') },
       private: { maxRounds: get('privateMaxRounds'), dropRounds: get('privateDropRounds'), mode: get('privateMode') },
       group: { maxRounds: get('groupMaxRounds'), dropRounds: get('groupDropRounds'), mode: get('groupMode') },
-    },
-    archive: {
-      master: { days: 365, unwoken: true },
-      private: { days: 5, unwoken: true },
-      group: { days: 5, unwoken: true },
     },
     forget: { master: get('masterForget'), private: get('privateForget'), group: get('groupForget') },
   })
@@ -528,29 +515,18 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
     ? new Organizer({ archive, store: memories, llm, target: modelTarget, log, afterWrite })
     : undefined
   const diary = new DiaryStore(join(dir, 'diary'))
-  const mediaDir = (ctx.get('qqArchive' as never) as {mediaDir?: string}|undefined)?.mediaDir ?? join(dir,'media')
   const takeCarry = (umo: string): string => (ctx.get('qqArchive' as never) as {takeCarry?(umo:string):string}|undefined)?.takeCarry?.(umo) ?? ''
-  const agentsService = (): { get?(id: string): unknown; list?(): any[] } | undefined => ctx.get('agents' as never) as never
   const maintenance = archive !== undefined && memories !== undefined && organizer !== undefined
     ? new Maintenance({
       archive, store: memories, diary, organizer, llm, target: diaryTarget,
       settings: () => ({
         diaryEnabled: get('diaryEnabled'), monthlyEnabled: get('monthlyEnabled'), boundaryHour: get('dayBoundaryHour'), timeZone: get('timezone'),
-        rotateSessions: false, deleteOldSessions: false, carryMessages: 0,
-        archiveDays: s => archiveRule(s, defaults(), rules()).days,
       }),
-      snowluma: () => snowluma() as never,
-      registry: () => ctx.get('workspaceRegistry' as never) as never,
-      persistence: () => ctx.get('sessionPersistence' as never) as never,
-      isLive: id => (agentsService()?.list?.() ?? []).some(a => String(a?.session?.id) === id),
-      sessionsRoot: join(dirname(dir), 'sessions'),
-      mediaDir,
-      setCarry: () => {},
       log,
     })
     : undefined
   const clockOk = (v: string, fallback: string): string => /^\d{1,2}:\d{2}$/.test(v.trim()) ? v.trim().padStart(5, '0') : fallback
-  // 每分钟看一眼：到了写日记的时间、今天还没跑过就跑（日记 + 存档到期）
+  // 每分钟检查日记时间；QQ存档到期由QQ插件单独处理。
   ctx.effect(() => {
     const tick = (): void => {
       if (maintenance === undefined || archive === undefined) return
@@ -564,7 +540,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
       const due = want < boundary ? clock >= want && clock < boundary : clock >= want || clock < boundary
       if (!due) return
       meta.set('maint:day', day)
-      void maintenance.run(now, 'diary').then(() => runCare(false, now)).catch(e => log('warn', '每日任务失败：' + errText(e)))
+      void maintenance.run(now).then(() => runCare(false, now)).catch(e => log('warn', '每日任务失败：' + errText(e)))
     }
     const timer = setInterval(tick, 60_000)
     return () => clearInterval(timer)
@@ -647,7 +623,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
     const r = await createBackup({
       settingDescriptions:describeSettings(Config), dataDir: dir, db: archive.db, outDir: backupsDir, reason, plugin: pluginVersion, schema: SCHEMA_VERSION, settings: settingsSnapshot(),
       embed: { ...(es.model.trim() ? { model: es.model.trim() } : {}), ...(Number.isFinite(dim) ? { dim } : {}) }, keep: get('backupKeep'),
-      items: chosen, sessionServices: sessionServices(), settingsFiles: chosen.some(i => SETTINGS_ITEMS.includes(i)) ? captureSettings() : {},
+      items: chosen, settingsFiles: chosen.some(i => SETTINGS_ITEMS.includes(i)) ? captureSettings() : {},
     })
     log('info', '备份好了：' + r.name)
     return r
@@ -1066,8 +1042,7 @@ export async function apply(ctx: Context, live: LiveConfig): Promise<void> {
           if (maintenance === undefined) return json(503, { error: '数据库没打开' })
           // 测试用：环境变量 COMPANION_TEST_CLOCK=1 时可以指定"现在"（模拟过了很多天）
           const now = process.env.COMPANION_TEST_CLOCK === '1' && typeof body?.now === 'number' ? body.now : Date.now()
-          const what = 'diary' as const
-          const report = await maintenance.run(now, what)
+          const report = await maintenance.run(now)
           return json(200, { report, state: state() })
         }
         // diary
