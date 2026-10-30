@@ -1,6 +1,6 @@
 # 依赖与公开上游清单
 
-本清单随构建自动生成，来源为package.json、pnpm-lock.yaml、源码外部模块引用和scripts/build-update-catalog.mjs中的上游资源定义。不是对宿主已安装程序的检查。当前插件：dsh-persona-memory 2.6.0。
+本清单随构建自动生成，来源为package.json、pnpm-lock.yaml、源码外部模块引用和scripts/build-update-catalog.mjs中的上游资源定义。不是对宿主已安装程序的检查。当前插件：dsh-persona-memory 2.6.1。
 
 | 项目 | 类别 | 声明/公开快照基准（非安装证明） | 检查来源 | 用途 |
 | --- | --- | --- | --- | --- |
@@ -19,8 +19,8 @@
 | typescript | development-package | 7.0.2 | npm: typescript | 插件运行或构建/测试依赖；合并管理20项内部记录，详细归属见清单JSON，不逐项检查或提醒 |
 | ws | development-package | 8.22.0 | npm: ws | 插件运行或构建/测试依赖 |
 | yaml | development-package | 2.9.1 | npm: yaml | 插件运行或构建/测试依赖 |
-| dsh-persona-memory正式发行 | upstream | 2.6.0 | github: Geng-zy/dsh-persona-memory | 本插件公开正式发行；不自动下载安装 |
-| QQ接入插件可选联动 | upstream | 2.6.0 | github: Geng-zy/dsh-qq-gateway | 可选插件间事件与服务接口兼容；独立安装不要求另一个插件在场 |
+| dsh-persona-memory正式发行 | upstream | 2.6.1 | github: Geng-zy/dsh-persona-memory | 本插件公开正式发行；不自动下载安装 |
+| QQ接入插件可选联动 | upstream | 2.6.1 | github: Geng-zy/dsh-qq-gateway | 可选插件间事件与服务接口兼容；独立安装不要求另一个插件在场 |
 | DeepSeek Harness | upstream | 0.2.1-rc.2 | npm: @deepseek-ai/dsh | 宿主公开发行与插件SDK兼容，允许预览版；不扫描宿主安装情况；合并管理31项内部记录，详细归属见清单JSON，不逐项检查或提醒 |
 | Node.js LTS | upstream | 24.22.1 | node-lts: https://nodejs.org/dist/index.json | 插件运行/开发所需的上游最新LTS；不检测服务器安装；合并管理8项内部记录，详细归属见清单JSON，不逐项检查或提醒 |
 | Jina Reader公开网页读取后备 | service | 首次公开观测建立基准，非已适配证明 | document: https://jina.ai/reader/ | 可选公开文档读取后备服务；仅发送公开来源URL，不发送凭据、配置或业务数据 |
@@ -35,23 +35,23 @@
 | OpenAI兼容接口 | service | 首次公开观测建立基准，非已适配证明 | document: https://developers.openai.com/api/docs/deprecations | 记忆整理/压缩/审核/抽取/向量接口对接的公开模型与弃用资料变化；未配置项也覆盖 |
 | DeepSeek模型与接口 | service | 首次公开观测建立基准，非已适配证明 | document: https://api-docs.deepseek.com/updates/ | 记忆整理/压缩/审核/抽取/向量接口对接的公开模型与弃用资料变化；未配置项也覆盖 |
 | 硅基流动向量/模型服务 | service | 首次公开观测建立基准，非已适配证明 | document: https://docs.siliconflow.cn/cn/release-notes/overview | 记忆整理/压缩/审核/抽取/向量接口对接的公开模型与弃用资料变化；未配置项也覆盖 |
-| 百炼模型接口 | service | 首次公开观测建立基准，非已适配证明 | document: https://help.aliyun.com/zh/model-studio/developer-reference/api-details | 记忆整理/压缩/审核/抽取/向量接口对接的公开模型与弃用资料变化；未配置项也覆盖 |
+| 百炼模型接口 | service | 首次公开观测建立基准，非已适配证明 | document: https://help.aliyun.com/zh/model-studio/model-release-notes | 记忆整理/压缩/审核/抽取/向量接口对接的公开模型与弃用资料变化；未配置项也覆盖 |
 | 智谱模型接口 | service | 首次公开观测建立基准，非已适配证明 | document: https://docs.bigmodel.cn/cn/guide/start/model-overview | 记忆整理/压缩/审核/抽取/向量接口对接的公开模型与弃用资料变化；未配置项也覆盖 |
-| 火山方舟接口 | service | 首次公开观测建立基准，非已适配证明 | document: https://www.volcengine.com/docs/82379 | 记忆整理/压缩/审核/抽取/向量接口对接的公开模型与弃用资料变化；未配置项也覆盖 |
+| 火山方舟接口 | service | 首次公开观测建立基准，非已适配证明 | document: https://docs.volcengine.com/docs/ark/product-update-announcements | 记忆整理/压缩/审核/抽取/向量接口对接的公开模型与弃用资料变化；未配置项也覆盖 |
 | OpenRouter | service | 首次公开观测建立基准，非已适配证明 | document: https://openrouter.ai/docs/changelog | 记忆整理/压缩/审核/抽取/向量接口对接的公开模型与弃用资料变化；未配置项也覆盖 |
 | BAAI/bge-m3向量模型 | resource | 首次公开观测建立基准，非已适配证明 | github-file: FlagOpen/FlagEmbedding / README.md | 默认向量模型来源/检索框架公开说明；API提供商实际模型版本另需核实 |
 | Anthropic报告API | service | 首次公开观测建立基准，非已适配证明 | document: https://platform.claude.com/docs/en/release-notes/api | 独立报告模型模板的公开接口与弃用说明 |
 | 魔搭报告API | service | 首次公开观测建立基准，非已适配证明 | document: https://modelscope.cn/docs/model-service/API-Inference/intro | 独立报告模型模板的公开接口与弃用说明 |
 | Mistral | related-project | 首次公开观测建立基准，非已适配证明 | document: https://docs.mistral.ai/getting-started/changelog/ | 内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用 |
 | Groq | related-project | 首次公开观测建立基准，非已适配证明 | document: https://console.groq.com/docs/changelog | 内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用 |
-| Kimi / Moonshot | related-project | 首次公开观测建立基准，非已适配证明 | document: https://platform.moonshot.cn/docs/introduction | 内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用 |
-| MiniMax | related-project | 首次公开观测建立基准，非已适配证明 | document: https://platform.minimaxi.com/docs/release-notes/models | 内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用 |
-| 腾讯混元 | related-project | 首次公开观测建立基准，非已适配证明 | document: https://cloud.tencent.com/document/product/1729 | 内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用 |
-| 百度千帆 | related-project | 首次公开观测建立基准，非已适配证明 | document: https://cloud.baidu.com/doc/qianfan-api/index.html | 内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用 |
+| Kimi / Moonshot | related-project | 首次公开观测建立基准，非已适配证明 | document: https://platform.kimi.com/blog/posts/changelog | 内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用 |
+| MiniMax | related-project | 首次公开观测建立基准，非已适配证明 | document: https://platform.minimax.cn/docs/release-notes/models | 内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用 |
+| 腾讯混元 | related-project | 首次公开观测建立基准，非已适配证明 | document: https://cloud.tencent.com/document/product/1729/101849 | 内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用 |
+| 百度千帆 | related-project | 首次公开观测建立基准，非已适配证明 | document: https://cloud.baidu.com/doc/qianfan/s/Kmh4stnjp | 内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用 |
 | Jina Embeddings | related-project | 首次公开观测建立基准，非已适配证明 | document: https://jina.ai/embeddings/ | 内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用 |
 | Cohere | related-project | 首次公开观测建立基准，非已适配证明 | document: https://docs.cohere.com/changelog | 内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用 |
 | Gemini / Imagen | related-project | 首次公开观测建立基准，非已适配证明 | document: https://ai.google.dev/gemini-api/docs/changelog | 内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用 |
-| Server酱 | related-project | 首次公开观测建立基准，非已适配证明 | document: https://sct.ftqq.com | 内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用 |
+| Server酱 | related-project | 首次公开观测建立基准，非已适配证明 | document: https://sct.ftqq.com/docs/ | 内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用 |
 | PushPlus | related-project | 首次公开观测建立基准，非已适配证明 | document: https://www.pushplus.plus/doc/guide/api.html | 内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用 |
 | Ollama | related-project | 首次公开观测建立基准，非已适配证明 | github: ollama/ollama | 可选OpenAI兼容本地模型服务，不读取本机模型和安装版本 |
 | LM Studio | related-project | 首次公开观测建立基准，非已适配证明 | document: https://lmstudio.ai/changelog | 可选本地OpenAI兼容服务的官方稳定版发布记录 |

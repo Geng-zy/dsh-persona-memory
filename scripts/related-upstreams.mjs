@@ -6,11 +6,11 @@ export function addRelatedSources(sources,{root,qq}){
  const file=(id,name,target,path,purpose,files=[])=>add(id,name,'github-file',target,purpose,files,{path,category:'resource'})
  const services=[
  ['mistral','Mistral','https://docs.mistral.ai/getting-started/changelog/'],['groq','Groq','https://console.groq.com/docs/changelog'],
- ['glm','智谱','https://docs.bigmodel.cn/cn/guide/start/model-overview'],['moonshot','Kimi / Moonshot','https://platform.moonshot.cn/docs/introduction'],
- ['minimax','MiniMax','https://platform.minimaxi.com/docs/release-notes/models'],['hunyuan','腾讯混元','https://cloud.tencent.com/document/product/1729'],
- ['qianfan','百度千帆','https://cloud.baidu.com/doc/qianfan-api/index.html'],['jina-embed','Jina Embeddings','https://jina.ai/embeddings/'],
+ ['glm','智谱','https://docs.bigmodel.cn/cn/guide/start/model-overview'],['moonshot','Kimi / Moonshot','https://platform.kimi.com/blog/posts/changelog'],
+ ['minimax','MiniMax','https://platform.minimax.cn/docs/release-notes/models'],['hunyuan','腾讯混元','https://cloud.tencent.com/document/product/1729/101849'],
+ ['qianfan','百度千帆','https://cloud.baidu.com/doc/qianfan/s/Kmh4stnjp'],['jina-embed','Jina Embeddings','https://jina.ai/embeddings/'],
  ['cohere','Cohere','https://docs.cohere.com/changelog'],['gemini','Gemini / Imagen','https://ai.google.dev/gemini-api/docs/changelog'],
- ['serverchan','Server酱','https://sct.ftqq.com'],['pushplus','PushPlus','https://www.pushplus.plus/doc/guide/api.html']]
+ ['serverchan','Server酱','https://sct.ftqq.com/docs/'],['pushplus','PushPlus','https://www.pushplus.plus/doc/guide/api.html']]
  for(const[id,name,url]of services)if(!qq||['mistral','groq','glm'].includes(id))doc('service:'+id,name,url,'内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用',[qq?'src/client/bridge.js':'src/client/companion.js'])
  for(const[id,name,target]of [['ollama','Ollama','ollama/ollama'],['lmstudio','LM Studio','lmstudio-ai/lmstudio-bug-tracker']]){
   if(id==='lmstudio')doc(id,name,'https://lmstudio.ai/changelog','可选本地OpenAI兼容服务的官方稳定版发布记录',['src/client/'+(qq?'bridge.js':'companion.js')])

@@ -1,5 +1,7 @@
 /** Independent, opt-in upstream monitoring. Never probes installed host software or reads business data. */
 import { reportApiComplete, reportApiModels, type ReportApi } from './update-model.js'
+import { normalizeDocument, readableDocument, publicRedirectAllowed, upstreamRequestError, officialDocument } from './upstream-documents.js'
+export { normalizeDocument } from './upstream-documents.js'
 import z from '@deepseek-ai/schemastery'
 import {npmLtsVersions,ltsLabel,previewLabel,releaseVersion,ltsCycles,inCycle} from './upstream-policy.js'
 import { createHash, randomUUID } from 'node:crypto'
@@ -89,9 +91,6 @@ export function chooseNpmVersion(data: any, prerelease: boolean): string | undef
   const versions = Object.keys(data.versions ?? {}).filter(v => semver.valid(v) && (prerelease || stable(v)) && !/(?:^|[.-])(?:nightly|canary|dev|test|experimental)(?:[.-]|$)/i.test(v))
   return versions.sort(semver.rcompare)[0]
 }
-export function normalizeDocument(body: string): string {
-  return body.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '').replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '').replace(/<(nav|footer|header)\b[^>]*>[\s\S]*?<\/\1>/gi, '').replace(/<!--[^]*?-->/g, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
-}
 export interface UpdateDeps {
   catalog: Catalog; directory: string; settings: () => UpdateConfig; fetch?: typeof fetch; now?: () => number
   llm?: () => { stream(options: Record<string, unknown>): AsyncIterable<unknown> } | undefined
@@ -170,12 +169,13 @@ export class UpdateMonitor {
     for (let redirects = 0; ; redirects++) {
       const outbound = { ...headers }
       if (currentUrl.hostname !== 'api.github.com') delete outbound.authorization
-      res = await this.doFetch(currentUrl.toString(), { headers: outbound, redirect: 'manual', signal })
+      try { res = await this.doFetch(currentUrl.toString(), { headers: outbound, redirect: 'manual', signal }) }
+      catch (error) { throw new Error(upstreamRequestError(error)) }
       if (![301, 302, 303, 307, 308].includes(res.status)) break
       const location = res.headers.get('location'); await res.body?.cancel()
       if (!location || redirects >= 4) throw new Error('来源重定向过多或缺少目标，需核实')
       const target = new URL(location, currentUrl)
-      if (target.protocol !== 'https:' || target.username || target.password || target.hostname.split('.').slice(-2).join('.') !== currentUrl.hostname.split('.').slice(-2).join('.')) throw new Error('来源跳转到其他站点，需核实新的官方地址')
+      if (!publicRedirectAllowed(currentUrl, target)) throw new Error('来源跳转到未经确认的站点，需核实新的官方地址')
       currentUrl = target
     }
     if (!res.ok) throw new Error('来源返回HTTP ' + res.status + (res.status === 403 || res.status === 429 ? '，可能限流，请稍后重试' : ''))
@@ -313,14 +313,16 @@ export class UpdateMonitor {
         r.notes='仅跟踪最新已发布且仍受支持的LTS；生命周期数据由社区维护，须对照官方支持政策，不代表本机版本或已适配。'
       } else {
         r.source = source.target
-        const readable = (text: string): boolean => text.length >= 80 && !/you need to enable javascript|please enable javascript|enable javascript to (?:run|continue)|checking your browser|just a moment[.!]/i.test(text)
         let text = '', method = '直接读取官方资料'
-        try { text = normalizeDocument((await this.get(source.target)).text); if (!readable(text)) throw new Error('动态页面缺少正文') }
-        catch {
-          if (!this.deps.settings().updatesReaderFallback || source.id === 'reader') throw new Error('资料无法直接读取或需脚本渲染，需人工核实；可在开发者设置启用公开页面读取后备')
-          text = normalizeDocument((await this.get('https://r.jina.ai/' + source.target)).text)
-          if (!readable(text) || !/Markdown Content:|URL Source:/.test(text)) throw new Error('官方资料及公开页面读取后备均未获得有效正文，需人工核实')
-          method = '通过Jina Reader读取公开官方URL（未发送任何凭据）'
+        try { ({ text, method } = await officialDocument(source.target, url => this.get(url))) }
+        catch (error) {
+          const primary = upstreamRequestError(error)
+          if (!this.deps.settings().updatesReaderFallback || source.id === 'reader') throw new Error('官方来源：' + primary + '；未使用公开页面读取后备')
+          try {
+            text = normalizeDocument((await this.get('https://r.jina.ai/' + source.target)).text)
+            if (!readableDocument(text) || !/Markdown Content:|URL Source:/.test(text)) throw new Error('未获得有效正文')
+            method = '通过Jina Reader读取公开官方URL（未发送任何凭据）；官方直接读取失败：' + primary
+          } catch (fallback) { throw new Error('官方来源：' + primary + '；Jina后备：' + upstreamRequestError(fallback)) }
         }
         const hash = digest(text); const previous = this.state.documentHashes[source.id]
         r.latest = hash; r.status = !previous ? 'baseline' : previous === hash ? 'current' : 'changed'

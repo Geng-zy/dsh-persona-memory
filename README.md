@@ -5,7 +5,7 @@
 维护入口：[本插件独立交接文档](docs/HANDOFF.md)。
 
 ```sh
-dsh plugin --profile web add "https://github.com/Geng-zy/dsh-persona-memory/releases/download/v2.6.0/dsh-persona-memory-2.6.0.tgz" --ignore-scripts
+dsh plugin --profile web add "https://github.com/Geng-zy/dsh-persona-memory/releases/download/v2.6.1/dsh-persona-memory-2.6.1.tgz" --ignore-scripts
 ```
 
 以dsh运行账号和相同DSH_HOME安装，等待在途任务完成并停dsh后执行，再按原方式启动。要求dsh0.2.1-rc.2、Node≥22.13。设置在“更多 → 设置 → 人格与记忆”。单独使用于网页会话时，将“会话生效范围”改为全部。

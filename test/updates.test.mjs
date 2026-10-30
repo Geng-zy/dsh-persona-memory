@@ -7,6 +7,15 @@ import {UpdateMonitor,chooseNpmVersion,extraSources,redact,normalizeDocument,upd
 import {updateCatalog} from '../lib/update-catalog.js'
 const settings=()=>({updatesEnabled:true,updatesIntervalDays:7,updatesAutoAnalyze:true,updatesModelProvider:'',updatesModel:'',updatesMaxTokens:1024,updatesMaxModelCalls:2,updatesModelTimeoutSeconds:10,updatesGithubToken:'',updatesMailEnabled:true,updatesSmtpHost:'smtp.example.org',updatesSmtpPort:465,updatesSmtpUser:'person@example.org',updatesSmtpPass:'private-password-for-tests',updatesMailTo:'recipient@example.org',updatesPushService:'pushplus',updatesPushKey:'private-token-for-tests',updatesExtraSources:'[]'})
 const source=(kind='npm',extra={})=>({id:'a',name:'example-package',kind,target:kind==='github'?'owner/project':'example-package',current:'1.0.0',purpose:'fixture',category:'test',...extra})
+test('官方404和Jina连接失败同时保留；关闭后备仍显示原始失败',async t=>{
+ const h=harness(t,[],{fetch:async url=>{if(String(url).startsWith('https://r.jina.ai/'))throw Object.assign(new Error('fetch failed'),{cause:{code:'ENOTFOUND'}});return new Response('missing',{status:404})}})
+ h.config.updatesReaderFallback=true;const r=await h.monitor.inspect(source('document',{target:'https://example.org/missing'}));assert.equal(r.status,'error');assert.match(r.notes,/官方来源：.*404/);assert.match(r.notes,/Jina后备：.*ENOTFOUND/)
+ h.config.updatesReaderFallback=false;const direct=await h.monitor.inspect(source('document',{target:'https://example.org/missing'}));assert.match(direct.notes,/404/);assert.match(direct.notes,/未使用/)
+})
+test('魔搭官方文档读取不带GitHub令牌，失败不会写入基线',async t=>{
+ const seen=[];const h=harness(t,[],{fetch:async(url,options)=>{seen.push([String(url),options.headers]);if(String(url).includes('/api/v1/document/'))return Response.json({Success:true,Data:{TargetPrefix:'https://resouces.modelscope.cn/document/docdata/current'}});return new Response('Official API inference documentation and release compatibility. '.repeat(5))}})
+ h.config.updatesGithubToken='fixture-secret-token';const r=await h.monitor.inspect(source('document',{id:'service:modelscope',target:'https://modelscope.cn/docs/model-service/API-Inference/intro',current:undefined}));assert.equal(r.status,'baseline');assert.equal(seen.length,2);assert.ok(seen.every(([,headers])=>!headers.authorization));assert.match(r.notes,/Markdown正文/)
+})
 function harness(t,sources=[source()],more={}){
  const directory=mkdtempSync(join(tmpdir(),'upstream-test-'));t.after(()=>rmSync(directory,{recursive:true,force:true}));const config=settings(),sent=[],requests=[];let now=1_800_000_000_000;
  const cat={owner:'fixture-plugin',version:'1.0.0',repository:'https://github.com/example/public',lockHash:'abc',sources,limitations:['fixture limitation']};

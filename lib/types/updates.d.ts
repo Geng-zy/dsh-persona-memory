@@ -1,3 +1,4 @@
+export { normalizeDocument } from './upstream-documents.js';
 import z from '@deepseek-ai/schemastery';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 export interface UpdateConfig {
@@ -102,7 +103,6 @@ export interface Finding {
 export declare function redact(text: string, secrets?: string[]): string;
 export declare function extraSources(text: string): UpdateSource[];
 export declare function chooseNpmVersion(data: any, prerelease: boolean): string | undefined;
-export declare function normalizeDocument(body: string): string;
 export interface UpdateDeps {
     catalog: Catalog;
     directory: string;

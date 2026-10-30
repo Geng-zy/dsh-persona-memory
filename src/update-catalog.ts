@@ -2,7 +2,7 @@
 import type {Catalog} from "./updates.js"
 export const updateCatalog: Catalog = {
   "owner": "dsh-persona-memory",
-  "version": "2.6.0",
+  "version": "2.6.1",
   "repository": "https://github.com/Geng-zy/dsh-persona-memory",
   "lockHash": "7326754d83ddace9c1ccb816a90f5945b1965c5fe6bc53a998c2ac94987c8438",
   "sources": [
@@ -237,7 +237,7 @@ export const updateCatalog: Catalog = {
       "name": "dsh-persona-memory正式发行",
       "kind": "github",
       "target": "Geng-zy/dsh-persona-memory",
-      "current": "2.6.0",
+      "current": "2.6.1",
       "purpose": "本插件公开正式发行；不自动下载安装",
       "files": [
         "README.md"
@@ -249,7 +249,7 @@ export const updateCatalog: Catalog = {
       "name": "QQ接入插件可选联动",
       "kind": "github",
       "target": "Geng-zy/dsh-qq-gateway",
-      "current": "2.6.0",
+      "current": "2.6.1",
       "purpose": "可选插件间事件与服务接口兼容；独立安装不要求另一个插件在场",
       "files": [
         "docs/SPLIT-MIGRATION.md"
@@ -429,7 +429,7 @@ export const updateCatalog: Catalog = {
       "id": "service:dashscope",
       "name": "百炼模型接口",
       "kind": "document",
-      "target": "https://help.aliyun.com/zh/model-studio/developer-reference/api-details",
+      "target": "https://help.aliyun.com/zh/model-studio/model-release-notes",
       "purpose": "记忆整理/压缩/审核/抽取/向量接口对接的公开模型与弃用资料变化；未配置项也覆盖",
       "files": [
         "src/companion/chat.ts",
@@ -455,7 +455,7 @@ export const updateCatalog: Catalog = {
       "id": "service:volcengine",
       "name": "火山方舟接口",
       "kind": "document",
-      "target": "https://www.volcengine.com/docs/82379",
+      "target": "https://docs.volcengine.com/docs/ark/product-update-announcements",
       "purpose": "记忆整理/压缩/审核/抽取/向量接口对接的公开模型与弃用资料变化；未配置项也覆盖",
       "files": [
         "src/companion/chat.ts",
@@ -539,7 +539,7 @@ export const updateCatalog: Catalog = {
       "id": "service:moonshot",
       "name": "Kimi / Moonshot",
       "kind": "document",
-      "target": "https://platform.moonshot.cn/docs/introduction",
+      "target": "https://platform.kimi.com/blog/posts/changelog",
       "purpose": "内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用",
       "files": [
         "src/client/companion.js"
@@ -550,7 +550,7 @@ export const updateCatalog: Catalog = {
       "id": "service:minimax",
       "name": "MiniMax",
       "kind": "document",
-      "target": "https://platform.minimaxi.com/docs/release-notes/models",
+      "target": "https://platform.minimax.cn/docs/release-notes/models",
       "purpose": "内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用",
       "files": [
         "src/client/companion.js"
@@ -561,7 +561,7 @@ export const updateCatalog: Catalog = {
       "id": "service:hunyuan",
       "name": "腾讯混元",
       "kind": "document",
-      "target": "https://cloud.tencent.com/document/product/1729",
+      "target": "https://cloud.tencent.com/document/product/1729/101849",
       "purpose": "内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用",
       "files": [
         "src/client/companion.js"
@@ -572,7 +572,7 @@ export const updateCatalog: Catalog = {
       "id": "service:qianfan",
       "name": "百度千帆",
       "kind": "document",
-      "target": "https://cloud.baidu.com/doc/qianfan-api/index.html",
+      "target": "https://cloud.baidu.com/doc/qianfan/s/Kmh4stnjp",
       "purpose": "内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用",
       "files": [
         "src/client/companion.js"
@@ -616,7 +616,7 @@ export const updateCatalog: Catalog = {
       "id": "service:serverchan",
       "name": "Server酱",
       "kind": "document",
-      "target": "https://sct.ftqq.com",
+      "target": "https://sct.ftqq.com/docs/",
       "purpose": "内置聊天/向量/语音识别/通知模板相关的官方接口、模型和弃用资料；不代表用户已启用",
       "files": [
         "src/client/companion.js"
