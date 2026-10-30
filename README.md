@@ -5,7 +5,7 @@
 维护入口：[本插件独立交接文档](docs/HANDOFF.md)。
 
 ```sh
-dsh plugin --profile web add "https://github.com/Geng-zy/dsh-persona-memory/releases/download/v2.7.0/dsh-persona-memory-2.7.0.tgz" --ignore-scripts
+dsh plugin --profile web add "https://github.com/Geng-zy/dsh-persona-memory/releases/download/v2.7.1/dsh-persona-memory-2.7.1.tgz" --ignore-scripts
 ```
 
 以dsh运行账号和相同DSH_HOME安装，等待在途任务完成并停dsh后执行，再按原方式启动。要求dsh0.2.1-rc.2、Node≥22.13。设置在“更多 → 设置 → 人格与记忆”。单独使用于网页会话时，将“会话生效范围”改为全部。
@@ -38,3 +38,5 @@ TypeScript源码位于`src/companion`，界面源码位于`src/client`。生成�
 在设置的“开发者选项 → 依赖与上游更新”中启用，默认关闭。启用后默认每7天检查，两个插件各自配置邮件/微信、各自通知，不巡检宿主或自动升级。覆盖完整依赖、上游代码/资源及对接服务，并可用独立模型生成脱敏更新交接文档。
 
 [使用与隐私说明](docs/UPDATES.md) · [完整依赖清单](docs/DEPENDENCIES.md) · [机器可读清单](docs/DEPENDENCIES.json)
+
+模型类型：当前dsh模型入口用于聊天/推理及支持图片输入的视觉聊天模型，模型名称能列出不代表支持其专用协议。纯生图、TTS、ASR应在QQ插件对应设置配置；向量模型使用本插件向量检索设置，不能作为整理/压缩聊天模型。
