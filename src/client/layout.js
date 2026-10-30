@@ -24,8 +24,8 @@ window.__ModuleLoader__.load({
       return h("details", { className: "sc-section", "data-section": id, hidden: !visible, open: open },
         h("summary", { className: "sc-section-head", onClick: e => { e.preventDefault(); view.setActiveSection(open ? "" : id); } },
           h("span", { className: "sc-section-heading" }, h("span", { className: "sc-section-title" }, props.title), props.hint ? h("span", { className: "sc-section-description" }, props.hint) : null),
-          h("span", { className: "sc-chevron", "aria-hidden": true }, "⌄")),
-        visited || open ? h("div", { className: "sc-section-body" }, props.children) : null);
+          h("span", { className: "sc-chevron", "aria-hidden": true })),
+        visited || open ? h("div", { className: "sc-section-body" }, props.hint ? h("p", { className: "sc-section-help" }, props.hint) : null, props.children) : null);
     }
     return { Context: Context, Section: Section, readActiveSection: readActiveSection };
   }

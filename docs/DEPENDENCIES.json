@@ -1,6 +1,6 @@
 {
   "owner": "dsh-persona-memory",
-  "version": "2.6.1",
+  "version": "2.7.0",
   "repository": "https://github.com/Geng-zy/dsh-persona-memory",
   "lockHash": "7326754d83ddace9c1ccb816a90f5945b1965c5fe6bc53a998c2ac94987c8438",
   "sources": [
@@ -235,7 +235,7 @@
       "name": "dsh-persona-memory正式发行",
       "kind": "github",
       "target": "Geng-zy/dsh-persona-memory",
-      "current": "2.6.1",
+      "current": "2.7.0",
       "purpose": "本插件公开正式发行；不自动下载安装",
       "files": [
         "README.md"
@@ -247,7 +247,7 @@
       "name": "QQ接入插件可选联动",
       "kind": "github",
       "target": "Geng-zy/dsh-qq-gateway",
-      "current": "2.6.1",
+      "current": "2.7.0",
       "purpose": "可选插件间事件与服务接口兼容；独立安装不要求另一个插件在场",
       "files": [
         "docs/SPLIT-MIGRATION.md"
